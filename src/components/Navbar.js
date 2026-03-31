@@ -125,7 +125,7 @@ const Navbar = () => {
                   Admin Dashboard
                 </Link>
                 <Link
-                  href="/admin/register" 
+                  href="/admin/register"
                   className={`hover:text-blue-300 ${pathname === '/admin/register' ? 'text-blue-300' : ''} py-2 md:py-0`}
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -138,17 +138,17 @@ const Navbar = () => {
                 >
                   Manage Users
                 </Link>
-                <a
-                  href="/webmail"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-blue-300 py-2 md:py-0"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Webmail
-                </a>
               </>
             )}
+            <a
+              href="/webmail"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-blue-300 py-2 md:py-0"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Webmail
+            </a>
           </div>
 
           {/* User Info and Logout - show below links on mobile, beside on desktop */}
