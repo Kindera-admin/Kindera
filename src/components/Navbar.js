@@ -131,13 +131,22 @@ const Navbar = () => {
                 >
                   Register User
                 </Link>
-                <Link 
-                  href="/admin/users" 
+                <Link
+                  href="/admin/users"
                   className={`hover:text-blue-300 ${pathname === '/admin/users' ? 'text-blue-300' : ''} py-2 md:py-0`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Manage Users
                 </Link>
+                <a
+                  href="/webmail"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-blue-300 py-2 md:py-0"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Webmail
+                </a>
               </>
             )}
           </div>
