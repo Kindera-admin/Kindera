@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import useAuthStore from '@/store/authStore';
 import { Button } from '@/components/ui/button';
@@ -42,8 +43,8 @@ const Navbar = () => {
   return (
     <nav className="bg-slate-800 text-white p-4 relative z-10">
       <div className="container mx-auto flex flex-wrap justify-between items-center">
-        <Link href="/" className="text-xl font-bold">
-          Kindera
+        <Link href="/">
+          <Image src="/mylogo.jpeg" alt="Kindera" width={120} height={40} className="object-contain" />
         </Link>
 
         {/* Mobile menu button */}

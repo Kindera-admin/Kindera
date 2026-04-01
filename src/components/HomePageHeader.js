@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import useAuthStore from '@/store/authStore';
 import { useRouter } from 'next/navigation';
 import { logout } from '@/app/actions';
@@ -70,25 +71,8 @@ export default function HomePageHeader() {
       >
         <nav className="max-w-[1200px] mx-auto px-5 py-4 flex items-center justify-between">
           {/* ── Logo ── */}
-          <Link href="/" className="flex items-center gap-2.5 no-underline group">
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold transition-all duration-400"
-              style={{
-                background: scrolled ? '#0d3b26' : '#2ecc71',
-                color: scrolled ? '#fff' : '#0d3b26',
-              }}
-            >
-              K
-            </div>
-            <span
-              className="text-[22px] transition-colors duration-400"
-              style={{
-                fontFamily: "'DM Serif Display', Georgia, serif",
-                color: scrolled ? '#0d3b26' : '#fff',
-              }}
-            >
-              Kindera
-            </span>
+          <Link href="/" className="flex items-center no-underline group">
+            <Image src="/mylogo.jpeg" alt="Kindera" width={140} height={48} className="object-contain" />
           </Link>
 
           {/* ── Desktop Nav ── */}
