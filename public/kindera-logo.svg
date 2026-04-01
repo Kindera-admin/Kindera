@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="320" height="80">
+  <!-- Background circle -->
+  <circle cx="40" cy="40" r="38" fill="#0d3b26"/>
+  <!-- Stylish italic serif K -->
+  <text
+    x="40" y="40"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="30"
+    font-weight="700"
+    fill="#ffffff"
+  >K</text>
+  <!-- Kindera wordmark -->
+  <text
+    x="92" y="40"
+    dominant-baseline="central"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="38"
+    font-weight="700"
+    fill="#0d3b26"
+  >Kindera</text>
+</svg>

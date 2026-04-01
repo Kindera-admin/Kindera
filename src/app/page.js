@@ -265,6 +265,8 @@ export default async function HomePage() {
           transition: color 0.3s;
         }
         .footer a:hover { color: var(--emerald); }
+        .logo-download-btn { display: inline-block; text-decoration: none; opacity: 1; transition: opacity 0.2s; }
+        .logo-download-btn:hover { opacity: 0.8; }
 
         /* ── Buttons ── */
         .btn-primary {
@@ -607,22 +609,28 @@ export default async function HomePage() {
               marginBottom: '3rem',
             }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1.2rem' }}>
-                  <div
-                    style={{
-                      width: 32, height: 32, borderRadius: '50%',
-                      background: 'var(--emerald)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: 'var(--forest)', fontWeight: 700, fontSize: 16,
-                    }}
-                  >
-                    K
-                  </div>
-                  <span className="serif" style={{ fontSize: 20, color: '#fff' }}>Kindera</span>
-                </div>
-                <p style={{ fontSize: 14, lineHeight: 1.7, color: '#888' }}>
+                <p style={{ fontSize: 14, lineHeight: 1.7, color: '#888', marginBottom: '1rem' }}>
                   Revolutionizing the way the world volunteers. Connecting corporate teams with meaningful causes.
                 </p>
+                <a
+                  href="/kindera-logo.svg"
+                  download="kindera-logo.svg"
+                  title="Download Logo"
+                  className="logo-download-btn"
+                >
+                  <img
+                    src="/kindera-logo.svg"
+                    alt="Kindera Logo"
+                    style={{
+                      width: 160,
+                      height: 40,
+                      borderRadius: 8,
+                      background: '#fff',
+                      padding: '6px 10px',
+                      display: 'block',
+                    }}
+                  />
+                </a>
               </div>
 
               <div>
