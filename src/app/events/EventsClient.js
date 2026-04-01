@@ -1,12 +1,28 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Users, ExternalLink } from 'lucide-react';
+import { Calendar, MapPin, Users, ExternalLink, Trash2 } from 'lucide-react';
+import { deleteEvent } from '@/app/actions';
+import { toast } from 'sonner';
 
-export default function EventsClient({ events, userRole }) {
+export default function EventsClient({ events: initialEvents, userRole }) {
+  const [events, setEvents] = useState(initialEvents);
   const canCreateEvent = ['admin', 'ngo', 'org_spoc'].includes(userRole);
   const canRegisterForEvent = ['org_spoc', 'org_member'].includes(userRole);
+  const canDelete = userRole === 'admin';
+
+  const handleDelete = async (id, title) => {
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    const result = await deleteEvent(id);
+    if (result.success) {
+      setEvents(prev => prev.filter(e => e._id !== id));
+      toast.success('Event deleted');
+    } else {
+      toast.error(result.message || 'Failed to delete event');
+    }
+  };
   
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -118,16 +134,25 @@ export default function EventsClient({ events, userRole }) {
                 )}
                 
                 <div className="pt-4 flex gap-3">
-  {canRegisterForEvent && event.status === 'upcoming' && (
-    <Button 
-      onClick={() => window.open(event.registrationLink, '_blank')}
-      className="flex-1"
-    >
-      <ExternalLink className="w-4 h-4 mr-2" />
-      Register Now
-    </Button>
-  )}
-</div>
+                  {canRegisterForEvent && event.status === 'upcoming' && (
+                    <Button
+                      onClick={() => window.open(event.registrationLink, '_blank')}
+                      className="flex-1"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Register Now
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleDelete(event._id, event.title)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </Button>
+                  )}
+                </div>
 
               </CardContent>
             </Card>

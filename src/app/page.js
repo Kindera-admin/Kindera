@@ -1,42 +1,9 @@
 import Link from "next/link";
 import HomePageHeader from "@/components/HomePageHeader";
+import { getHomeEvents } from "@/app/actions";
 
-export default function HomePage() {
-  const upcomingEvents = [
-    {
-      id: 1,
-      title: "Community Health Camp",
-      description:
-        "Free health checkup and awareness program for underprivileged communities. Medical professionals will be available for consultations.",
-      date: "February 15, 2026",
-      tag: "Health",
-      registrationLink: "https://forms.google.com/your-form-link-1",
-    },
-    {
-      id: 2,
-      title: "Educational Workshop",
-      description:
-        "Interactive learning sessions for children focusing on digital literacy and creative skills development.",
-      date: "February 22, 2026",
-      tag: "Education",
-      registrationLink: "https://forms.google.com/your-form-link-2",
-    },
-    {
-      id: 3,
-      title: "Environmental Awareness Drive",
-      description:
-        "Tree plantation drive and plastic waste management workshop to promote sustainable living practices.",
-      date: "March 5, 2026",
-      tag: "Environment",
-      registrationLink: "https://forms.google.com/your-form-link-3",
-    },
-  ];
-
-  const tagColors = {
-    Health: "#e74c3c",
-    Education: "#2980b9",
-    Environment: "#27ae60",
-  };
+export default async function HomePage() {
+  const { events: upcomingEvents = [] } = await getHomeEvents();
 
   const steps = [
     { num: "01", title: "Client Outreach", desc: "Corporate partners reach out with focus areas for volunteering." },
@@ -544,44 +511,50 @@ export default function HomePage() {
               Events &amp; opportunities
             </h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-              {upcomingEvents.map((ev) => (
-                <div key={ev.id} className="event-card">
-                  <div style={{ padding: '2rem 2rem 1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                      <span className="event-tag" style={{ background: tagColors[ev.tag] }}>{ev.tag}</span>
-                      <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                        {ev.date}
-                      </span>
+            {upcomingEvents.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
+                No upcoming events at the moment. Check back soon!
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                {upcomingEvents.map((ev) => (
+                  <div key={ev._id} className="event-card">
+                    <div style={{ padding: '2rem 2rem 1.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                        <span className="event-tag" style={{ background: 'var(--forest)' }}>{ev.location}</span>
+                        <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                          {new Date(ev.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 10, lineHeight: 1.3, color: 'var(--text-primary)' }}>
+                        {ev.title}
+                      </h3>
+                      <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+                        {ev.description}
+                      </p>
+                      <Link
+                        href="/login"
+                        style={{
+                          display: 'block',
+                          textAlign: 'center',
+                          padding: '12px 24px',
+                          borderRadius: 50,
+                          background: 'var(--forest)',
+                          color: '#fff',
+                          fontWeight: 600,
+                          fontSize: 14,
+                          textDecoration: 'none',
+                          transition: 'all 0.3s',
+                          fontFamily: "'General Sans', sans-serif",
+                        }}
+                      >
+                        Login to Register →
+                      </Link>
                     </div>
-                    <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 10, lineHeight: 1.3, color: 'var(--text-primary)' }}>
-                      {ev.title}
-                    </h3>
-                    <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-                      {ev.description}
-                    </p>
-                    <Link
-                      href="/login"
-                      style={{
-                        display: 'block',
-                        textAlign: 'center',
-                        padding: '12px 24px',
-                        borderRadius: 50,
-                        background: 'var(--forest)',
-                        color: '#fff',
-                        fontWeight: 600,
-                        fontSize: 14,
-                        textDecoration: 'none',
-                        transition: 'all 0.3s',
-                        fontFamily: "'General Sans', sans-serif",
-                      }}
-                    >
-                      Login to Register →
-                    </Link>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 

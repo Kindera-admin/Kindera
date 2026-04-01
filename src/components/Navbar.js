@@ -138,6 +138,13 @@ const Navbar = () => {
                 >
                   Manage Users
                 </Link>
+                <Link
+                  href="/admin/events"
+                  className={`hover:text-blue-300 ${pathname === '/admin/events' ? 'text-blue-300' : ''} py-2 md:py-0`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Manage Events
+                </Link>
               </>
             )}
             <a

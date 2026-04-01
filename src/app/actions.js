@@ -630,10 +630,38 @@ export async function createEvent(formData) {
   }
 }
 
+export async function getHomeEvents() {
+  try {
+    await connectDB();
+
+    const now = new Date();
+    const events = await Event.find({ date: { $gte: now } })
+      .sort({ date: 1 })
+      .limit(6);
+
+    return {
+      success: true,
+      events: events.map(event => ({
+        _id: event._id.toString(),
+        title: event.title,
+        description: event.description,
+        date: event.date.toISOString(),
+        location: event.location,
+        registrationLink: event.registrationLink,
+        imageUrl: event.imageUrl,
+        status: event.status,
+      }))
+    };
+  } catch (error) {
+    console.error('Error fetching home events:', error);
+    return { success: false, events: [] };
+  }
+}
+
 export async function getEvents(status = '') {
   try {
     await connectDB();
-    
+
     const filter = {};
     if (status) filter.status = status;
     
