@@ -72,13 +72,24 @@ export default function HomePageHeader() {
           {/* ── Logo ── */}
           <Link href="/" className="flex items-center gap-2.5 no-underline group">
             <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-lg font-bold transition-all duration-400"
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-400"
               style={{
                 background: scrolled ? '#0d3b26' : '#2ecc71',
                 color: scrolled ? '#fff' : '#0d3b26',
               }}
             >
-              K
+              <span
+                style={{
+                  fontFamily: "'DM Serif Display', Georgia, serif",
+                  fontSize: '1.35rem',
+                  fontStyle: 'italic',
+                  fontWeight: 700,
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1,
+                }}
+              >
+                K
+              </span>
             </div>
             <span
               className="text-[22px] transition-colors duration-400"
