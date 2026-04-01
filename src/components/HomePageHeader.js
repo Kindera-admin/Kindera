@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -62,11 +63,9 @@ export default function HomePageHeader() {
       <header
         className="fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)]"
         style={{
-          background: scrolled
-            ? 'rgba(255,255,255,0.92)'
-            : 'transparent',
-          backdropFilter: scrolled ? 'blur(20px)' : 'none',
-          boxShadow: scrolled ? '0 1px 0 rgba(0,0,0,0.06)' : 'none',
+          background: '#ffffff',
+          backdropFilter: 'none',
+          boxShadow: '0 1px 0 rgba(0,0,0,0.06)',
         }}
       >
         <nav className="max-w-[1200px] mx-auto px-5 py-4 flex items-center justify-between">
@@ -84,13 +83,13 @@ export default function HomePageHeader() {
                 className="relative text-[14px] font-medium tracking-wide no-underline transition-colors duration-300 group"
                 style={{
                   fontFamily: "'General Sans', sans-serif",
-                  color: scrolled ? '#2c2c2c' : 'rgba(255,255,255,0.85)',
+                  color: '#2c2c2c',
                 }}
               >
                 {link.label}
                 <span
                   className="absolute bottom-[-4px] left-0 h-[1.5px] w-0 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] group-hover:w-full"
-                  style={{ background: scrolled ? '#0d3b26' : '#2ecc71' }}
+                  style={{ background: '#0d3b26' }}
                 />
               </a>
             ))}
@@ -102,20 +101,20 @@ export default function HomePageHeader() {
                   <Link
                     href="/admin"
                     className="relative text-[14px] font-medium tracking-wide no-underline transition-colors duration-300 group"
-                    style={{ fontFamily: "'General Sans', sans-serif", color: scrolled ? '#2c2c2c' : 'rgba(255,255,255,0.85)' }}
+                    style={{ fontFamily: "'General Sans', sans-serif", color: '#2c2c2c' }}
                   >
                     Admin Dashboard
-                    <span className="absolute bottom-[-4px] left-0 h-[1.5px] w-0 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] group-hover:w-full" style={{ background: scrolled ? '#0d3b26' : '#2ecc71' }} />
+                    <span className="absolute bottom-[-4px] left-0 h-[1.5px] w-0 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] group-hover:w-full" style={{ background: '#0d3b26' }} />
                   </Link>
                 )}
                 {isNGO && (
                   <Link
                     href="/dashboard"
                     className="relative text-[14px] font-medium tracking-wide no-underline transition-colors duration-300 group"
-                    style={{ fontFamily: "'General Sans', sans-serif", color: scrolled ? '#2c2c2c' : 'rgba(255,255,255,0.85)' }}
+                    style={{ fontFamily: "'General Sans', sans-serif", color: '#2c2c2c' }}
                   >
                     Dashboard
-                    <span className="absolute bottom-[-4px] left-0 h-[1.5px] w-0 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] group-hover:w-full" style={{ background: scrolled ? '#0d3b26' : '#2ecc71' }} />
+                    <span className="absolute bottom-[-4px] left-0 h-[1.5px] w-0 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] group-hover:w-full" style={{ background: '#0d3b26' }} />
                   </Link>
                 )}
                 {isOrgUser && (
@@ -123,25 +122,25 @@ export default function HomePageHeader() {
                     <Link
                       href="/dashboard"
                       className="relative text-[14px] font-medium tracking-wide no-underline transition-colors duration-300 group"
-                      style={{ fontFamily: "'General Sans', sans-serif", color: scrolled ? '#2c2c2c' : 'rgba(255,255,255,0.85)' }}
+                      style={{ fontFamily: "'General Sans', sans-serif", color: '#2c2c2c' }}
                     >
                       Dashboard
-                      <span className="absolute bottom-[-4px] left-0 h-[1.5px] w-0 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] group-hover:w-full" style={{ background: scrolled ? '#0d3b26' : '#2ecc71' }} />
+                      <span className="absolute bottom-[-4px] left-0 h-[1.5px] w-0 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] group-hover:w-full" style={{ background: '#0d3b26' }} />
                     </Link>
                     <Link
                       href="/ngo-partners"
                       className="relative text-[14px] font-medium tracking-wide no-underline transition-colors duration-300 group"
-                      style={{ fontFamily: "'General Sans', sans-serif", color: scrolled ? '#2c2c2c' : 'rgba(255,255,255,0.85)' }}
+                      style={{ fontFamily: "'General Sans', sans-serif", color: '#2c2c2c' }}
                     >
                       NGO Partners
-                      <span className="absolute bottom-[-4px] left-0 h-[1.5px] w-0 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] group-hover:w-full" style={{ background: scrolled ? '#0d3b26' : '#2ecc71' }} />
+                      <span className="absolute bottom-[-4px] left-0 h-[1.5px] w-0 transition-all duration-300 ease-[cubic-bezier(.22,1,.36,1)] group-hover:w-full" style={{ background: '#0d3b26' }} />
                     </Link>
                   </>
                 )}
                 <button
                   onClick={handleLogout}
                   className="px-5 py-2 rounded-full text-[13px] font-semibold border-none cursor-pointer transition-all duration-300 hover:-translate-y-0.5"
-                  style={{ fontFamily: "'General Sans', sans-serif", background: scrolled ? '#dc2626' : 'rgba(220,38,38,0.9)', color: '#fff' }}
+                  style={{ fontFamily: "'General Sans', sans-serif", background: '#dc2626', color: '#fff' }}
                 >
                   Logout
                 </button>
@@ -150,7 +149,7 @@ export default function HomePageHeader() {
               <Link
                 href="/login"
                 className="px-6 py-2.5 rounded-full text-[13px] font-semibold no-underline transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
-                style={{ fontFamily: "'General Sans', sans-serif", background: scrolled ? '#0d3b26' : '#2ecc71', color: scrolled ? '#fff' : '#0d3b26' }}
+                style={{ fontFamily: "'General Sans', sans-serif", background: '#0d3b26', color: '#fff' }}
               >
                 Login
               </Link>
@@ -168,7 +167,7 @@ export default function HomePageHeader() {
                 key={i}
                 className="block w-6 h-[2px] rounded-sm transition-all duration-300"
                 style={{
-                  background: scrolled ? '#1a1a1a' : '#fff',
+                  background: '#1a1a1a',
                   transform: menuOpen
                     ? i === 0 ? 'rotate(45deg) translate(5px, 5px)' 
                     : i === 1 ? 'scaleX(0)' 
