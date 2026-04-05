@@ -2,6 +2,8 @@ import Link from "next/link";
 import HomePageHeader from "@/components/HomePageHeader";
 import { getHomeEvents } from "@/app/actions";
 
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   const { events: upcomingEvents = [] } = await getHomeEvents();
 
@@ -521,6 +523,13 @@ export default async function HomePage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
                 {upcomingEvents.map((ev) => (
                   <div key={ev._id} className="event-card">
+                    {ev.imageUrl && (
+                      <img
+                        src={ev.imageUrl}
+                        alt={ev.title}
+                        style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }}
+                      />
+                    )}
                     <div style={{ padding: '2rem 2rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                         <span className="event-tag" style={{ background: 'var(--forest)' }}>{ev.location}</span>

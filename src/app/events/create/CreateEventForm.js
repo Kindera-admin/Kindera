@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,17 +9,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { createEvent } from '@/app/actions';
-import { ImageIcon } from 'lucide-react';
+import { ImageIcon, Upload, X } from 'lucide-react';
 
 export default function CreateEventForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const fileInputRef = useRef(null);
+
   const {
     register,
     handleSubmit,
     formState: { errors },
-    watch,
   } = useForm({
     defaultValues: {
       title: '',
@@ -28,16 +30,40 @@ export default function CreateEventForm() {
       location: '',
       registrationLink: '',
       capacity: '',
-      imageUrl: '',
     },
   });
 
-  const imageUrl = watch('imageUrl');
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
-    
     try {
+      let imageUrl = '';
+
+      if (imageFile) {
+        const uploadData = new FormData();
+        uploadData.append('file', imageFile);
+        const res = await fetch('/api/upload', { method: 'POST', body: uploadData });
+        const json = await res.json();
+        if (!res.ok) {
+          toast.error('Image upload failed', { description: json.error });
+          setIsSubmitting(false);
+          return;
+        }
+        imageUrl = json.url;
+      }
+
       const formData = new FormData();
       formData.append('title', data.title);
       formData.append('description', data.description);
@@ -45,24 +71,18 @@ export default function CreateEventForm() {
       formData.append('location', data.location);
       formData.append('registrationLink', data.registrationLink);
       if (data.capacity) formData.append('capacity', data.capacity);
-      if (data.imageUrl) formData.append('imageUrl', data.imageUrl);
-      
+      if (imageUrl) formData.append('imageUrl', imageUrl);
+
       const result = await createEvent(formData);
-      
+
       if (result.success) {
-        toast.success('Event Created', {
-          description: 'The event has been created successfully.'
-        });
+        toast.success('Event Created', { description: 'The event has been created successfully.' });
         router.push('/events');
       } else {
-        toast.error('Creation Failed', {
-          description: result.message || 'An error occurred while creating the event.'
-        });
+        toast.error('Creation Failed', { description: result.message || 'An error occurred.' });
       }
     } catch (error) {
-      toast.error('Creation Failed', {
-        description: 'An unexpected error occurred.'
-      });
+      toast.error('Creation Failed', { description: 'An unexpected error occurred.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -172,45 +192,46 @@ export default function CreateEventForm() {
               )}
             </div>
             
-            {/* ENHANCED IMAGE URL FIELD */}
+            {/* IMAGE UPLOAD FIELD */}
             <div className="space-y-2">
-              <Label htmlFor="imageUrl" className="flex items-center gap-2">
+              <Label className="flex items-center gap-2">
                 <ImageIcon className="w-4 h-4" />
                 Event Image (optional)
               </Label>
-              <Input
-                id="imageUrl"
-                type="text"
-                className="w-full"
-                placeholder="/events/my-event.jpg or https://example.com/image.jpg"
-                {...register('imageUrl')}
-              />
-              {errors.imageUrl && (
-                <p className="text-sm text-red-500">{errors.imageUrl.message}</p>
-              )}
-              <div className="text-xs text-gray-500 space-y-1">
-                <p>📁 For local images: Place in <code className="bg-gray-100 px-1 py-0.5 rounded">public/events/</code> and use <code className="bg-gray-100 px-1 py-0.5 rounded">/events/filename.jpg</code></p>
-                <p>🌐 For external images: Use full URL starting with https://</p>
-              </div>
-              
-              {/* IMAGE PREVIEW */}
-              {imageUrl && (
-                <div className="mt-3 border rounded-lg p-3 bg-gray-50">
-                  <p className="text-xs font-semibold text-gray-700 mb-2">Preview:</p>
-                  <img 
-                    src={imageUrl} 
-                    alt="Event preview"
-                    className="w-full h-48 object-cover rounded-md"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
+
+              {!imagePreview ? (
+                <div
+                  className="w-full border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm text-gray-500">Click to upload image</p>
+                  <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP, GIF supported</p>
+                </div>
+              ) : (
+                <div className="relative border rounded-lg overflow-hidden">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-48 object-cover"
                   />
-                  <div className="hidden w-full h-48 items-center justify-center bg-gray-200 rounded-md">
-                    <p className="text-sm text-gray-500">Invalid image URL</p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute top-2 right-2 bg-black bg-opacity-60 text-white rounded-full p-1 hover:bg-opacity-80"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handleImageChange}
+              />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col sm:flex-row justify-between gap-3">

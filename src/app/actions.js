@@ -607,7 +607,7 @@ export async function createEvent(formData) {
       status: 'upcoming'
     });
     
-    revalidatePath('/home');
+    revalidatePath('/');
     revalidatePath('/events');
     
     return { 
@@ -634,8 +634,14 @@ export async function getHomeEvents() {
   try {
     await connectDB();
 
+    // Auto-mark past events as completed
     const now = new Date();
-    const events = await Event.find({ date: { $gte: now } })
+    await Event.updateMany(
+      { date: { $lt: now }, status: 'upcoming' },
+      { $set: { status: 'completed' } }
+    );
+
+    const events = await Event.find({ status: 'upcoming' })
       .sort({ date: 1 })
       .limit(6);
 
@@ -772,7 +778,7 @@ export async function updateEvent(id, formData) {
     
     await event.save();
     
-    revalidatePath('/home');
+    revalidatePath('/');
     revalidatePath('/events');
     
     return { success: true };
@@ -805,7 +811,7 @@ export async function deleteEvent(id) {
     
     await Event.findByIdAndDelete(id);
     
-    revalidatePath('/home');
+    revalidatePath('/');
     revalidatePath('/events');
     
     return { success: true };

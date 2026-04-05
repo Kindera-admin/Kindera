@@ -89,24 +89,6 @@ const Navbar = () => {
             >
               Events
             </Link>
-            {isNGO() && (
-              <Link 
-                href="/reports/submit" 
-                className={`hover:text-blue-300 ${pathname === '/reports/submit' ? 'text-blue-300' : ''} py-2 md:py-0`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Submit Report
-              </Link>
-            )}
-            {(isAdmin() || isNGO()) && (
-              <Link 
-                href="/reports" 
-                className={`hover:text-blue-300 ${pathname === '/reports' ? 'text-blue-300' : ''} py-2 md:py-0`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                View Reports
-              </Link>
-            )}
             {!isAdmin() && isAuthenticated() && (
               <Link
                 href="/dashboard"
@@ -148,15 +130,6 @@ const Navbar = () => {
                 </Link>
               </>
             )}
-            <a
-              href="/webmail"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-blue-300 py-2 md:py-0"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Webmail
-            </a>
           </div>
 
           {/* User Info and Logout - show below links on mobile, beside on desktop */}
