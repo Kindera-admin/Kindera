@@ -40,6 +40,13 @@ export default function CreateEventForm() {
     setImagePreview(URL.createObjectURL(file));
   };
 
+  const toBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
   const clearImage = () => {
     setImageFile(null);
     setImagePreview(null);
@@ -52,16 +59,7 @@ export default function CreateEventForm() {
       let imageUrl = '';
 
       if (imageFile) {
-        const uploadData = new FormData();
-        uploadData.append('file', imageFile);
-        const res = await fetch('/api/upload', { method: 'POST', body: uploadData });
-        const json = await res.json();
-        if (!res.ok) {
-          toast.error('Image upload failed', { description: json.error });
-          setIsSubmitting(false);
-          return;
-        }
-        imageUrl = json.url;
+        imageUrl = await toBase64(imageFile);
       }
 
       const formData = new FormData();
