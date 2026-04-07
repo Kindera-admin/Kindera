@@ -18,36 +18,6 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { signup } from '@/app/actions';
 
-function CertificateField({ label, hasName, regName, register, errors, watch }) {
-  const hasValue = watch(hasName);
-  return (
-    <div className="space-y-2 rounded-lg border p-4">
-      <p className="font-medium text-sm">{label}</p>
-      <div className="flex gap-6">
-        <label className="flex items-center gap-2 cursor-pointer text-sm">
-          <input type="radio" value="true" {...register(hasName)} className="accent-primary" />
-          Yes
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer text-sm">
-          <input type="radio" value="false" {...register(hasName)} className="accent-primary" defaultChecked />
-          No
-        </label>
-      </div>
-      {hasValue === 'true' && (
-        <div className="pt-1">
-          <Input
-            placeholder={`Enter ${label} registration number`}
-            {...register(regName, { required: hasValue === 'true' ? `${label} number is required` : false })}
-          />
-          {errors[regName] && (
-            <p className="text-sm text-red-500 mt-1">{errors[regName].message}</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function SignupForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -65,12 +35,6 @@ function SignupForm() {
       mobile: '',
       password: '',
       confirmPassword: '',
-      has12A: 'false',
-      reg12A: '',
-      has80G: 'false',
-      reg80G: '',
-      hasFCRA: 'false',
-      regFCRA: '',
     },
   });
 
@@ -86,12 +50,6 @@ function SignupForm() {
       formData.append('mobile', data.mobile);
       formData.append('password', data.password);
       formData.append('confirmPassword', data.confirmPassword);
-      formData.append('has12A', data.has12A);
-      formData.append('reg12A', data.reg12A || '');
-      formData.append('has80G', data.has80G);
-      formData.append('reg80G', data.reg80G || '');
-      formData.append('hasFCRA', data.hasFCRA);
-      formData.append('regFCRA', data.regFCRA || '');
 
       const result = await signup(formData);
 
@@ -201,38 +159,6 @@ function SignupForm() {
           {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>}
         </div>
 
-        {/* Certifications */}
-        <div className="pt-2">
-          <p className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-            Certifications
-          </p>
-          <div className="space-y-3">
-            <CertificateField
-              label="12A"
-              hasName="has12A"
-              regName="reg12A"
-              register={register}
-              errors={errors}
-              watch={watch}
-            />
-            <CertificateField
-              label="80G"
-              hasName="has80G"
-              regName="reg80G"
-              register={register}
-              errors={errors}
-              watch={watch}
-            />
-            <CertificateField
-              label="FCRA"
-              hasName="hasFCRA"
-              regName="regFCRA"
-              register={register}
-              errors={errors}
-              watch={watch}
-            />
-          </div>
-        </div>
       </CardContent>
 
       <CardFooter className="flex flex-col gap-4 px-4 sm:px-6 pt-2 pb-6">
