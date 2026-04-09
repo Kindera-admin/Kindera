@@ -128,6 +128,13 @@ const Navbar = () => {
                 >
                   Manage Events
                 </Link>
+                <Link
+                  href="/admin/ngo-partners"
+                  className={`hover:text-blue-300 ${pathname === '/admin/ngo-partners' ? 'text-blue-300' : ''} py-2 md:py-0`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  NGO Partners
+                </Link>
               </>
             )}
           </div>

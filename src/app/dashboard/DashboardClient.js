@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Users, CalendarDays, UserPlus } from 'lucide-react';
+import { Users, CalendarDays, UserPlus, Building2 } from 'lucide-react';
 
 const cards = [
   {
@@ -24,6 +24,13 @@ const cards = [
     icon: UserPlus,
     href: '/admin/register',
     color: '#2e7d52',
+  },
+  {
+    title: 'Manage NGO Partners',
+    description: 'Add or remove NGO partners displayed to platform users.',
+    icon: Building2,
+    href: '/admin/ngo-partners',
+    color: '#3d5a99',
   },
 ];
 

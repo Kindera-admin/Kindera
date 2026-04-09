@@ -4,6 +4,7 @@ import connectDB from '@/lib/db';
 import Report from '@/models/Report';
 import User from '@/models/User';
 import Event from '@/models/Event';
+import NGOPartner from '@/models/NGOPartner';
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import { getCurrentUser } from '@/lib/auth';
@@ -884,3 +885,102 @@ export async function signup(formData) {
     return { success: false, message: 'Server error' };
   }
 }
+
+// ── NGO Partners ──────────────────────────────────────────────────────────────
+
+export async function getAllNGOPartners() {
+  try {
+    await connectDB();
+    const partners = await NGOPartner.find().sort({ createdAt: -1 }).lean();
+    return {
+      success: true,
+      partners: partners.map((p) => ({
+        _id: p._id.toString(),
+        name: p.name,
+        description: p.description,
+        focusAreas: p.focusAreas || '',
+        programs: p.programs || [],
+        impact: p.impact || '',
+        registeredOffice: p.registeredOffice || '',
+        location: p.location || '',
+        website: p.website || '',
+        createdAt: p.createdAt.toISOString(),
+      })),
+    };
+  } catch (error) {
+    console.error('Error fetching NGO partners:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function createNGOPartner(formData) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+    const user = await getCurrentUser();
+    if (user.role !== 'admin') return { success: false, message: 'Only admins can add NGO partners' };
+
+    const name = formData.get('name')?.trim();
+    const description = formData.get('description')?.trim();
+    const focusAreas = formData.get('focusAreas')?.trim() || '';
+    const programsRaw = formData.get('programs')?.trim() || '';
+    const programs = programsRaw ? programsRaw.split('\n').map((l) => l.trim()).filter(Boolean) : [];
+    const impact = formData.get('impact')?.trim() || '';
+    const registeredOffice = formData.get('registeredOffice')?.trim() || '';
+    const location = formData.get('location')?.trim() || '';
+    const website = formData.get('website')?.trim() || '';
+
+    if (!name || !description) {
+      return { success: false, message: 'Name and description are required' };
+    }
+
+    const partner = await NGOPartner.create({ name, description, focusAreas, programs, impact, registeredOffice, location, website });
+
+    revalidatePath('/ngo-partners');
+    revalidatePath('/admin/ngo-partners');
+
+    return {
+      success: true,
+      partner: {
+        _id: partner._id.toString(),
+        name: partner.name,
+        description: partner.description,
+        focusAreas: partner.focusAreas,
+        programs: partner.programs,
+        impact: partner.impact,
+        registeredOffice: partner.registeredOffice,
+        location: partner.location,
+        website: partner.website,
+        createdAt: partner.createdAt.toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Error creating NGO partner:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function deleteNGOPartner(id) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+    const user = await getCurrentUser();
+    if (user.role !== 'admin') return { success: false, message: 'Only admins can delete NGO partners' };
+
+    const partner = await NGOPartner.findByIdAndDelete(id);
+    if (!partner) return { success: false, message: 'NGO partner not found' };
+
+    revalidatePath('/ngo-partners');
+    revalidatePath('/admin/ngo-partners');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting NGO partner:', error);
+    return { success: false, message: error.message };
+  }
+}
+
