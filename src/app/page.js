@@ -670,10 +670,10 @@ export default async function HomePage() {
                   Get Started
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
-                  <a href="https://forms.gle/T1ACRMV27pDQqvWz8" target="_blank" rel="noopener noreferrer">
+                  <a href="https://forms.gle/BH7X4JSBJjaRi4g4A" target="_blank" rel="noopener noreferrer">
                     Register as NGO
                   </a>
-                  <a href="https://forms.gle/g2osCQAUC5us6WXw8" target="_blank" rel="noopener noreferrer">
+                  <a href="https://forms.gle/BH7X4JSBJjaRi4g4A" target="_blank" rel="noopener noreferrer">
                     Volunteer Now
                   </a>
                 </div>
