@@ -664,20 +664,6 @@ export default async function HomePage() {
                   <Link href="/login">Login</Link>
                 </div>
               </div>
-
-              <div>
-                <h4 style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: '1rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Get Started
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
-                  <a href="https://forms.gle/BH7X4JSBJjaRi4g4A" target="_blank" rel="noopener noreferrer">
-                    Register as NGO
-                  </a>
-                  <a href="https://forms.gle/BH7X4JSBJjaRi4g4A" target="_blank" rel="noopener noreferrer">
-                    Volunteer Now
-                  </a>
-                </div>
-              </div>
             </div>
 
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.5rem', textAlign: 'center', fontSize: 13, color: '#666' }}>
