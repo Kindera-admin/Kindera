@@ -77,7 +77,10 @@ export default function RegisterForm() {
       <CardHeader>
         <CardTitle>Register New User</CardTitle>
         <CardDescription>
-          Create a new user account
+          Create a new user account manually, or{' '}
+          <a href="/dashboard/team/generate" className="text-[#0d3b26] font-semibold hover:underline">
+            bulk generate corporate logins
+          </a>.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
