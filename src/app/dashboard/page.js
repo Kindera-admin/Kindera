@@ -5,6 +5,7 @@ import HomeButtons from '@/components/HomeButtons';
 import { getEvents, getOrgStats } from '@/app/actions';
 import { CalendarDays, MapPin, FileText, Users, Building2, ArrowRight } from 'lucide-react';
 import CorporateDashboardClient from './CorporateDashboardClient';
+import NameUpdateClient from './NameUpdateClient';
 
 const ROLE_LABELS = {
   ngo: 'NGO Representative',
@@ -17,6 +18,11 @@ export default async function DashboardPage() {
 
   if (!user) {
     redirect('/login');
+  }
+
+  // If the user was bulk-generated and needs to update their name
+  if (user.requiresNameUpdate) {
+    return <NameUpdateClient currentName={user.name} />;
   }
 
   if (user.role === 'admin') {

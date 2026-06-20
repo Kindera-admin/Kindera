@@ -62,6 +62,12 @@ const userSchema = new mongoose.Schema({
     default: 0,
   },
 
+  // Flag for auto-generated org members to update their name on first login
+  requiresNameUpdate: {
+    type: Boolean,
+    default: false,
+  },
+
   // NGO Document Vault — stores uploaded certificate URLs and verification status
   documents: [{
     docType:   { type: String, enum: ['12A', '80G', 'FCRA', 'registration', 'other'], required: true },

@@ -1060,6 +1060,7 @@ export async function generateTeamLogins(formData) {
         organizationName: orgName,
         status: 'approved',
         spocId: caller.role === 'org_spoc' ? caller._id : null,
+        requiresNameUpdate: true,
       });
       plainCredentials.push({ username, password, name: `${orgName} Volunteer ${idx}` });
     }
