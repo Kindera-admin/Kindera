@@ -457,7 +457,7 @@ export async function getAllUsers() {
     }
     
     // Get all users except the current admin (self)
-    const users = await User.find({ _id: { $ne: currentUser._id } }).select('-password');
+    const users = await User.find({ _id: { $ne: currentUser._id } }).select('-password').lean();
     
     return {
       success: true,
@@ -674,7 +674,8 @@ export async function getEvents(status = '') {
     
     const events = await Event.find(filter)
       .populate('createdBy', 'name role')
-      .sort({ date: 1 });
+      .sort({ date: 1 })
+      .lean();
     
     return {
       success: true,
@@ -706,7 +707,7 @@ export async function getEventById(id) {
   try {
     await connectDB();
     
-    const event = await Event.findById(id).populate('createdBy', 'name role');
+    const event = await Event.findById(id).populate('createdBy', 'name role').lean();
     
     if (!event) {
       return { success: false, message: 'Event not found' };
