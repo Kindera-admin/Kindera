@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { signup } from '@/app/actions';
 
@@ -26,17 +27,22 @@ function SignupForm() {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm({
     defaultValues: {
       name: '',
       username: '',
+      role: 'org_member',
       organizationName: '',
+      ngoId: '',
       mobile: '',
       password: '',
       confirmPassword: '',
     },
   });
+
+  const role = watch('role');
 
   const password = watch('password');
 
@@ -46,7 +52,15 @@ function SignupForm() {
       const formData = new FormData();
       formData.append('name', data.name);
       formData.append('username', data.username);
-      formData.append('organizationName', data.organizationName);
+      formData.append('role', data.role);
+      
+      if (data.role === 'ngo') {
+        formData.append('organizationName', data.organizationName); // NGO Name
+        formData.append('ngoId', data.ngoId);
+      } else {
+        formData.append('organizationName', data.organizationName); // Corporate Name
+      }
+      
       formData.append('mobile', data.mobile);
       formData.append('password', data.password);
       formData.append('confirmPassword', data.confirmPassword);
@@ -100,19 +114,57 @@ function SignupForm() {
           {errors.username && <p className="text-sm text-red-500">{errors.username.message}</p>}
         </div>
 
-        {/* Organization Name */}
+        {/* Role Selection */}
         <div className="space-y-2">
-          <Label htmlFor="organizationName">Organization Name</Label>
+          <Label htmlFor="role">I am registering as an...</Label>
+          <Select 
+            value={role} 
+            onValueChange={(value) => {
+              setValue('role', value);
+              if (value !== 'ngo') setValue('ngoId', '');
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="org_member">Organisation Member</SelectItem>
+              <SelectItem value="org_spoc">Organisation SPOC</SelectItem>
+              <SelectItem value="ngo">NGO Representative</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Organization / NGO Name */}
+        <div className="space-y-2">
+          <Label htmlFor="organizationName">
+            {role === 'ngo' ? 'NGO Name' : 'Organization Name'}
+          </Label>
           <Input
             id="organizationName"
-            placeholder="Enter your organization name"
+            placeholder={`Enter your ${role === 'ngo' ? 'NGO name' : 'organization name'}`}
             {...register('organizationName', {
-              required: 'Organization name is required',
-              minLength: { value: 2, message: 'Organization name must be at least 2 characters' },
+              required: `${role === 'ngo' ? 'NGO name' : 'Organization name'} is required`,
+              minLength: { value: 2, message: 'Must be at least 2 characters' },
             })}
           />
           {errors.organizationName && <p className="text-sm text-red-500">{errors.organizationName.message}</p>}
         </div>
+
+        {/* NGO ID (Only for NGO role) */}
+        {role === 'ngo' && (
+          <div className="space-y-2">
+            <Label htmlFor="ngoId">NGO ID</Label>
+            <Input
+              id="ngoId"
+              placeholder="Enter your NGO ID"
+              {...register('ngoId', {
+                required: 'NGO ID is required for NGO Representatives',
+              })}
+            />
+            {errors.ngoId && <p className="text-sm text-red-500">{errors.ngoId.message}</p>}
+          </div>
+        )}
 
         {/* Mobile */}
         <div className="space-y-2">

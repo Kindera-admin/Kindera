@@ -31,8 +31,10 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.56.1",
+    "recharts": "^3.8.1",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.2.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.3",
     "zustand": "^5.0.3"
   },

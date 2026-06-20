@@ -47,7 +47,31 @@ const userSchema = new mongoose.Schema({
   has80G: { type: Boolean, default: false },
   reg80G: { type: String, default: '' },
   hasFCRA: { type: Boolean, default: false },
-  regFCRA: { type: String, default: '' }
+  regFCRA: { type: String, default: '' },
+
+  // Corporate team: links org_member back to their SPOC
+  spocId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+
+  // Cached total volunteer hours (updated when attendance is marked)
+  totalVolunteerHours: {
+    type: Number,
+    default: 0,
+  },
+
+  // NGO Document Vault — stores uploaded certificate URLs and verification status
+  documents: [{
+    docType:   { type: String, enum: ['12A', '80G', 'FCRA', 'registration', 'other'], required: true },
+    label:     { type: String, required: true },
+    url:       { type: String, required: true },
+    uploadedAt:{ type: Date, default: Date.now },
+    status:    { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
+    adminNote: { type: String, default: '' },
+  }],
+
 }, {
   timestamps: true
 });

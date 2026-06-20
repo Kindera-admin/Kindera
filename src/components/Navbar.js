@@ -99,6 +99,13 @@ const Navbar = () => {
             )}
             <NavLink href="/events" pathname={pathname} onClick={closeMenu}>Events</NavLink>
 
+            {user?.role === 'org_spoc' && (
+              <NavLink href="/dashboard/team" pathname={pathname} onClick={closeMenu}>My Team</NavLink>
+            )}
+            {user?.role === 'ngo' && (
+              <NavLink href="/dashboard/documents" pathname={pathname} onClick={closeMenu}>Documents</NavLink>
+            )}
+
             {!isAdmin() && isAuthenticated() && (
               <NavLink href="/dashboard" pathname={pathname} onClick={closeMenu}>Dashboard</NavLink>
             )}

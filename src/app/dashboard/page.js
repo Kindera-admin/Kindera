@@ -2,8 +2,9 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import HomeButtons from '@/components/HomeButtons';
-import { getEvents } from '@/app/actions';
+import { getEvents, getOrgStats } from '@/app/actions';
 import { CalendarDays, MapPin, FileText, Users, Building2, ArrowRight } from 'lucide-react';
+import CorporateDashboardClient from './CorporateDashboardClient';
 
 const ROLE_LABELS = {
   ngo: 'NGO Representative',
@@ -20,6 +21,11 @@ export default async function DashboardPage() {
 
   if (user.role === 'admin') {
     redirect('/admin');
+  }
+
+  if (user.role === 'org_spoc') {
+    const { stats = {}, monthly = [] } = await getOrgStats(user.organizationName);
+    return <CorporateDashboardClient stats={stats} monthly={monthly} />;
   }
 
   const eventsResult = await getEvents('upcoming');

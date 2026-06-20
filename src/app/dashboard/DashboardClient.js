@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useTransition, useState } from 'react';
-import { Users, CalendarDays, UserPlus, Building2, ArrowRight, Loader2 } from 'lucide-react';
+import { Users, CalendarDays, UserPlus, Building2, ArrowRight, Loader2, FileText } from 'lucide-react';
 
 const cards = [
   {
@@ -15,31 +15,49 @@ const cards = [
     lightBg: '#f0f7f3',
   },
   {
+    title: 'Corporate Overview',
+    description: 'View KPIs for all registered corporate volunteer organisations.',
+    icon: Building2,
+    href: '/admin/corporate',
+    accent: '#1a5c3a',
+    gradient: 'from-[#1a5c3a] to-[#2e7d52]',
+    lightBg: '#f0f7f3',
+  },
+  {
+    title: 'NGO Documents',
+    description: 'Review and verify certificates uploaded by NGO partners.',
+    icon: FileText,
+    href: '/admin/ngo-documents',
+    accent: '#2e7d52',
+    gradient: 'from-[#2e7d52] to-[#3a9e68]',
+    lightBg: '#f0f7f3',
+  },
+  {
     title: 'Manage Users',
     description: 'View all registered users and manage their access and roles.',
     icon: Users,
     href: '/admin/users',
-    accent: '#1a5c3a',
-    gradient: 'from-[#1a5c3a] to-[#2e7d52]',
-    lightBg: '#f0f7f3',
+    accent: '#3d5a99',
+    gradient: 'from-[#3d5a99] to-[#4a6fbf]',
+    lightBg: '#f0f5ff',
   },
   {
     title: 'Register User',
     description: 'Manually register a new user into the Kindera platform.',
     icon: UserPlus,
     href: '/admin/register',
-    accent: '#2e7d52',
-    gradient: 'from-[#2e7d52] to-[#3a9e68]',
-    lightBg: '#f0f7f3',
+    accent: '#6366f1',
+    gradient: 'from-[#6366f1] to-[#818cf8]',
+    lightBg: '#f5f3ff',
   },
   {
     title: 'NGO Partners',
     description: 'Add or remove NGO partners displayed to platform users.',
     icon: Building2,
     href: '/admin/ngo-partners',
-    accent: '#3d5a99',
-    gradient: 'from-[#3d5a99] to-[#4a6fbf]',
-    lightBg: '#f0f5ff',
+    accent: '#8b5cf6',
+    gradient: 'from-[#8b5cf6] to-[#a78bfa]',
+    lightBg: '#faf5ff',
   },
 ];
 

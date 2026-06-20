@@ -5,6 +5,8 @@ import Report from '@/models/Report';
 import User from '@/models/User';
 import Event from '@/models/Event';
 import NGOPartner from '@/models/NGOPartner';
+import Attendance from '@/models/Attendance';
+import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import { getCurrentUser } from '@/lib/auth';
@@ -831,6 +833,10 @@ export async function signup(formData) {
     const confirmPassword = formData.get('confirmPassword');
     const organizationName = formData.get('organizationName');
     const mobile = formData.get('mobile') || '';
+    const role = formData.get('role') || 'org_member';
+    const ngoId = formData.get('ngoId') || '';
+    
+    // Existing certificate fields
     const has12A = formData.get('has12A') === 'true';
     const reg12A = formData.get('reg12A') || '';
     const has80G = formData.get('has80G') === 'true';
@@ -841,6 +847,10 @@ export async function signup(formData) {
     // ── Validation ──
     if (!name || !username || !password || !confirmPassword || !organizationName) {
       return { success: false, message: 'All fields are required' };
+    }
+
+    if (!['org_member', 'org_spoc', 'ngo'].includes(role)) {
+      return { success: false, message: 'Invalid role selected' };
     }
 
     if (password.length < 6) {
@@ -858,18 +868,26 @@ export async function signup(formData) {
       return { success: false, message: 'Username already taken' };
     }
 
-    await User.create({
+    const userData = {
       name: name.trim(),
       username: username.toLowerCase().trim(),
       password,
-      role: 'org_member',
-      organizationName: organizationName.trim(),
+      role,
       status: 'pending',
       mobile,
       has12A, reg12A,
       has80G, reg80G,
       hasFCRA, regFCRA,
-    });
+    };
+
+    if (role === 'ngo') {
+      userData.ngoId = ngoId;
+      userData.name = organizationName.trim(); // For NGO, 'organizationName' acts as the user's name
+    } else {
+      userData.organizationName = organizationName.trim();
+    }
+
+    await User.create(userData);
 
     return { success: true, pending: true };
   } catch (error) {
@@ -985,3 +1003,534 @@ export async function deleteNGOPartner(id) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+// CORPORATE TEAM MANAGEMENT
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Generate N pre-approved org_member accounts for a corporate org.
+ * Can be called by SPOC (for their own org) or Admin (for any org).
+ * Returns array of plain-text credentials for one-time CSV download.
+ */
+export async function generateTeamLogins(formData) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'admin' && caller.role !== 'org_spoc') {
+      return { success: false, message: 'Only Admin or SPOC can generate team logins' };
+    }
+
+    await connectDB();
+
+    const orgName = formData.get('orgName')?.trim();
+    const count   = parseInt(formData.get('count'));
+
+    if (!orgName || !count || count < 1 || count > 500) {
+      return { success: false, message: 'Provide a valid org name and count (1–500)' };
+    }
+
+    // Org slug: lowercase, spaces → dashes, strip special chars
+    const orgSlug = orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+    // Find the highest existing index for this org to avoid collisions
+    const existing = await User.find({ organizationName: orgName, role: 'org_member' })
+      .select('username').lean();
+    const existingNums = existing
+      .map(u => parseInt(u.username.split('-').pop()))
+      .filter(n => !isNaN(n));
+    const startIndex = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
+
+    const plainCredentials = [];
+    const usersToCreate    = [];
+    const salt = await bcrypt.genSalt(10);
+
+    for (let i = 0; i < count; i++) {
+      const idx      = String(startIndex + i).padStart(3, '0');
+      const username = `${orgSlug}-${idx}`;
+      const password = Math.random().toString(36).slice(2, 10); // 8-char random
+      const hashed   = await bcrypt.hash(password, salt);
+
+      usersToCreate.push({
+        username,
+        password: hashed,
+        name: `${orgName} Volunteer ${idx}`,
+        role: 'org_member',
+        organizationName: orgName,
+        status: 'approved',
+        spocId: caller.role === 'org_spoc' ? caller._id : null,
+      });
+      plainCredentials.push({ username, password, name: `${orgName} Volunteer ${idx}` });
+    }
+
+    await User.insertMany(usersToCreate);
+    revalidatePath('/admin/corporate');
+    revalidatePath('/dashboard/team');
+
+    return { success: true, credentials: plainCredentials };
+  } catch (error) {
+    console.error('Error generating team logins:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Bulk create org_member accounts from parsed Excel rows.
+ * Each row: { name, username (optional), email (optional) }
+ */
+export async function bulkCreateFromExcel(rows, orgName, spocId = null) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'admin' && caller.role !== 'org_spoc') {
+      return { success: false, message: 'Only Admin or SPOC can bulk create accounts' };
+    }
+
+    await connectDB();
+
+    if (!rows?.length || !orgName) {
+      return { success: false, message: 'Rows and org name are required' };
+    }
+
+    const orgSlug = orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const salt    = await bcrypt.genSalt(10);
+    const plainCredentials = [];
+    const usersToCreate    = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row      = rows[i];
+      const username = row.username?.trim() || `${orgSlug}-emp-${Date.now()}-${i}`;
+      const name     = row.name?.trim() || `${orgName} Volunteer ${i + 1}`;
+      const password = Math.random().toString(36).slice(2, 10);
+      const hashed   = await bcrypt.hash(password, salt);
+
+      usersToCreate.push({
+        username,
+        password: hashed,
+        name,
+        role: 'org_member',
+        organizationName: orgName,
+        status: 'approved',
+        spocId: spocId || (caller.role === 'org_spoc' ? caller._id : null),
+      });
+      plainCredentials.push({ username, password, name });
+    }
+
+    await User.insertMany(usersToCreate);
+    revalidatePath('/admin/corporate');
+    revalidatePath('/dashboard/team');
+
+    return { success: true, credentials: plainCredentials };
+  } catch (error) {
+    console.error('Error bulk creating accounts:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Get all org_member users for an organization.
+ */
+export async function getOrgMembers(orgName) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+
+    const members = await User.find({ organizationName: orgName, role: 'org_member' })
+      .select('-password').lean();
+
+    return {
+      success: true,
+      members: members.map(m => ({
+        _id: m._id.toString(),
+        username: m.username,
+        name: m.name,
+        status: m.status,
+        totalVolunteerHours: m.totalVolunteerHours || 0,
+        createdAt: m.createdAt ? m.createdAt.toISOString() : null,
+      }))
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// ATTENDANCE & VOLUNTEER HOURS
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Bulk mark attendance for an event.
+ * attendanceList: [{ userId, attended, hoursContributed, feedbackScore }]
+ */
+export async function markAttendance(eventId, attendanceList) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'admin' && caller.role !== 'org_spoc') {
+      return { success: false, message: 'Only Admin or SPOC can mark attendance' };
+    }
+
+    await connectDB();
+
+    const now = new Date();
+    const ops = attendanceList.map(entry => ({
+      updateOne: {
+        filter: { eventId, userId: entry.userId },
+        update: {
+          $set: {
+            organizationName: caller.organizationName || entry.organizationName,
+            attended: entry.attended ?? false,
+            hoursContributed: entry.hoursContributed ?? 0,
+            feedbackScore: entry.feedbackScore || null,
+            markedAt: now,
+            markedBy: caller._id,
+          }
+        },
+        upsert: true,
+      }
+    }));
+
+    await Attendance.bulkWrite(ops);
+
+    // Update cached totalVolunteerHours for each user that attended
+    const attended = attendanceList.filter(e => e.attended && e.hoursContributed > 0);
+    for (const entry of attended) {
+      await User.findByIdAndUpdate(entry.userId, {
+        $inc: { totalVolunteerHours: entry.hoursContributed }
+      });
+    }
+
+    revalidatePath('/dashboard');
+    revalidatePath('/admin/corporate');
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error marking attendance:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Get attendance list for a specific event + org.
+ */
+export async function getEventAttendance(eventId, orgName) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+
+    const filter = { eventId };
+    if (orgName) filter.organizationName = orgName;
+
+    const records = await Attendance.find(filter)
+      .populate('userId', 'name username')
+      .lean();
+
+    return {
+      success: true,
+      records: records.map(r => ({
+        _id: r._id.toString(),
+        userId: r.userId._id.toString(),
+        name: r.userId.name,
+        username: r.userId.username,
+        attended: r.attended,
+        hoursContributed: r.hoursContributed,
+        feedbackScore: r.feedbackScore,
+        markedAt: r.markedAt ? r.markedAt.toISOString() : null,
+      }))
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// CORPORATE KPI STATS
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Get full KPI stats for a corporate org (used by SPOC dashboard and Admin drill-down).
+ */
+export async function getOrgStats(orgName) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+
+    // Total members
+    const totalVolunteers = await User.countDocuments({ organizationName: orgName, role: 'org_member' });
+
+    // Aggregate from Attendance
+    const agg = await Attendance.aggregate([
+      { $match: { organizationName: orgName, attended: true } },
+      {
+        $group: {
+          _id: null,
+          totalHours:      { $sum: '$hoursContributed' },
+          totalEvents:     { $addToSet: '$eventId' },
+          avgFeedback:     { $avg: '$feedbackScore' },
+          attendanceCount: { $sum: 1 },
+        }
+      }
+    ]);
+
+    const stats = agg[0] || {};
+
+    // Monthly participation (last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const monthly = await Attendance.aggregate([
+      { $match: { organizationName: orgName, attended: true, markedAt: { $gte: sixMonthsAgo } } },
+      {
+        $group: {
+          _id: {
+            year:  { $year: '$markedAt' },
+            month: { $month: '$markedAt' },
+          },
+          count: { $sum: 1 },
+          hours: { $sum: '$hoursContributed' },
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } },
+    ]);
+
+    // Unique NGOs engaged (via events)
+    const eventIds = stats.totalEvents || [];
+    const eventsData = await Event.find({ _id: { $in: eventIds } })
+      .select('createdBy').populate('createdBy', 'ngoId').lean();
+    const ngoIds = [...new Set(eventsData.map(e => e.createdBy?.ngoId).filter(Boolean))];
+
+    return {
+      success: true,
+      stats: {
+        totalVolunteers,
+        volunteerHours:      stats.totalHours || 0,
+        eventsAttended:      (stats.totalEvents || []).length,
+        ngosEngaged:         ngoIds.length,
+        avgFeedback:         stats.avgFeedback ? Math.round(stats.avgFeedback * 10) / 10 : null,
+        participationRate:   totalVolunteers > 0
+          ? Math.round(((stats.attendanceCount || 0) / totalVolunteers) * 100)
+          : 0,
+      },
+      monthly: monthly.map(m => ({
+        month: `${m._id.year}-${String(m._id.month).padStart(2, '0')}`,
+        label: new Date(m._id.year, m._id.month - 1).toLocaleString('default', { month: 'short', year: '2-digit' }),
+        count: m.count,
+        hours: m.hours,
+      }))
+    };
+  } catch (error) {
+    console.error('Error getting org stats:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Get all corporate orgs summary for admin overview.
+ */
+export async function getAllCorporateStats() {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'admin') return { success: false, message: 'Admin only' };
+
+    await connectDB();
+
+    // Get all distinct orgs with their SPOCs
+    const spocs = await User.find({ role: 'org_spoc', status: 'approved' })
+      .select('name organizationName status createdAt').lean();
+
+    const orgs = await Promise.all(spocs.map(async spoc => {
+      const memberCount = await User.countDocuments({
+        organizationName: spoc.organizationName,
+        role: 'org_member',
+      });
+      const agg = await Attendance.aggregate([
+        { $match: { organizationName: spoc.organizationName, attended: true } },
+        { $group: { _id: null, hours: { $sum: '$hoursContributed' }, events: { $addToSet: '$eventId' } } }
+      ]);
+      const a = agg[0] || {};
+      return {
+        spocId:          spoc._id.toString(),
+        spocName:        spoc.name,
+        organizationName: spoc.organizationName,
+        memberCount,
+        volunteerHours:  a.hours || 0,
+        eventsAttended:  (a.events || []).length,
+        joinedAt:        spoc.createdAt ? spoc.createdAt.toISOString() : null,
+      };
+    }));
+
+    return { success: true, orgs };
+  } catch (error) {
+    console.error('Error getting all corporate stats:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// NGO DOCUMENT VAULT
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * NGO uploads a certificate document (URL already uploaded to Cloudinary).
+ */
+export async function uploadNGODocument(formData) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'ngo') return { success: false, message: 'Only NGO users can upload documents' };
+
+    await connectDB();
+
+    const docType = formData.get('docType');
+    const label   = formData.get('label')?.trim();
+    const url     = formData.get('url');
+
+    if (!docType || !label || !url) {
+      return { success: false, message: 'Document type, label, and file URL are required' };
+    }
+
+    const newDoc = { docType, label, url, uploadedAt: new Date(), status: 'pending', adminNote: '' };
+
+    await User.findByIdAndUpdate(caller._id, { $push: { documents: newDoc } });
+    revalidatePath('/dashboard/documents');
+    revalidatePath('/admin/ngo-documents');
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Get all documents for the current NGO user.
+ */
+export async function getNGODocuments() {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+    const caller = await getCurrentUser();
+
+    const user = await User.findById(caller._id).select('documents').lean();
+    return {
+      success: true,
+      documents: (user.documents || []).map(d => ({
+        _id: d._id.toString(),
+        docType: d.docType,
+        label: d.label,
+        url: d.url,
+        uploadedAt: d.uploadedAt?.toISOString() || null,
+        status: d.status,
+        adminNote: d.adminNote,
+      }))
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Admin fetches all NGOs with their document summaries.
+ */
+export async function getAllNGODocuments() {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'admin') return { success: false, message: 'Admin only' };
+
+    await connectDB();
+
+    const ngos = await User.find({ role: 'ngo' })
+      .select('name ngoId documents').lean();
+
+    return {
+      success: true,
+      ngos: ngos.map(ngo => ({
+        _id: ngo._id.toString(),
+        name: ngo.name,
+        ngoId: ngo.ngoId,
+        documents: (ngo.documents || []).map(d => ({
+          _id: d._id.toString(),
+          docType: d.docType,
+          label: d.label,
+          url: d.url,
+          uploadedAt: d.uploadedAt?.toISOString() || null,
+          status: d.status,
+          adminNote: d.adminNote,
+        })),
+        pendingCount:  (ngo.documents || []).filter(d => d.status === 'pending').length,
+        verifiedCount: (ngo.documents || []).filter(d => d.status === 'verified').length,
+      }))
+    };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Admin verifies or rejects an NGO document.
+ */
+export async function reviewNGODocument(ngoUserId, docId, status, adminNote = '') {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'admin') return { success: false, message: 'Admin only' };
+
+    await connectDB();
+
+    await User.updateOne(
+      { _id: ngoUserId, 'documents._id': docId },
+      { $set: { 'documents.$.status': status, 'documents.$.adminNote': adminNote } }
+    );
+
+    revalidatePath('/admin/ngo-documents');
+    revalidatePath('/dashboard/documents');
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Delete an NGO document (by the NGO owner).
+ */
+export async function deleteNGODocument(docId) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    await connectDB();
+
+    await User.findByIdAndUpdate(caller._id, {
+      $pull: { documents: { _id: docId } }
+    });
+
+    revalidatePath('/dashboard/documents');
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
