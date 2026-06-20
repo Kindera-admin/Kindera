@@ -588,20 +588,10 @@ export default async function HomePage() {
               Join our network of corporate partners and NGOs creating lasting impact.
             </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a
-                href="https://forms.gle/T1ACRMV27pDQqvWz8"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-primary"
-              >
+              <a href="/signup" className="btn-primary">
                 Register as NGO
               </a>
-              <a
-                href="https://forms.gle/g2osCQAUC5us6WXw8"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-outline"
-              >
+              <a href="/signup" className="btn-outline">
                 Volunteer Now
               </a>
             </div>
