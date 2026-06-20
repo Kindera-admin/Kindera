@@ -118,5 +118,138 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* ─── Premium text rendering ─── */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
+}
+
+/* ─────────────────────────────────────────────
+   PREMIUM FEEL LAYER
+   Everything below improves the feel/polish
+   without changing any layout or UI structure.
+───────────────────────────────────────────── */
+
+/* 1. Smooth page scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* 2. Brand-colored text selection */
+::selection {
+  background-color: rgba(13, 59, 38, 0.15);
+  color: #0d3b26;
+}
+
+/* 3. Custom scrollbar — thin, refined, brand-tinted */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.85 0 0);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2e7d52;
+}
+
+/* 4. Global interaction transitions
+      Applied to every interactive element so
+      hover/focus states feel instant and silky. */
+a,
+button,
+[role="button"],
+input,
+select,
+textarea {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* 5. Pressed (active) micro-animation on buttons */
+button:not(:disabled):active,
+[role="button"]:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* 6. Premium card feel — subtle shadow lift on hover
+      Works globally on all shadcn Card elements      */
+[data-slot="card"] {
+  transition: box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+[data-slot="card"]:hover {
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.08),
+              0 2px 8px -2px rgba(0, 0, 0, 0.04);
+}
+
+/* 7. Premium input focus state — brand ring */
+[data-slot="input"]:focus-visible,
+[data-slot="input"]:focus {
+  border-color: #0d3b26 !important;
+  box-shadow: 0 0 0 3px rgba(13, 59, 38, 0.12) !important;
+  outline: none;
+}
+
+/* 8. Premium select focus state */
+[data-slot="select-trigger"]:focus-visible {
+  border-color: #0d3b26 !important;
+  box-shadow: 0 0 0 3px rgba(13, 59, 38, 0.12) !important;
+}
+
+/* 9. Subtle link underline animation (non-nav links) */
+main a:not([class*="btn"]):not([class*="button"]):not([class*="Button"]):not([data-slot]) {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+/* 10. Better heading font weight for Inter */
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+h4, h5, h6 {
+  letter-spacing: -0.01em;
+}
+
+/* 11. Premium table row hover */
+[data-slot="table-row"]:hover,
+tbody tr:hover {
+  background-color: rgba(13, 59, 38, 0.025);
+  transition: background-color 120ms ease;
+}
+
+/* 12. Subtle page background — warm off-white instead of pure white */
+body {
+  background-color: #fafafa;
+}
+
+/* 13. Premium badge/pill animate-in for status badges */
+.animate-fade-in {
+  animation: fadeIn 0.2s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 14. Smoother skeleton pulse */
+@keyframes premium-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+.animate-pulse {
+  animation: premium-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 15. Sonner toast polish */
+[data-sonner-toast] {
+  box-shadow: 0 8px 32px -4px rgba(0,0,0,0.12), 0 2px 8px -2px rgba(0,0,0,0.06) !important;
+  border-radius: 12px !important;
 }
