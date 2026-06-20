@@ -1535,3 +1535,30 @@ export async function deleteNGODocument(docId) {
     return { success: false, message: error.message };
   }
 }
+
+export async function updateMemberName(newName) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, message: 'User not found' };
+
+    const nameToSave = newName?.trim();
+    if (!nameToSave || nameToSave.length < 2) {
+      return { success: false, message: 'Please provide a valid name (at least 2 characters).' };
+    }
+
+    await User.updateOne(
+      { _id: caller._id },
+      { $set: { name: nameToSave, requiresNameUpdate: false } }
+    );
+
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating member name:', error);
+    return { success: false, message: error.message };
+  }
+}
