@@ -592,6 +592,7 @@ export async function createEvent(formData) {
     const registrationLink = formData.get('registrationLink');
     const capacity = formData.get('capacity');
     const imageUrl = formData.get('imageUrl');
+    const beneficiariesImpacted = formData.get('beneficiariesImpacted');
     
     if (!title || !description || !date || !location || !registrationLink) {
       return { success: false, message: 'All required fields must be filled' };
@@ -604,6 +605,7 @@ export async function createEvent(formData) {
       location,
       registrationLink,
       capacity: capacity ? parseInt(capacity) : null,
+      beneficiariesImpacted: beneficiariesImpacted ? parseInt(beneficiariesImpacted) : 0,
       imageUrl: imageUrl || '',
       createdBy: user._id,
       createdByRole: user.role,
@@ -1308,18 +1310,20 @@ export async function getOrgStats(orgName) {
     // Unique NGOs engaged (via events)
     const eventIds = stats.totalEvents || [];
     const eventsData = await Event.find({ _id: { $in: eventIds } })
-      .select('createdBy').populate('createdBy', 'ngoId').lean();
+      .select('createdBy beneficiariesImpacted').populate('createdBy', 'ngoId').lean();
     const ngoIds = [...new Set(eventsData.map(e => e.createdBy?.ngoId).filter(Boolean))];
+    const totalBeneficiaries = eventsData.reduce((s, e) => s + (e.beneficiariesImpacted || 0), 0);
 
     return {
       success: true,
       stats: {
         totalVolunteers,
-        volunteerHours:      stats.totalHours || 0,
-        eventsAttended:      (stats.totalEvents || []).length,
-        ngosEngaged:         ngoIds.length,
-        avgFeedback:         stats.avgFeedback ? Math.round(stats.avgFeedback * 10) / 10 : null,
-        participationRate:   totalVolunteers > 0
+        volunteerHours:         stats.totalHours || 0,
+        eventsAttended:         (stats.totalEvents || []).length,
+        ngosEngaged:            ngoIds.length,
+        beneficiariesImpacted:  totalBeneficiaries,
+        avgFeedback:            stats.avgFeedback ? Math.round(stats.avgFeedback * 10) / 10 : null,
+        participationRate:      totalVolunteers > 0
           ? Math.round(((stats.attendanceCount || 0) / totalVolunteers) * 100)
           : 0,
       },
@@ -1559,6 +1563,135 @@ export async function updateMemberName(newName) {
     return { success: true };
   } catch (error) {
     console.error('Error updating member name:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// ORG MEMBER SELF-REPORTING (Hours & Feedback)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Org member logs their own hours and feedback for a past event.
+ */
+export async function logMyHoursAndFeedback(eventId, hours, feedbackScore) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'org_member') return { success: false, message: 'Only org members can self-report' };
+
+    await connectDB();
+
+    const event = await Event.findById(eventId).lean();
+    if (!event) return { success: false, message: 'Event not found' };
+
+    const eventDate = new Date(event.date);
+    if (eventDate > new Date()) {
+      return { success: false, message: 'You can only log hours for past events' };
+    }
+
+    if (hours < 0 || hours > 24) {
+      return { success: false, message: 'Please enter a valid number of hours (0-24)' };
+    }
+
+    const existing = await Attendance.findOne({ eventId, userId: caller._id });
+
+    await Attendance.findOneAndUpdate(
+      { eventId, userId: caller._id },
+      {
+        $set: {
+          organizationName: caller.organizationName,
+          attended: true,
+          hoursContributed: hours,
+          feedbackScore: feedbackScore || null,
+          markedAt: new Date(),
+          markedBy: caller._id,
+        }
+      },
+      { upsert: true, new: true }
+    );
+
+    // Update cached total volunteer hours (diff if updating)
+    const prevHours = existing?.hoursContributed || 0;
+    const diff = hours - prevHours;
+    if (diff !== 0) {
+      await User.findByIdAndUpdate(caller._id, { $inc: { totalVolunteerHours: diff } });
+    }
+
+    revalidatePath('/dashboard');
+    revalidatePath('/dashboard/my-impact');
+    return { success: true };
+  } catch (error) {
+    console.error('Error logging hours:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Get all events with the member's attendance/hours logged, plus personal stats.
+ */
+export async function getMyImpact() {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'org_member') return { success: false, message: 'Org members only' };
+
+    await connectDB();
+
+    // Get all events that exist (past + upcoming)
+    const allEvents = await Event.find()
+      .select('title date location description beneficiariesImpacted status')
+      .sort({ date: -1 })
+      .lean();
+
+    // Get this member's attendance records
+    const myRecords = await Attendance.find({ userId: caller._id }).lean();
+    const recordMap = {};
+    for (const r of myRecords) {
+      recordMap[r.eventId.toString()] = r;
+    }
+
+    const events = allEvents.map(ev => {
+      const rec = recordMap[ev._id.toString()];
+      return {
+        _id: ev._id.toString(),
+        title: ev.title,
+        date: ev.date.toISOString(),
+        location: ev.location,
+        description: ev.description,
+        beneficiariesImpacted: ev.beneficiariesImpacted || 0,
+        status: ev.status,
+        isPast: new Date(ev.date) < new Date(),
+        myHours: rec?.hoursContributed || 0,
+        myFeedback: rec?.feedbackScore || null,
+        attended: rec?.attended || false,
+      };
+    });
+
+    const totalHours = myRecords.reduce((s, r) => s + (r.hoursContributed || 0), 0);
+    const eventsAttended = myRecords.filter(r => r.attended).length;
+    const feedbacks = myRecords.filter(r => r.feedbackScore);
+    const avgFeedback = feedbacks.length
+      ? Math.round((feedbacks.reduce((s, r) => s + r.feedbackScore, 0) / feedbacks.length) * 10) / 10
+      : null;
+
+    return {
+      success: true,
+      events,
+      stats: {
+        totalHours,
+        eventsAttended,
+        avgFeedback,
+        name: caller.name,
+        organizationName: caller.organizationName,
+      }
+    };
+  } catch (error) {
+    console.error('Error getting my impact:', error);
     return { success: false, message: error.message };
   }
 }

@@ -17,7 +17,7 @@ export default function CorporateDashboardClient({ stats, monthly }) {
           { label: 'Volunteer Hours', value: (stats.volunteerHours || 0).toLocaleString(), color: '#1a5c3a' },
           { label: 'Events Attended', value: stats.eventsAttended || 0, color: '#2e7d52' },
           { label: 'NGOs Engaged', value: stats.ngosEngaged || 0, color: '#3d5a99' },
-          { label: 'Beneficiaries Impacted', value: (stats.volunteerHours * 3).toLocaleString() || 0, color: '#4a6fbf' }, // Mocking beneficiaries impact as Hours * 3
+          { label: 'Beneficiaries Impacted', value: (stats.beneficiariesImpacted || 0).toLocaleString(), color: '#4a6fbf' },
           { label: 'Avg Feedback', value: stats.avgFeedback ? `${stats.avgFeedback}/5` : '-', color: '#6366f1' },
         ].map(k => (
           <div key={k.label} className="border border-gray-100 rounded-xl p-5 bg-white shadow-sm flex flex-col justify-center">

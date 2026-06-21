@@ -29,6 +29,10 @@ export default async function DashboardPage() {
     redirect('/admin');
   }
 
+  if (user.role === 'org_member') {
+    redirect('/dashboard/my-impact');
+  }
+
   if (user.role === 'org_spoc') {
     const { stats = {}, monthly = [] } = await getOrgStats(user.organizationName);
     return <CorporateDashboardClient stats={stats} monthly={monthly} />;

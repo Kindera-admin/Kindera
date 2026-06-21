@@ -30,6 +30,7 @@ export default function CreateEventForm() {
       location: '',
       registrationLink: '',
       capacity: '',
+      beneficiariesImpacted: '',
     },
   });
 
@@ -69,6 +70,7 @@ export default function CreateEventForm() {
       formData.append('location', data.location);
       formData.append('registrationLink', data.registrationLink);
       if (data.capacity) formData.append('capacity', data.capacity);
+      if (data.beneficiariesImpacted) formData.append('beneficiariesImpacted', data.beneficiariesImpacted);
       if (imageUrl) formData.append('imageUrl', imageUrl);
 
       const result = await createEvent(formData);
@@ -188,6 +190,23 @@ export default function CreateEventForm() {
               {errors.capacity && (
                 <p className="text-sm text-red-500">{errors.capacity.message}</p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="beneficiariesImpacted">Estimated Beneficiaries Impacted (optional)</Label>
+              <Input
+                id="beneficiariesImpacted"
+                type="number"
+                className="w-full"
+                placeholder="How many people will this event help?"
+                {...register('beneficiariesImpacted', {
+                  min: { value: 0, message: 'Must be 0 or more' }
+                })}
+              />
+              {errors.beneficiariesImpacted && (
+                <p className="text-sm text-red-500">{errors.beneficiariesImpacted.message}</p>
+              )}
+              <p className="text-xs text-gray-500">This number feeds into the corporate KPI dashboards.</p>
             </div>
             
             {/* IMAGE UPLOAD FIELD */}
