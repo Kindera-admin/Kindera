@@ -48,6 +48,7 @@ const Navbar = () => {
     navLinks.push({ label: 'Events', href: '/admin/events', icon: CalendarDays });
     navLinks.push({ label: 'Corporate', href: '/admin/corporate', icon: Building2 });
     navLinks.push({ label: 'Users', href: '/admin/users', icon: Users });
+    navLinks.push({ label: 'Registrations', href: '/admin/registrations', icon: Users });
   } else if (user?.role === 'org_spoc') {
     navLinks.push({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard });
     navLinks.push({ label: 'My Team', href: '/dashboard/team', icon: Users });

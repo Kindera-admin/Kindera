@@ -511,8 +511,12 @@ export async function getPendingEventRegistrations() {
     await connectDB();
     const currentUser = await getCurrentUser();
 
-    // Find all events created by the current user
-    const userEvents = await Event.find({ createdBy: currentUser._id }).select('_id title').lean();
+    // Find all events created by the current user, or all events if admin
+    let eventQuery = { createdBy: currentUser._id };
+    if (currentUser.role === 'admin') {
+      eventQuery = {};
+    }
+    const userEvents = await Event.find(eventQuery).select('_id title').lean();
     const eventIds = userEvents.map(e => e._id);
 
     // Find all users who have at least one pending registration for these events
