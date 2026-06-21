@@ -303,14 +303,16 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] p-4 gap-4">
-      <Link
-        href="/"
-        className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#0d3b26] transition-colors self-start max-w-md w-full"
-      >
-        <Home className="w-4 h-4" />
-        Back to Home
-      </Link>
+    <div className="flex flex-col items-center justify-center min-h-[80vh] p-4">
+      <div className="w-full max-w-md mb-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#0d3b26] transition-colors"
+        >
+          <Home className="w-4 h-4" />
+          Back to Home
+        </Link>
+      </div>
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center pb-2 pt-6">
           <CardTitle className="text-xl sm:text-2xl">Create Account</CardTitle>
