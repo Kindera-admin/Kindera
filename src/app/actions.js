@@ -172,10 +172,10 @@ export async function registerUser(formData) {
       userData.organizationName = organizationName;
     }
     
-    await User.create(userData);
+    const newUser = await User.create(userData);
     
     revalidatePath('/admin/users');
-    return { success: true };
+    return { success: true, userId: newUser._id.toString() };
   } catch (error) {
     console.error(error);
     return { success: false, message: error.message };
@@ -891,6 +891,28 @@ export async function signup(formData) {
 
     await User.create(userData);
 
+    // Save uploaded documents if any (passed as JSON string)
+    const docsJson = formData.get('documents');
+    if (docsJson) {
+      try {
+        const docs = JSON.parse(docsJson);
+        if (Array.isArray(docs) && docs.length > 0) {
+          const newDocs = docs.map(d => ({
+            docType: d.docType,
+            label: d.label,
+            url: d.url,
+            uploadedAt: new Date(),
+            status: 'pending',
+            adminNote: '',
+          }));
+          await User.updateOne(
+            { username: username.toLowerCase().trim() },
+            { $push: { documents: { $each: newDocs } } }
+          );
+        }
+      } catch {}
+    }
+
     return { success: true, pending: true };
   } catch (error) {
     console.error('Signup error:', error);
@@ -1465,7 +1487,7 @@ export async function getAllNGODocuments() {
     await connectDB();
 
     const ngos = await User.find({ role: 'ngo' })
-      .select('name ngoId documents').lean();
+      .select('name ngoId username mobile documents').lean();
 
     return {
       success: true,
@@ -1473,6 +1495,8 @@ export async function getAllNGODocuments() {
         _id: ngo._id.toString(),
         name: ngo.name,
         ngoId: ngo.ngoId,
+        username: ngo.username,
+        mobile: ngo.mobile || '',
         documents: (ngo.documents || []).map(d => ({
           _id: d._id.toString(),
           docType: d.docType,
@@ -1692,6 +1716,38 @@ export async function getMyImpact() {
     };
   } catch (error) {
     console.error('Error getting my impact:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Admin uploads a document on behalf of an NGO user.
+ */
+export async function adminUploadNGODocument(ngoUserId, docType, label, url) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'admin') return { success: false, message: 'Admin only' };
+
+    await connectDB();
+
+    const newDoc = {
+      docType,
+      label,
+      url,
+      uploadedAt: new Date(),
+      status: 'verified', // Admin-uploaded docs are auto-verified
+      adminNote: 'Uploaded by admin',
+    };
+
+    await User.findByIdAndUpdate(ngoUserId, { $push: { documents: newDoc } });
+
+    revalidatePath('/admin/ngo-documents');
+    revalidatePath('/dashboard/documents');
+    return { success: true };
+  } catch (error) {
     return { success: false, message: error.message };
   }
 }
