@@ -339,7 +339,7 @@ export default function HomePageClient({ upcomingEvents }) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div className="md:col-span-2">
               <Image 
-                src="/kindera-logo.svg" 
+                src="/kindera-logo.png" 
                 alt="Kindera" 
                 width={140} 
                 height={48} 

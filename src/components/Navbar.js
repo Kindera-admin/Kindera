@@ -85,7 +85,7 @@ const Navbar = () => {
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <Image
-              src="/kindera-logo.svg"
+              src="/kindera-logo.png"
               alt="Kindera"
               width={110}
               height={36}

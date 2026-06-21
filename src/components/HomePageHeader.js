@@ -71,7 +71,7 @@ export default function HomePageHeader() {
           <Link href="/" className="flex items-center group">
             <motion.div whileHover={{ scale: 1.05 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}>
               <Image 
-                src="/kindera-logo.svg" 
+                src="/kindera-logo.png" 
                 alt="Kindera" 
                 width={130} 
                 height={42} 
