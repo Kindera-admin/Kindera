@@ -54,10 +54,9 @@ const Navbar = () => {
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
     navLinks.push({ label: 'Registrations', href: '/dashboard/registrations', icon: Users });
     navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
-  } else if (user?.role === 'org_member') {
+  } else if (user?.role === 'org_member' || user?.role === 'volunteer') {
     navLinks.push({ label: 'My Impact', href: '/dashboard/my-impact', icon: LayoutDashboard });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
-    navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
   } else if (user?.role === 'ngo') {
     navLinks.push({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
