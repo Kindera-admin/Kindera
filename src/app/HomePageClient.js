@@ -223,16 +223,16 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
         <div className="mb-12">
           <h2 className="text-4xl md:text-5xl font-serif text-[#0d3b26]">Impact in Action</h2>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {impactPhotos.length > 0 ? (
-            impactPhotos.slice(0, 4).map((photo, i) => (
+            impactPhotos.map((photo, i) => (
               <motion.div
                 key={photo._id}
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className={`relative rounded-2xl overflow-hidden group bg-gray-200 ${i === 0 || i === 3 ? 'col-span-2 row-span-2 h-[400px]' : 'h-[190px]'}`}
+                className="relative rounded-2xl overflow-hidden group bg-gray-200 aspect-[4/3]"
               >
                 <img src={photo.url} alt="Impact" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
@@ -248,7 +248,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className={`relative rounded-2xl overflow-hidden group bg-gray-200 ${i === 0 || i === 3 ? 'col-span-2 row-span-2 h-[400px]' : 'h-[190px]'}`}
+                className="relative rounded-2xl overflow-hidden group bg-gray-200 aspect-[4/3]"
               >
                 <img src={`/gallery/impact-${n}.jpg`} alt="Impact" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
