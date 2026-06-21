@@ -459,7 +459,13 @@ export async function getAllUsers() {
     }
     
     // Get all users except the current admin (self)
-    const users = await User.find({ _id: { $ne: currentUser._id } }).select('-password').lean();
+    const users = await User.find({ _id: { $ne: currentUser._id } })
+      .populate({
+        path: 'registeredForEvent',
+        select: 'title createdBy',
+        populate: { path: 'createdBy', select: 'organizationName name' }
+      })
+      .select('-password').lean();
     
     return {
       success: true,
@@ -472,17 +478,66 @@ export async function getAllUsers() {
         name: user.name,
         status: user.status || 'pending',
         mobile: user.mobile || '',
+        email: user.email || '',
+        age: user.age || null,
         has12A: user.has12A || false,
         reg12A: user.reg12A || '',
         has80G: user.has80G || false,
         reg80G: user.reg80G || '',
         hasFCRA: user.hasFCRA || false,
         regFCRA: user.regFCRA || '',
-        createdAt: user.createdAt ? user.createdAt.toISOString() : null
+        createdAt: user.createdAt ? user.createdAt.toISOString() : null,
+        registeredForEvent: user.registeredForEvent ? {
+          _id: user.registeredForEvent._id.toString(),
+          title: user.registeredForEvent.title,
+          organizerName: user.registeredForEvent.createdBy?.organizationName || user.registeredForEvent.createdBy?.name || 'Unknown'
+        } : null
       }))
     };
   } catch (error) {
     console.error('Error fetching users:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function getPendingEventRegistrations() {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+    const currentUser = await getCurrentUser();
+
+    // Find all events created by the current user
+    const userEvents = await Event.find({ createdBy: currentUser._id }).select('_id title').lean();
+    const eventIds = userEvents.map(e => e._id);
+
+    // Find all pending users registered for any of these events
+    const pendingUsers = await User.find({
+      status: 'pending',
+      registeredForEvent: { $in: eventIds }
+    }).populate('registeredForEvent', 'title').lean();
+
+    return {
+      success: true,
+      users: pendingUsers.map(user => ({
+        _id: user._id.toString(),
+        name: user.name,
+        username: user.username,
+        role: user.role,
+        mobile: user.mobile || '',
+        email: user.email || '',
+        age: user.age || null,
+        photoUrl: user.photoUrl || '',
+        registrationReason: user.registrationReason || '',
+        registeredForEvent: user.registeredForEvent ? {
+          _id: user.registeredForEvent._id.toString(),
+          title: user.registeredForEvent.title
+        } : null
+      }))
+    };
+  } catch (error) {
+    console.error('Error fetching pending registrations:', error);
     return { success: false, message: error.message };
   }
 }
@@ -494,15 +549,26 @@ export async function updateUserStatus(formData) {
   try {
     await connectDB();
     const currentUser = await getCurrentUser();
-    if (currentUser.role !== 'admin') {
-      return { success: false, message: 'Only admin can manage users' };
-    }
-
     const userId = formData.get('userId');
     const status = formData.get('status');
 
     if (!['approved', 'rejected'].includes(status)) {
       return { success: false, message: 'Invalid status' };
+    }
+
+    const targetUser = await User.findById(userId).populate('registeredForEvent');
+    if (!targetUser) {
+      return { success: false, message: 'User not found' };
+    }
+
+    // Role check: Admins can approve anyone. Organizers can only approve users registered for their events.
+    if (currentUser.role !== 'admin') {
+      if (!targetUser.registeredForEvent) {
+        return { success: false, message: 'Not authorized to manage this user' };
+      }
+      if (targetUser.registeredForEvent.createdBy.toString() !== currentUser._id.toString()) {
+        return { success: false, message: 'Not authorized. This user registered for another organizer\'s event.' };
+      }
     }
 
     const result = await User.updateOne(
@@ -835,8 +901,9 @@ export async function signup(formData) {
     const confirmPassword = formData.get('confirmPassword');
     const organizationName = formData.get('organizationName');
     const mobile = formData.get('mobile') || '';
-    const role = formData.get('role') || 'org_member';
+    const role = formData.get('role') || 'volunteer';
     const ngoId = formData.get('ngoId') || '';
+    const registrationReason = formData.get('registrationReason') || '';
     
     // Existing certificate fields
     const has12A = formData.get('has12A') === 'true';
@@ -847,11 +914,15 @@ export async function signup(formData) {
     const regFCRA = formData.get('regFCRA') || '';
 
     // ── Validation ──
-    if (!name || !username || !password || !confirmPassword || !organizationName) {
+    if (!name || !username || !password || !confirmPassword) {
       return { success: false, message: 'All fields are required' };
     }
 
-    if (!['org_member', 'org_spoc', 'ngo'].includes(role)) {
+    if (role !== 'volunteer' && !organizationName) {
+      return { success: false, message: 'Organization name is required' };
+    }
+
+    if (!['volunteer', 'org_member', 'org_spoc', 'ngo'].includes(role)) {
       return { success: false, message: 'Invalid role selected' };
     }
 
@@ -877,6 +948,7 @@ export async function signup(formData) {
       role,
       status: 'pending',
       mobile,
+      registrationReason,
       has12A, reg12A,
       has80G, reg80G,
       hasFCRA, regFCRA,
@@ -1748,6 +1820,55 @@ export async function adminUploadNGODocument(ngoUserId, docType, label, url) {
     revalidatePath('/dashboard/documents');
     return { success: true };
   } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
+export async function registerForEvent(formData, eventId) {
+  try {
+    await connectDB();
+    
+    const event = await Event.findById(eventId);
+    if (!event) return { success: false, message: 'Event not found' };
+
+    const username = formData.get('username');
+    const password = formData.get('password');
+    const name = formData.get('name');
+    const age = formData.get('age');
+    const mobile = formData.get('mobile');
+    const email = formData.get('email');
+    const photoUrl = formData.get('photoUrl');
+    
+    if (!username || !password || !name) {
+      return { success: false, message: 'Username, password and name are required' };
+    }
+    
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return { success: false, message: 'Username already exists' };
+    }
+    
+    const userData = {
+      username,
+      password,
+      role: 'volunteer',
+      name,
+      status: 'pending',
+      age: age ? parseInt(age, 10) : null,
+      mobile: mobile || '',
+      email: email || '',
+      photoUrl: photoUrl || '',
+      registeredForEvent: eventId,
+      registrationReason: `I want to volunteer for this event: ${event.title}`
+    };
+    
+    await User.create(userData);
+    
+    revalidatePath('/admin/users');
+    revalidatePath('/dashboard/registrations');
+    return { success: true, pending: true };
+  } catch (error) {
+    console.error('Event registration error:', error);
     return { success: false, message: error.message };
   }
 }

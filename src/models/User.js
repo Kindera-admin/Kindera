@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['ngo', 'admin', 'org_spoc', 'org_member'],
+    enum: ['ngo', 'admin', 'org_spoc', 'org_member', 'volunteer'],
     default: 'ngo'
   },
   ngoId: {
@@ -42,6 +42,15 @@ const userSchema = new mongoose.Schema({
     default: 'pending'
   },
   mobile: { type: String, default: '' },
+  email: { type: String, default: '' },
+  age: { type: Number, default: null },
+  photoUrl: { type: String, default: '' },
+  registrationReason: { type: String, default: '' },
+  registeredForEvent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Event',
+    default: null
+  },
   has12A: { type: Boolean, default: false },
   reg12A: { type: String, default: '' },
   has80G: { type: Boolean, default: false },

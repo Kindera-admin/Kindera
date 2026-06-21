@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { signup } from '@/app/actions';
-import { Upload, FileText, X, CheckCircle2, Loader2 } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle2, Loader2, Home } from 'lucide-react';
 
 const CERT_TYPES = [
   { key: '12A',          label: '12A Certificate',            desc: 'Tax exemption certificate' },
@@ -74,9 +74,15 @@ function SignupForm() {
     formState: { errors },
   } = useForm({
     defaultValues: {
-      name: '', username: '', role: 'org_member',
-      organizationName: '', ngoId: '', mobile: '',
-      password: '', confirmPassword: '',
+      name: '',
+      username: '',
+      role: 'volunteer',
+      organizationName: '',
+      ngoId: '',
+      mobile: '',
+      password: '',
+      confirmPassword: '',
+      registrationReason: '',
     },
   });
 
@@ -120,6 +126,7 @@ function SignupForm() {
       formData.append('organizationName', data.organizationName);
       if (data.role === 'ngo') formData.append('ngoId', data.ngoId);
       formData.append('mobile', data.mobile);
+      formData.append('registrationReason', data.registrationReason);
       formData.append('password', data.password);
       formData.append('confirmPassword', data.confirmPassword);
 
@@ -176,7 +183,7 @@ function SignupForm() {
           <Select value={role} onValueChange={(value) => { setValue('role', value); if (value !== 'ngo') setValue('ngoId', ''); }}>
             <SelectTrigger className="w-full"><SelectValue placeholder="Select a role" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="org_member">Organisation Member</SelectItem>
+              <SelectItem value="volunteer">Volunteer</SelectItem>
               <SelectItem value="org_spoc">Organisation SPOC</SelectItem>
               <SelectItem value="ngo">NGO Representative</SelectItem>
             </SelectContent>
@@ -185,11 +192,11 @@ function SignupForm() {
 
         {/* Organization / NGO Name */}
         <div className="space-y-2">
-          <Label htmlFor="organizationName">{role === 'ngo' ? 'NGO Name' : 'Organization Name'}</Label>
+          <Label htmlFor="organizationName">{role === 'ngo' ? 'NGO Name' : role === 'volunteer' ? 'Organization Name (Optional)' : 'Organization Name'}</Label>
           <Input id="organizationName"
             placeholder={`Enter your ${role === 'ngo' ? 'NGO name' : 'organization name'}`}
             {...register('organizationName', {
-              required: `${role === 'ngo' ? 'NGO name' : 'Organization name'} is required`,
+              required: role === 'volunteer' ? false : `${role === 'ngo' ? 'NGO name' : 'Organization name'} is required`,
               minLength: { value: 2, message: 'Must be at least 2 characters' },
             })} />
           {errors.organizationName && <p className="text-sm text-red-500">{errors.organizationName.message}</p>}
@@ -215,6 +222,16 @@ function SignupForm() {
             })} />
           {errors.mobile && <p className="text-sm text-red-500">{errors.mobile.message}</p>}
         </div>
+
+        {/* Comment / Reason */}
+        {role === 'volunteer' && (
+          <div className="space-y-2">
+            <Label htmlFor="registrationReason">Why are you registering? (Comment for Admin)</Label>
+            <Input id="registrationReason" placeholder="I want to volunteer because..."
+              {...register('registrationReason', { required: 'Please provide a reason' })} />
+            {errors.registrationReason && <p className="text-sm text-red-500">{errors.registrationReason.message}</p>}
+          </div>
+        )}
 
         {/* Password */}
         <div className="space-y-2">
@@ -286,7 +303,14 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <div className="flex items-center justify-center min-h-[80vh] p-4">
+    <div className="flex flex-col items-center justify-center min-h-[80vh] p-4 gap-4">
+      <Link
+        href="/"
+        className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#0d3b26] transition-colors self-start max-w-md w-full"
+      >
+        <Home className="w-4 h-4" />
+        Back to Home
+      </Link>
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center pb-2 pt-6">
           <CardTitle className="text-xl sm:text-2xl">Create Account</CardTitle>

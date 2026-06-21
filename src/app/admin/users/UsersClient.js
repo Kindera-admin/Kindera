@@ -40,6 +40,7 @@ function UserModal({ user, onClose, onStatusUpdate, isUpdatingStatus }) {
       case 'ngo': return 'NGO';
       case 'org_spoc': return 'Organisation SPOC';
       case 'org_member': return 'Organisation Member';
+      case 'volunteer': return 'Volunteer';
       default: return role;
     }
   };
@@ -86,6 +87,24 @@ function UserModal({ user, onClose, onStatusUpdate, isUpdatingStatus }) {
               <p className="font-medium">{user.mobile || '—'}</p>
             </div>
           </div>
+
+          {/* Registration Reason & Event Context */}
+          {(user.registrationReason || user.registeredForEvent) && (
+            <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100 mt-2">
+              <p className="text-xs uppercase tracking-wide text-emerald-800 font-semibold mb-1">Registration Context</p>
+              {user.registeredForEvent && (
+                <p className="text-sm text-emerald-900 mb-1">
+                  <span className="font-semibold">Event:</span> {user.registeredForEvent.title} <br/>
+                  <span className="font-semibold">Organizer:</span> {user.registeredForEvent.organizerName}
+                </p>
+              )}
+              {user.registrationReason && (
+                <p className="text-sm text-emerald-900">
+                  <span className="font-semibold">Reason/Comment:</span> {user.registrationReason}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Certifications */}
           <div>
@@ -290,12 +309,23 @@ export default function UsersClient({ initialUsers = [], currentUserId }) {
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => setSelectedUser(user)}
                       >
-                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell>
+                          <div className="font-medium">{user.name}</div>
+                          <div className="text-xs text-gray-500">@{user.username}</div>
+                          {user.registeredForEvent && (
+                            <div className="text-xs text-emerald-600 mt-0.5 font-medium">
+                              Registered for: {user.registeredForEvent.title}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{user.username}</TableCell>
                         <TableCell>
                           <span className={getRoleColor(user.role)}>{getRoleDisplay(user.role)}</span>
                         </TableCell>
-                        <TableCell>{user.ngoId || user.organizationName || '-'}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">{user.organizationName || user.ngoId || '—'}</div>
+                          <div className="text-xs text-gray-500 capitalize">{user.role === 'volunteer' ? 'Volunteer' : user.role.replace('_', ' ')}</div>
+                        </TableCell>
                         <TableCell>{user.mobile || '-'}</TableCell>
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">

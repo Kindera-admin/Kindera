@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Users, ExternalLink, Trash2 } from 'lucide-react';
+import { Calendar, MapPin, Users, ExternalLink, Trash2, Share2 } from 'lucide-react';
 import { deleteEvent } from '@/app/actions';
 import { toast } from 'sonner';
 
@@ -22,6 +22,13 @@ export default function EventsClient({ events: initialEvents, userRole }) {
     } else {
       toast.error(result.message || 'Failed to delete event');
     }
+  };
+
+  const handleShare = (eventId) => {
+    const url = `${window.location.origin}/events/${eventId}/register`;
+    navigator.clipboard.writeText(url)
+      .then(() => toast.success('Registration link copied to clipboard!'))
+      .catch(() => toast.error('Failed to copy link'));
   };
   
   const formatDate = (dateString) => {
@@ -134,13 +141,22 @@ export default function EventsClient({ events: initialEvents, userRole }) {
                 )}
                 
                 <div className="pt-4 flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleShare(event._id)}
+                    className="flex-1"
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Share Event
+                  </Button>
+                  
                   {canRegisterForEvent && event.status === 'upcoming' && (
                     <Button
                       onClick={() => window.open(event.registrationLink, '_blank')}
                       className="flex-1"
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
-                      Register Now
+                      Ext. Register
                     </Button>
                   )}
                   {canDelete && (

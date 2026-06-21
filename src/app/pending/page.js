@@ -22,7 +22,7 @@ export default function PendingPage() {
             Please contact your administrator if you need immediate access.
           </p>
           <Button asChild className="w-full mt-2">
-            <Link href="/login">Back to Login</Link>
+            <Link href="/">Back to Home</Link>
           </Button>
         </CardContent>
       </Card>
