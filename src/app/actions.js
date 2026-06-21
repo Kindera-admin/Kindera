@@ -6,6 +6,7 @@ import User from '@/models/User';
 import Event from '@/models/Event';
 import NGOPartner from '@/models/NGOPartner';
 import Attendance from '@/models/Attendance';
+import ImpactPhoto from '@/models/ImpactPhoto';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
@@ -2042,6 +2043,53 @@ export async function updateEventRegistrationStatus(formData) {
     return { success: true };
   } catch (error) {
     console.error('Error updating event registration status:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function getImpactPhotos() {
+  try {
+    await connectDB();
+    const photos = await ImpactPhoto.find().sort({ createdAt: -1 }).lean();
+    return { success: true, photos: photos.map(p => ({ ...p, _id: p._id.toString() })) };
+  } catch (error) {
+    console.error('Error fetching impact photos:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function addImpactPhoto(url, publicId) {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== 'admin') {
+      return { success: false, message: 'Not authorized' };
+    }
+
+    await connectDB();
+    const photo = await ImpactPhoto.create({ url, publicId });
+    revalidatePath('/');
+    return { success: true, photo: { ...photo.toObject(), _id: photo._id.toString() } };
+  } catch (error) {
+    console.error('Error adding impact photo:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function deleteImpactPhoto(id) {
+  try {
+    const session = await getSession();
+    if (!session || session.role !== 'admin') {
+      return { success: false, message: 'Not authorized' };
+    }
+
+    await connectDB();
+    const photo = await ImpactPhoto.findByIdAndDelete(id);
+    if (!photo) return { success: false, message: 'Photo not found' };
+
+    revalidatePath('/');
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting impact photo:', error);
     return { success: false, message: error.message };
   }
 }

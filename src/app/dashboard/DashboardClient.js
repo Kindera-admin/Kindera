@@ -59,6 +59,15 @@ const cards = [
     gradient: 'from-[#8b5cf6] to-[#a78bfa]',
     lightBg: '#faf5ff',
   },
+  {
+    title: 'Manage Impact Photos',
+    description: 'Add or remove impact photos shown in the homepage gallery.',
+    icon: CalendarDays,
+    href: '/admin/impact-photos',
+    accent: '#f59e0b',
+    gradient: 'from-[#f59e0b] to-[#fbbf24]',
+    lightBg: '#fffbeb',
+  },
 ];
 
 export default function DashboardClient() {
