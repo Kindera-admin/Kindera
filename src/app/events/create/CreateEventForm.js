@@ -171,29 +171,7 @@ export default function CreateEventForm() {
               )}
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="registrationLink">Google Form Registration Link *</Label>
-              <Input
-                id="registrationLink"
-                type="url"
-                className="w-full"
-                placeholder="https://forms.gle/..."
-                {...register('registrationLink', { 
-                  required: 'Registration link is required',
-                  pattern: {
-                    value: /^https?:\/\/.+/,
-                    message: 'Please enter a valid URL'
-                  }
-                })}
-              />
-              {errors.registrationLink && (
-                <p className="text-sm text-red-500">{errors.registrationLink.message}</p>
-              )}
-              <p className="text-xs text-gray-500">
-                Paste your Google Form link here for event registration
-              </p>
-            </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="capacity">Capacity (optional)</Label>
               <Input
