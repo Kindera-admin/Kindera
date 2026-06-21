@@ -338,7 +338,13 @@ export default function HomePageClient({ upcomingEvents }) {
         <div className="max-w-7xl mx-auto px-5 relative z-10 border-t border-white/10 pt-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div className="md:col-span-2">
-              <Image src="/mylogo.jpeg" alt="Kindera" width={120} height={40} className="brightness-0 invert mb-6" />
+              <Image 
+                src="/kindera-logo.svg" 
+                alt="Kindera" 
+                width={140} 
+                height={48} 
+                className="object-contain brightness-0 invert mb-6" 
+              />
               <p className="text-emerald-50/50 max-w-sm leading-relaxed text-sm">
                 Revolutionizing the way the world volunteers. Connecting corporate teams with meaningful causes globally.
               </p>
