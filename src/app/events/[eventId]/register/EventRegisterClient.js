@@ -143,25 +143,25 @@ export default function EventRegisterClient({ event }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name *</Label>
-                  <Input id="name" placeholder="John Doe" {...register('name', { required: 'Name is required' })} />
+                  <Input id="name" placeholder="Enter full name" {...register('name', { required: 'Name is required' })} />
                   {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="age">Age</Label>
-                  <Input id="age" type="number" placeholder="e.g. 25" {...register('age')} />
+                  <Input id="age" type="number" placeholder="Enter age" {...register('age')} />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
-                  <Input id="email" type="email" placeholder="john@example.com" {...register('email')} />
+                  <Input id="email" type="email" placeholder="Enter email address" {...register('email')} />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="mobile">Phone Number *</Label>
-                  <Input id="mobile" placeholder="+91 9876543210" {...register('mobile', { required: 'Phone is required' })} />
+                  <Input id="mobile" placeholder="Enter phone number" {...register('mobile', { required: 'Phone is required' })} />
                   {errors.mobile && <p className="text-xs text-red-500">{errors.mobile.message}</p>}
                 </div>
               </div>
@@ -171,7 +171,7 @@ export default function EventRegisterClient({ event }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="username">Choose Username *</Label>
-                  <Input id="username" placeholder="johndoe123" {...register('username', { required: 'Username is required' })} />
+                  <Input id="username" placeholder="Choose a username" {...register('username', { required: 'Username is required' })} />
                   {errors.username && <p className="text-xs text-red-500">{errors.username.message}</p>}
                 </div>
                 
