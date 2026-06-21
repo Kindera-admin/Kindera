@@ -343,7 +343,7 @@ export default function HomePageClient({ upcomingEvents }) {
                 alt="Kindera" 
                 width={140} 
                 height={48} 
-                className="object-contain mb-6" 
+                className="object-contain brightness-0 invert mb-6" 
               />
               <p className="text-emerald-50/50 max-w-sm leading-relaxed text-sm">
                 Revolutionizing the way the world volunteers. Connecting corporate teams with meaningful causes globally.
