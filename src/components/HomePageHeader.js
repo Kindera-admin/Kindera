@@ -193,15 +193,29 @@ export default function HomePageHeader() {
             ))}
 
             {mounted && isLoggedIn ? (
-              <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: navLinks.length * 0.1 }}
-                onClick={() => { setMenuOpen(false); handleLogout(); }}
-                className="mt-4 px-8 py-3 rounded-full text-lg font-semibold bg-red-600 text-white"
-              >
-                Logout
-              </motion.button>
+              <>
+                {(isAdmin || isNGO || isOrgUser) && (
+                  <motion.a
+                    href={isAdmin ? "/admin" : "/dashboard"}
+                    onClick={() => setMenuOpen(false)}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: navLinks.length * 0.1 }}
+                    className="text-gray-900 text-3xl font-bold tracking-tight hover:text-emerald-600 transition-colors"
+                  >
+                    Dashboard
+                  </motion.a>
+                )}
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: (navLinks.length + 1) * 0.1 }}
+                  onClick={() => { setMenuOpen(false); handleLogout(); }}
+                  className="mt-8 px-8 py-3 rounded-full text-lg font-semibold bg-red-600 text-white"
+                >
+                  Logout
+                </motion.button>
+              </>
             ) : (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

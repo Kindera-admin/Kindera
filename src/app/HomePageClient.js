@@ -60,7 +60,7 @@ export default function HomePageClient({ upcomingEvents }) {
   ];
 
   return (
-    <div className="bg-[#fafafa] min-h-screen selection:bg-emerald-100 selection:text-[#0d3b26]">
+    <div className="bg-[#0d3b26] min-h-screen selection:bg-emerald-100 selection:text-[#0d3b26]">
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
         
@@ -160,7 +160,8 @@ export default function HomePageClient({ upcomingEvents }) {
       </div>
 
       {/* About Section */}
-      <section id="about" className="py-24 md:py-32 px-5 max-w-7xl mx-auto">
+      <section id="about" className="py-24 md:py-32 bg-[#fafafa]">
+        <div className="px-5 max-w-7xl mx-auto">
         <motion.div 
           initial="hidden"
           whileInView="visible"
@@ -180,6 +181,7 @@ export default function HomePageClient({ upcomingEvents }) {
           <Counter value="100+" label="NGOs Registered" />
           <Counter value="100k+" label="People Helped" />
           <Counter value="1,000+" label="Events Conducted" />
+        </div>
         </div>
       </section>
 
@@ -216,7 +218,8 @@ export default function HomePageClient({ upcomingEvents }) {
       </section>
 
       {/* Impact Gallery */}
-      <section id="gallery" className="py-24 px-5 max-w-7xl mx-auto">
+      <section id="gallery" className="py-24 bg-[#fafafa]">
+        <div className="px-5 max-w-7xl mx-auto">
         <div className="mb-12">
           <h2 className="text-4xl md:text-5xl font-serif text-[#0d3b26]">Impact in Action</h2>
         </div>
@@ -236,6 +239,7 @@ export default function HomePageClient({ upcomingEvents }) {
               </div>
             </motion.div>
           ))}
+        </div>
         </div>
       </section>
 
