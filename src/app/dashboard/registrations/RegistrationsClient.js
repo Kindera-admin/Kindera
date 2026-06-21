@@ -4,24 +4,25 @@ import { useState } from 'react';
 import { CheckCircle2, XCircle, User, Clock, Loader2, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { updateUserStatus } from '@/app/actions';
+import { updateEventRegistrationStatus } from '@/app/actions';
 
 export default function RegistrationsClient({ initialUsers }) {
   const [users, setUsers] = useState(initialUsers);
   const [loadingId, setLoadingId] = useState(null);
 
-  const handleStatusUpdate = async (userId, status) => {
-    setLoadingId(userId);
+  const handleStatusUpdate = async (userId, eventId, status) => {
+    setLoadingId(`${userId}-${eventId}`);
     try {
-      // Create a FormData object as expected by updateUserStatus
       const formData = new FormData();
       formData.append('userId', userId);
+      formData.append('eventId', eventId);
       formData.append('status', status);
 
-      const result = await updateUserStatus(formData);
+      const result = await updateEventRegistrationStatus(formData);
       if (result.success) {
-        toast.success(`User ${status === 'approved' ? 'approved' : 'rejected'}`);
-        setUsers(users.filter(u => u._id !== userId)); // Remove from pending list
+        toast.success(`Registration ${status === 'approved' ? 'approved' : 'rejected'}`);
+        // Remove this specific registration from the list
+        setUsers(users.filter(u => !(u._id === userId && u.registeredForEvent?._id === eventId)));
       } else {
         toast.error(result.message || 'Failed to update user');
       }
@@ -97,19 +98,19 @@ export default function RegistrationsClient({ initialUsers }) {
             <div className="flex gap-3">
               <Button 
                 className="flex-1 bg-[#0d3b26] hover:bg-[#1a5c3a]" 
-                onClick={() => handleStatusUpdate(user._id, 'approved')}
-                disabled={loadingId === user._id}
+                onClick={() => handleStatusUpdate(user._id, user.registeredForEvent?._id, 'approved')}
+                disabled={loadingId === `${user._id}-${user.registeredForEvent?._id}`}
               >
-                {loadingId === user._id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                {loadingId === `${user._id}-${user.registeredForEvent?._id}` ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
                 Approve
               </Button>
               <Button 
                 variant="destructive" 
                 className="flex-1"
-                onClick={() => handleStatusUpdate(user._id, 'rejected')}
-                disabled={loadingId === user._id}
+                onClick={() => handleStatusUpdate(user._id, user.registeredForEvent?._id, 'rejected')}
+                disabled={loadingId === `${user._id}-${user.registeredForEvent?._id}`}
               >
-                {loadingId === user._id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
+                {loadingId === `${user._id}-${user.registeredForEvent?._id}` ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
                 Reject
               </Button>
             </div>

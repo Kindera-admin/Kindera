@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Clock, CalendarDays, Star, MapPin, TrendingUp, Award, ChevronDown, ChevronUp, CheckCircle2, Loader2 } from 'lucide-react';
+import { Award, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, Clock, Loader2, MapPin, Star, Activity } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { logMyHoursAndFeedback } from '@/app/actions';
 
@@ -73,15 +74,28 @@ function EventCard({ event }) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-gray-900 text-sm leading-snug">{event.title}</h3>
+            <Link href={`/events/${event._id}/register`} className="hover:underline">
+              <h3 className="font-semibold text-gray-900 text-sm leading-snug">{event.title}</h3>
+            </Link>
             <div className="flex items-center gap-2 flex-shrink-0">
               {saved && (
                 <span className="flex items-center gap-1 bg-green-50 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">
                   <CheckCircle2 className="w-3 h-3" /> Logged
                 </span>
               )}
-              {!event.isPast && (
-                <span className="bg-emerald-50 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-full">Upcoming</span>
+              {event.lifecycle !== 'ended' && (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${event.lifecycle === 'live' ? 'bg-green-100 text-green-800' : 'bg-blue-50 text-blue-700'}`}>
+                  {event.lifecycle.charAt(0).toUpperCase() + event.lifecycle.slice(1)}
+                </span>
+              )}
+              {event.myRegistrationStatus && (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  event.myRegistrationStatus === 'approved' ? 'bg-emerald-100 text-emerald-800' : 
+                  event.myRegistrationStatus === 'rejected' ? 'bg-red-100 text-red-800' : 
+                  'bg-amber-100 text-amber-800'
+                }`}>
+                  Reg: {event.myRegistrationStatus.charAt(0).toUpperCase() + event.myRegistrationStatus.slice(1)}
+                </span>
               )}
             </div>
           </div>

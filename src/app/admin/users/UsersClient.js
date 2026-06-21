@@ -89,20 +89,21 @@ function UserModal({ user, onClose, onStatusUpdate, isUpdatingStatus }) {
           </div>
 
           {/* Registration Reason & Event Context */}
-          {(user.registrationReason || user.registeredForEvent) && (
+          {user.eventRegistrations && user.eventRegistrations.length > 0 && (
             <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100 mt-2">
-              <p className="text-xs uppercase tracking-wide text-emerald-800 font-semibold mb-1">Registration Context</p>
-              {user.registeredForEvent && (
-                <p className="text-sm text-emerald-900 mb-1">
-                  <span className="font-semibold">Event:</span> {user.registeredForEvent.title} <br/>
-                  <span className="font-semibold">Organizer:</span> {user.registeredForEvent.organizerName}
-                </p>
-              )}
-              {user.registrationReason && (
-                <p className="text-sm text-emerald-900">
-                  <span className="font-semibold">Reason/Comment:</span> {user.registrationReason}
-                </p>
-              )}
+              <p className="text-xs uppercase tracking-wide text-emerald-800 font-semibold mb-2">Event Registrations</p>
+              <div className="space-y-3">
+                {user.eventRegistrations.map((reg, idx) => (
+                  <div key={idx} className="bg-white rounded p-2 border border-emerald-100 text-sm text-emerald-900">
+                    <p><span className="font-semibold">Event:</span> {reg.title}</p>
+                    <p><span className="font-semibold">Organizer:</span> {reg.organizerName}</p>
+                    <p><span className="font-semibold">Status:</span> {reg.status}</p>
+                    {reg.comment && (
+                      <p className="mt-1 italic">&quot;{reg.comment}&quot;</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -312,9 +313,9 @@ export default function UsersClient({ initialUsers = [], currentUserId }) {
                         <TableCell>
                           <div className="font-medium">{user.name}</div>
                           <div className="text-xs text-gray-500">@{user.username}</div>
-                          {user.registeredForEvent && (
+                          {user.eventRegistrations && user.eventRegistrations.length > 0 && (
                             <div className="text-xs text-emerald-600 mt-0.5 font-medium">
-                              Registered for: {user.registeredForEvent.title}
+                              Registered for {user.eventRegistrations.length} event(s)
                             </div>
                           )}
                         </TableCell>

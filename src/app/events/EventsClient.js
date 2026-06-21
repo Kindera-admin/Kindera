@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 export default function EventsClient({ events: initialEvents, userRole }) {
   const [events, setEvents] = useState(initialEvents);
   const canCreateEvent = ['admin', 'ngo', 'org_spoc'].includes(userRole);
-  const canRegisterForEvent = ['org_spoc', 'org_member'].includes(userRole);
+  const canRegisterForEvent = ['org_spoc', 'org_member', 'volunteer'].includes(userRole);
   const canDelete = userRole === 'admin';
 
   const handleDelete = async (id, title) => {
@@ -43,17 +43,16 @@ export default function EventsClient({ events: initialEvents, userRole }) {
     });
   };
   
-  const getStatusBadge = (status) => {
+  const getLifecycleBadge = (lifecycle) => {
     const badges = {
       upcoming: 'bg-blue-100 text-blue-800',
-      ongoing: 'bg-green-100 text-green-800',
-      completed: 'bg-gray-100 text-gray-800',
-      cancelled: 'bg-red-100 text-red-800'
+      live: 'bg-green-100 text-green-800',
+      ended: 'bg-gray-100 text-gray-800'
     };
     
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${badges[status] || badges.upcoming}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${badges[lifecycle] || badges.upcoming}`}>
+        {lifecycle.charAt(0).toUpperCase() + lifecycle.slice(1)}
       </span>
     );
   };
@@ -83,7 +82,7 @@ export default function EventsClient({ events: initialEvents, userRole }) {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <CardTitle className="text-xl mb-2">{event.title}</CardTitle>
-                    {getStatusBadge(event.status)}
+                    {getLifecycleBadge(event.lifecycle)}
                   </div>
                 </div>
               </CardHeader>
@@ -97,9 +96,18 @@ export default function EventsClient({ events: initialEvents, userRole }) {
                     <Calendar className="w-4 h-4 mt-0.5 text-gray-500" />
                     <div>
                       <div className="font-semibold">Date & Time</div>
-                      <div className="text-gray-600">{formatDate(event.date)}</div>
-                    </div>
+                      </div>
                   </div>
+                  
+                  {event.durationHours && (
+                    <div className="flex items-start gap-2">
+                      <div className="w-4 h-4 mt-0.5 text-gray-500 flex items-center justify-center">⏳</div>
+                      <div>
+                        <div className="font-semibold">Duration</div>
+                        <div className="text-gray-600">{event.durationHours} hours</div>
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="flex items-start gap-2">
                     <MapPin className="w-4 h-4 mt-0.5 text-gray-500" />
@@ -150,13 +158,13 @@ export default function EventsClient({ events: initialEvents, userRole }) {
                     Share Event
                   </Button>
                   
-                  {canRegisterForEvent && event.status === 'upcoming' && (
+                  {canRegisterForEvent && event.lifecycle !== 'ended' && (
                     <Button
-                      onClick={() => window.open(event.registrationLink, '_blank')}
-                      className="flex-1"
+                      onClick={() => window.location.href = `/events/${event._id}/register`}
+                      className="flex-1 bg-[#0d3b26] hover:bg-[#1a5c3a] text-white"
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
-                      Ext. Register
+                      Register
                     </Button>
                   )}
                   {canDelete && (

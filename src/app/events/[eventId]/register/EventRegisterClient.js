@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { registerForEvent } from '@/app/actions';
+import { registerForEvent, registerForEventLoggedIn } from '@/app/actions';
 import { Loader2, Calendar, MapPin, Users, Info, Upload } from 'lucide-react';
 import Link from 'next/link';
 
-export default function EventRegisterClient({ event }) {
+export default function EventRegisterClient({ event, currentUser }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
@@ -25,6 +25,7 @@ export default function EventRegisterClient({ event }) {
       email: '',
       mobile: '',
       age: '',
+      comment: '',
     },
   });
 
@@ -40,35 +41,47 @@ export default function EventRegisterClient({ event }) {
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append('name', data.name);
-      formData.append('username', data.username);
-      formData.append('password', data.password);
-      formData.append('email', data.email);
-      formData.append('mobile', data.mobile);
-      formData.append('age', data.age);
-
-      if (photoFile) {
-        toast.loading('Uploading photo...', { id: 'photo-upload' });
-        try {
-          const url = await uploadPhoto(photoFile);
-          formData.append('photoUrl', url);
-          toast.dismiss('photo-upload');
-        } catch (err) {
-          toast.dismiss('photo-upload');
-          toast.error('Failed to upload photo, proceeding without it');
+      if (currentUser) {
+        const result = await registerForEventLoggedIn(event._id, data.comment);
+        if (result.success) {
+          toast.success('Registration successful!', {
+            description: result.status === 'approved' ? 'You are approved for this event.' : 'Your registration is pending approval.',
+          });
+          router.push('/dashboard/my-impact');
+        } else {
+          toast.error('Registration failed', { description: result.message });
         }
-      }
-
-      const result = await registerForEvent(formData, event._id);
-      
-      if (result.success) {
-        toast.success('Registration successful!', {
-          description: 'Your account is pending approval by the organizer.',
-        });
-        router.push('/pending');
       } else {
-        toast.error('Registration failed', { description: result.message });
+        const formData = new FormData();
+        formData.append('name', data.name);
+        formData.append('username', data.username);
+        formData.append('password', data.password);
+        formData.append('email', data.email);
+        formData.append('mobile', data.mobile);
+        formData.append('age', data.age);
+
+        if (photoFile) {
+          toast.loading('Uploading photo...', { id: 'photo-upload' });
+          try {
+            const url = await uploadPhoto(photoFile);
+            formData.append('photoUrl', url);
+            toast.dismiss('photo-upload');
+          } catch (err) {
+            toast.dismiss('photo-upload');
+            toast.error('Failed to upload photo, proceeding without it');
+          }
+        }
+
+        const result = await registerForEvent(formData, event._id);
+        
+        if (result.success) {
+          toast.success('Registration successful!', {
+            description: 'Your account is pending approval by the organizer.',
+          });
+          router.push('/pending');
+        } else {
+          toast.error('Registration failed', { description: result.message });
+        }
       }
     } catch (err) {
       toast.error('Registration failed', { description: 'An unexpected error occurred.' });
@@ -84,6 +97,10 @@ export default function EventRegisterClient({ event }) {
       hour: '2-digit', minute: '2-digit'
     });
   };
+
+  const start = new Date(event.date);
+  const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);
+  const isEnded = new Date() > end;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
@@ -132,13 +149,46 @@ export default function EventRegisterClient({ event }) {
 
       {/* Registration Form */}
       <div className="md:col-span-3">
-        <Card className="shadow-lg border-0 ring-1 ring-gray-100">
+        {isEnded ? (
+          <Card className="shadow-lg border-0 ring-1 ring-gray-100 h-full flex items-center justify-center p-8 text-center">
+            <div>
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Registration Closed</h3>
+              <p className="text-gray-500">
+                This event has already ended. Thank you for your interest!
+              </p>
+            </div>
+          </Card>
+        ) : (
+          <Card className="shadow-lg border-0 ring-1 ring-gray-100">
           <CardHeader>
             <CardTitle>Volunteer Details</CardTitle>
-            <CardDescription>Fill in your details to register for this event</CardDescription>
+            <CardDescription>
+              {currentUser 
+                ? 'Confirm your registration below.' 
+                : 'Fill in your details to register for this event'}
+            </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <CardContent className="space-y-5">
+              
+              {currentUser ? (
+                <div className="space-y-2">
+                  <Label htmlFor="comment">Why are you registering? (Optional)</Label>
+                  <textarea
+                    id="comment"
+                    className="w-full min-h-[100px] px-3 py-2 border rounded-md"
+                    placeholder="E.g. I have experience with this kind of work..."
+                    {...register('comment')}
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    Registering as <strong>{currentUser.name}</strong>.
+                  </p>
+                </div>
+              ) : (
+                <>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -201,6 +251,9 @@ export default function EventRegisterClient({ event }) {
                 </div>
               </div>
 
+                </>
+              )}
+
             </CardContent>
             <CardFooter className="flex flex-col gap-3">
               <Button type="submit" disabled={isSubmitting} className="w-full bg-[#0d3b26] hover:bg-[#1a5c3a] text-white py-6 text-lg">
@@ -208,12 +261,15 @@ export default function EventRegisterClient({ event }) {
                   <span className="flex items-center gap-2"><Loader2 className="w-5 h-5 animate-spin" /> Registering...</span>
                 ) : 'Complete Registration'}
               </Button>
-              <p className="text-center text-sm text-gray-500">
-                Already have an account? <Link href="/login" className="text-[#0d3b26] font-medium hover:underline">Log in</Link>
-              </p>
+              {!currentUser && (
+                <p className="text-center text-sm text-gray-500">
+                  Already have an account? <Link href="/login" className="text-[#0d3b26] font-medium hover:underline">Log in</Link>
+                </p>
+              )}
             </CardFooter>
           </form>
         </Card>
+        )}
       </div>
     </div>
   );

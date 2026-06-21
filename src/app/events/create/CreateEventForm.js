@@ -127,17 +127,35 @@ export default function CreateEventForm() {
               )}
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="date">Date & Time *</Label>
-              <Input
-                id="date"
-                type="datetime-local"
-                className="w-full"
-                {...register('date', { required: 'Date and time are required' })}
-              />
-              {errors.date && (
-                <p className="text-sm text-red-500">{errors.date.message}</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">Date & Time *</Label>
+                <Input
+                  id="date"
+                  type="datetime-local"
+                  className="w-full"
+                  {...register('date', { required: 'Date and time are required' })}
+                />
+                {errors.date && (
+                  <p className="text-sm text-red-500">{errors.date.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="durationHours">Duration (Hours) *</Label>
+                <Input
+                  id="durationHours"
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  className="w-full"
+                  defaultValue="2"
+                  {...register('durationHours', { required: 'Duration is required', min: 0.5 })}
+                />
+                {errors.durationHours && (
+                  <p className="text-sm text-red-500">{errors.durationHours.message}</p>
+                )}
+              </div>
             </div>
             
             <div className="space-y-2">

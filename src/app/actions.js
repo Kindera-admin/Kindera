@@ -461,7 +461,7 @@ export async function getAllUsers() {
     // Get all users except the current admin (self)
     const users = await User.find({ _id: { $ne: currentUser._id } })
       .populate({
-        path: 'registeredForEvent',
+        path: 'eventRegistrations.eventId',
         select: 'title createdBy',
         populate: { path: 'createdBy', select: 'organizationName name' }
       })
@@ -487,11 +487,14 @@ export async function getAllUsers() {
         hasFCRA: user.hasFCRA || false,
         regFCRA: user.regFCRA || '',
         createdAt: user.createdAt ? user.createdAt.toISOString() : null,
-        registeredForEvent: user.registeredForEvent ? {
-          _id: user.registeredForEvent._id.toString(),
-          title: user.registeredForEvent.title,
-          organizerName: user.registeredForEvent.createdBy?.organizationName || user.registeredForEvent.createdBy?.name || 'Unknown'
-        } : null
+        eventRegistrations: (user.eventRegistrations || []).map(reg => ({
+          eventId: reg.eventId?._id?.toString(),
+          title: reg.eventId?.title,
+          organizerName: reg.eventId?.createdBy?.organizationName || reg.eventId?.createdBy?.name || 'Unknown',
+          status: reg.status,
+          comment: reg.comment,
+          appliedAt: reg.appliedAt ? reg.appliedAt.toISOString() : null
+        }))
       }))
     };
   } catch (error) {
@@ -512,29 +515,39 @@ export async function getPendingEventRegistrations() {
     const userEvents = await Event.find({ createdBy: currentUser._id }).select('_id title').lean();
     const eventIds = userEvents.map(e => e._id);
 
-    // Find all pending users registered for any of these events
-    const pendingUsers = await User.find({
-      status: 'pending',
-      registeredForEvent: { $in: eventIds }
-    }).populate('registeredForEvent', 'title').lean();
+    // Find all users who have at least one pending registration for these events
+    const users = await User.find({
+      'eventRegistrations.status': 'pending',
+      'eventRegistrations.eventId': { $in: eventIds }
+    }).populate('eventRegistrations.eventId', 'title').lean();
+
+    // Flatten and format the response: one entry per pending registration
+    const pendingRegistrations = [];
+    users.forEach(user => {
+      user.eventRegistrations.forEach(reg => {
+        if (reg.status === 'pending' && eventIds.some(id => id.toString() === reg.eventId._id.toString())) {
+          pendingRegistrations.push({
+            _id: user._id.toString(),
+            name: user.name,
+            username: user.username,
+            role: user.role,
+            mobile: user.mobile || '',
+            email: user.email || '',
+            age: user.age || null,
+            photoUrl: user.photoUrl || '',
+            registrationReason: reg.comment || '',
+            registeredForEvent: {
+              _id: reg.eventId._id.toString(),
+              title: reg.eventId.title
+            }
+          });
+        }
+      });
+    });
 
     return {
       success: true,
-      users: pendingUsers.map(user => ({
-        _id: user._id.toString(),
-        name: user.name,
-        username: user.username,
-        role: user.role,
-        mobile: user.mobile || '',
-        email: user.email || '',
-        age: user.age || null,
-        photoUrl: user.photoUrl || '',
-        registrationReason: user.registrationReason || '',
-        registeredForEvent: user.registeredForEvent ? {
-          _id: user.registeredForEvent._id.toString(),
-          title: user.registeredForEvent.title
-        } : null
-      }))
+      users: pendingRegistrations
     };
   } catch (error) {
     console.error('Error fetching pending registrations:', error);
@@ -556,19 +569,8 @@ export async function updateUserStatus(formData) {
       return { success: false, message: 'Invalid status' };
     }
 
-    const targetUser = await User.findById(userId).populate('registeredForEvent');
-    if (!targetUser) {
-      return { success: false, message: 'User not found' };
-    }
-
-    // Role check: Admins can approve anyone. Organizers can only approve users registered for their events.
     if (currentUser.role !== 'admin') {
-      if (!targetUser.registeredForEvent) {
-        return { success: false, message: 'Not authorized to manage this user' };
-      }
-      if (targetUser.registeredForEvent.createdBy.toString() !== currentUser._id.toString()) {
-        return { success: false, message: 'Not authorized. This user registered for another organizer\'s event.' };
-      }
+      return { success: false, message: 'Only admin can manage global user status' };
     }
 
     const result = await User.updateOne(
@@ -659,6 +661,7 @@ export async function createEvent(formData) {
     const capacity = formData.get('capacity');
     const imageUrl = formData.get('imageUrl');
     const beneficiariesImpacted = formData.get('beneficiariesImpacted');
+    const durationHours = formData.get('durationHours') ? parseFloat(formData.get('durationHours')) : 2;
     
     if (!title || !description || !date || !location || !registrationLink) {
       return { success: false, message: 'All required fields must be filled' };
@@ -671,6 +674,7 @@ export async function createEvent(formData) {
       location,
       registrationLink,
       capacity: capacity ? parseInt(capacity) : null,
+      durationHours,
       beneficiariesImpacted: beneficiariesImpacted ? parseInt(beneficiariesImpacted) : 0,
       imageUrl: imageUrl || '',
       createdBy: user._id,
@@ -691,6 +695,7 @@ export async function createEvent(formData) {
         location: event.location,
         registrationLink: event.registrationLink,
         capacity: event.capacity,
+        durationHours: event.durationHours,
         imageUrl: event.imageUrl,
         status: event.status
       }
@@ -705,29 +710,40 @@ export async function getHomeEvents() {
   try {
     await connectDB();
 
-    // Auto-mark past events as completed
-    const now = new Date();
-    await Event.updateMany(
-      { date: { $lt: now }, status: 'upcoming' },
-      { $set: { status: 'completed' } }
-    );
+    // Remove the old static updateMany
+    // We calculate lifecycle dynamically now.
 
     const events = await Event.find({ status: 'upcoming' })
       .sort({ date: 1 })
       .limit(6);
 
-    return {
-      success: true,
-      events: events.map(event => ({
+    const now = new Date();
+    
+    // Map and calculate lifecycle
+    const processedEvents = events.map(event => {
+      const start = new Date(event.date);
+      const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);
+      let lifecycle = 'upcoming';
+      if (now > end) lifecycle = 'ended';
+      else if (now >= start && now <= end) lifecycle = 'live';
+
+      return {
         _id: event._id.toString(),
         title: event.title,
         description: event.description,
         date: event.date.toISOString(),
         location: event.location,
         registrationLink: event.registrationLink,
+        durationHours: event.durationHours || 2,
         imageUrl: event.imageUrl,
         status: event.status,
-      }))
+        lifecycle,
+      };
+    }).filter(e => e.lifecycle !== 'ended');
+
+    return {
+      success: true,
+      events: processedEvents.slice(0, 6)
     };
   } catch (error) {
     console.error('Error fetching home events:', error);
@@ -747,9 +763,17 @@ export async function getEvents(status = '') {
       .sort({ date: 1 })
       .lean();
     
-    return {
-      success: true,
-      events: events.map(event => ({
+    const now = new Date();
+    const currentUser = await getCurrentUser();
+    
+    let processedEvents = events.map(event => {
+      const start = new Date(event.date);
+      const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);
+      let lifecycle = 'upcoming';
+      if (now > end) lifecycle = 'ended';
+      else if (now >= start && now <= end) lifecycle = 'live';
+
+      return {
         _id: event._id.toString(),
         title: event.title,
         description: event.description,
@@ -757,15 +781,26 @@ export async function getEvents(status = '') {
         location: event.location,
         registrationLink: event.registrationLink,
         capacity: event.capacity,
+        durationHours: event.durationHours || 2,
         imageUrl: event.imageUrl,
         status: event.status,
+        lifecycle,
         createdBy: event.createdBy ? {
           _id: event.createdBy._id.toString(),
           name: event.createdBy.name,
           role: event.createdBy.role
         } : null,
         createdAt: event.createdAt.toISOString()
-      }))
+      };
+    });
+
+    if (!includeEnded) {
+      processedEvents = processedEvents.filter(e => e.lifecycle !== 'ended');
+    }
+
+    return {
+      success: true,
+      events: processedEvents
     };
   } catch (error) {
     console.error('Error fetching events:', error);
@@ -783,6 +818,13 @@ export async function getEventById(id) {
       return { success: false, message: 'Event not found' };
     }
     
+    const now = new Date();
+    const start = new Date(event.date);
+    const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);
+    let lifecycle = 'upcoming';
+    if (now > end) lifecycle = 'ended';
+    else if (now >= start && now <= end) lifecycle = 'live';
+
     return {
       success: true,
       event: {
@@ -793,8 +835,10 @@ export async function getEventById(id) {
         location: event.location,
         registrationLink: event.registrationLink,
         capacity: event.capacity,
+        durationHours: event.durationHours || 2,
         imageUrl: event.imageUrl,
         status: event.status,
+        lifecycle,
         createdBy: event.createdBy ? {
           _id: event.createdBy._id.toString(),
           name: event.createdBy.name,
@@ -1734,13 +1778,13 @@ export async function getMyImpact() {
     if (!session) return { success: false, message: 'Not authenticated' };
 
     const caller = await getCurrentUser();
-    if (caller.role !== 'org_member') return { success: false, message: 'Org members only' };
+    if (!['org_member', 'volunteer'].includes(caller.role)) return { success: false, message: 'Volunteers and Org Members only' };
 
     await connectDB();
 
     // Get all events that exist (past + upcoming)
     const allEvents = await Event.find()
-      .select('title date location description beneficiariesImpacted status')
+      .select('title date location description beneficiariesImpacted status durationHours')
       .sort({ date: -1 })
       .lean();
 
@@ -1750,18 +1794,30 @@ export async function getMyImpact() {
     for (const r of myRecords) {
       recordMap[r.eventId.toString()] = r;
     }
-
+    const now = new Date();
+    
     const events = allEvents.map(ev => {
       const rec = recordMap[ev._id.toString()];
+      const start = new Date(ev.date);
+      const end = new Date(start.getTime() + (ev.durationHours || 2) * 60 * 60 * 1000);
+      let lifecycle = 'upcoming';
+      if (now > end) lifecycle = 'ended';
+      else if (now >= start && now <= end) lifecycle = 'live';
+
+      const registration = (caller.eventRegistrations || []).find(r => r.eventId.toString() === ev._id.toString());
+      
       return {
         _id: ev._id.toString(),
         title: ev.title,
         date: ev.date.toISOString(),
         location: ev.location,
         description: ev.description,
+        durationHours: ev.durationHours || 2,
         beneficiariesImpacted: ev.beneficiariesImpacted || 0,
         status: ev.status,
-        isPast: new Date(ev.date) < new Date(),
+        lifecycle,
+        isPast: lifecycle === 'ended',
+        myRegistrationStatus: registration ? registration.status : null,
         myHours: rec?.hoursContributed || 0,
         myFeedback: rec?.feedbackScore || null,
         attended: rec?.attended || false,
@@ -1831,6 +1887,12 @@ export async function registerForEvent(formData, eventId) {
     const event = await Event.findById(eventId);
     if (!event) return { success: false, message: 'Event not found' };
 
+    const start = new Date(event.date);
+    const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);
+    if (new Date() > end) {
+      return { success: false, message: 'Registration is closed. This event has ended.' };
+    }
+
     const username = formData.get('username');
     const password = formData.get('password');
     const name = formData.get('name');
@@ -1858,8 +1920,12 @@ export async function registerForEvent(formData, eventId) {
       mobile: mobile || '',
       email: email || '',
       photoUrl: photoUrl || '',
-      registeredForEvent: eventId,
-      registrationReason: `I want to volunteer for this event: ${event.title}`
+      eventRegistrations: [{
+        eventId,
+        status: 'pending',
+        comment: `I want to volunteer for this event: ${event.title}`,
+        appliedAt: new Date()
+      }]
     };
     
     await User.create(userData);
@@ -1869,6 +1935,101 @@ export async function registerForEvent(formData, eventId) {
     return { success: true, pending: true };
   } catch (error) {
     console.error('Event registration error:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function registerForEventLoggedIn(eventId, comment) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+    const currentUser = await getCurrentUser();
+    
+    const event = await Event.findById(eventId).populate('createdBy');
+    if (!event) return { success: false, message: 'Event not found' };
+
+    const start = new Date(event.date);
+    const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);
+    if (new Date() > end) {
+      return { success: false, message: 'Registration is closed. This event has ended.' };
+    }
+
+    const user = await User.findById(currentUser._id);
+    
+    // Check if already registered
+    const alreadyRegistered = user.eventRegistrations.some(r => r.eventId.toString() === eventId.toString());
+    if (alreadyRegistered) {
+      return { success: false, message: 'You are already registered for this event' };
+    }
+
+    // Auto-approve if the event belongs to the user's SPOC (matching organizationName)
+    let status = 'pending';
+    if (
+      user.organizationName && 
+      event.createdBy && 
+      event.createdBy.organizationName === user.organizationName
+    ) {
+      status = 'approved';
+    }
+
+    user.eventRegistrations.push({
+      eventId,
+      status,
+      comment: comment || `I want to volunteer for this event: ${event.title}`,
+      appliedAt: new Date()
+    });
+
+    await user.save();
+    
+    revalidatePath('/dashboard/my-impact');
+    revalidatePath('/dashboard/registrations');
+    return { success: true, status };
+  } catch (error) {
+    console.error('Logged in registration error:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function updateEventRegistrationStatus(formData) {
+  const session = await getSession();
+  if (!session) return { success: false, message: 'Not authenticated' };
+
+  try {
+    await connectDB();
+    const currentUser = await getCurrentUser();
+
+    const userId = formData.get('userId');
+    const eventId = formData.get('eventId');
+    const status = formData.get('status');
+
+    if (!['approved', 'rejected'].includes(status)) {
+      return { success: false, message: 'Invalid status' };
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) return { success: false, message: 'User not found' };
+
+    const regIndex = targetUser.eventRegistrations.findIndex(r => r.eventId.toString() === eventId.toString());
+    if (regIndex === -1) return { success: false, message: 'Registration not found' };
+
+    const event = await Event.findById(eventId);
+
+    if (currentUser.role !== 'admin') {
+      if (event.createdBy.toString() !== currentUser._id.toString()) {
+        return { success: false, message: 'Not authorized. This user registered for another organizer\'s event.' };
+      }
+    }
+
+    targetUser.eventRegistrations[regIndex].status = status;
+    await targetUser.save();
+
+    revalidatePath('/admin/users');
+    revalidatePath('/dashboard/registrations');
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating event registration status:', error);
     return { success: false, message: error.message };
   }
 }

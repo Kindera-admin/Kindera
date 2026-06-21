@@ -45,12 +45,12 @@ const userSchema = new mongoose.Schema({
   email: { type: String, default: '' },
   age: { type: Number, default: null },
   photoUrl: { type: String, default: '' },
-  registrationReason: { type: String, default: '' },
-  registeredForEvent: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Event',
-    default: null
-  },
+  eventRegistrations: [{
+    eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event' },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    comment: { type: String, default: '' },
+    appliedAt: { type: Date, default: Date.now }
+  }],
   has12A: { type: Boolean, default: false },
   reg12A: { type: String, default: '' },
   has80G: { type: Boolean, default: false },

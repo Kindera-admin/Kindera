@@ -23,6 +23,11 @@ const eventSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  durationHours: {
+    type: Number,
+    default: 2,
+    min: 0.5
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

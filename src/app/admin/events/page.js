@@ -9,7 +9,7 @@ export default async function AdminEventsPage() {
   if (!user) redirect('/login');
   if (user.role !== 'admin') redirect('/dashboard');
 
-  const { events = [] } = await getEvents();
+  const { events = [] } = await getEvents({ includeEnded: true });
 
   return (
     <div className="p-6">
