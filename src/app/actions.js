@@ -751,9 +751,19 @@ export async function getHomeEvents() {
   }
 }
 
-export async function getEvents(status = '') {
+export async function getEvents(optionsOrStatus = {}) {
   try {
     await connectDB();
+
+    let status = '';
+    let includeEnded = false;
+
+    if (typeof optionsOrStatus === 'string') {
+      status = optionsOrStatus;
+    } else {
+      status = optionsOrStatus.status || '';
+      includeEnded = optionsOrStatus.includeEnded || false;
+    }
 
     const filter = {};
     if (status) filter.status = status;

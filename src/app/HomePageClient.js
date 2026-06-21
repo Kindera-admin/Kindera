@@ -284,8 +284,8 @@ export default function HomePageClient({ upcomingEvents }) {
                     </p>
                     <h3 className="text-2xl font-bold text-gray-900 mb-3 line-clamp-2">{ev.title}</h3>
                     <p className="text-gray-500 mb-8 line-clamp-3 leading-relaxed">{ev.description}</p>
-                    <Link href="/login" className="inline-flex items-center text-[#0d3b26] font-semibold hover:text-emerald-600 transition-colors">
-                      Login to Register 
+                    <Link href={`/events/${ev._id}/register`} className="inline-flex items-center text-[#0d3b26] font-semibold hover:text-emerald-600 transition-colors">
+                      Register 
                       <span className="ml-2 transform group-hover:translate-x-1 transition-transform">→</span>
                     </Link>
                   </div>
