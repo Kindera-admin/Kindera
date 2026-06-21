@@ -5,29 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import useAuthStore from '@/store/authStore';
-import { Button } from '@/components/ui/button';
 import { logout } from '@/app/actions';
 import { toast } from 'sonner';
-import { Menu, X, LogOut } from 'lucide-react';
-
-const NavLink = ({ href, children, pathname, onClick, startsWith = false }) => {
-  const isActive = startsWith ? pathname.startsWith(href) : pathname === href;
-
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className={`relative py-1 text-sm font-medium transition-colors duration-150
-        after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-full after:transition-all after:duration-150
-        ${isActive
-          ? 'text-white after:bg-emerald-400'
-          : 'text-slate-300 hover:text-white after:bg-transparent hover:after:bg-slate-500'
-        }`}
-    >
-      {children}
-    </Link>
-  );
-};
+import { LogOut, Menu, X, LayoutDashboard, CalendarDays, Users, FileText, Building2, ChevronDown } from 'lucide-react';
 
 const Navbar = () => {
   const { user, clearAuth, isAuthenticated, isAdmin } = useAuthStore();
@@ -38,11 +18,12 @@ const Navbar = () => {
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    document.body.style.overflow = isMenuOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isMenuOpen]);
 
   const isOrgUser = user?.role === 'org_spoc' || user?.role === 'org_member';
-
-  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-  const closeMenu = () => setIsMenuOpen(false);
 
   const handleLogout = async () => {
     try {
@@ -57,85 +38,156 @@ const Navbar = () => {
 
   if (!mounted) return null;
   if (pathname === '/login') return null;
-  if (!isAuthenticated()) return null;
   if (pathname === '/') return null;
+  if (!isAuthenticated()) return null;
+
+  // Build nav links based on role
+  const navLinks = [];
+  if (isAdmin()) {
+    navLinks.push({ label: 'Dashboard', href: '/admin', icon: LayoutDashboard, startsWith: true });
+    navLinks.push({ label: 'Events', href: '/admin/events', icon: CalendarDays });
+    navLinks.push({ label: 'Corporate', href: '/admin/corporate', icon: Building2 });
+    navLinks.push({ label: 'Users', href: '/admin/users', icon: Users });
+  } else if (user?.role === 'org_spoc') {
+    navLinks.push({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard });
+    navLinks.push({ label: 'My Team', href: '/dashboard/team', icon: Users });
+    navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
+    navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
+  } else if (user?.role === 'org_member') {
+    navLinks.push({ label: 'My Impact', href: '/dashboard/my-impact', icon: LayoutDashboard });
+    navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
+    navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
+  } else if (user?.role === 'ngo') {
+    navLinks.push({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard });
+    navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
+    navLinks.push({ label: 'Reports', href: '/reports', icon: FileText });
+    navLinks.push({ label: 'Documents', href: '/dashboard/documents', icon: FileText });
+  }
 
   return (
-    <nav className="bg-[#0d3b26] text-white shadow-md relative z-10">
-      {/* Top progress line when navigating */}
-      {isPending && (
-        <div className="absolute top-0 left-0 h-0.5 bg-emerald-400 animate-pulse w-full" />
-      )}
+    <>
+      <header
+        className="fixed top-0 left-0 right-0 z-50"
+        style={{
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 1px 0 0 rgba(0,0,0,0.06)',
+        }}
+      >
+        {/* Progress bar when navigating */}
+        {isPending && (
+          <div className="absolute top-0 left-0 h-[2px] bg-emerald-500 animate-pulse w-full" />
+        )}
 
-      <div className="container mx-auto px-4 flex flex-wrap justify-between items-center h-14">
+        <nav className="max-w-[1200px] mx-auto px-5 h-[60px] flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/kindera-logo.svg"
+              alt="Kindera"
+              width={110}
+              height={36}
+              className="object-contain"
+            />
+          </Link>
 
-        {/* Logo */}
-        <Link href="/" className="flex items-center">
-          <Image src="/mylogo.jpeg" alt="Kindera" width={110} height={36} className="object-contain" />
-        </Link>
-
-        {/* Mobile toggle */}
-        <button
-          className="md:hidden p-2 rounded-lg hover:bg-white/10 focus:outline-none transition-colors"
-          onClick={toggleMenu}
-          aria-label="Toggle menu"
-        >
-          {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-
-        {/* Nav links + user info */}
-        <div
-          className={`${
-            isMenuOpen ? 'flex' : 'hidden'
-          } md:flex flex-col md:flex-row w-full md:w-auto mt-3 md:mt-0 pb-4 md:pb-0 gap-5 md:gap-6 border-t border-white/10 md:border-0 pt-3 md:pt-0`}
-        >
-          {/* Links */}
-          <div className="flex flex-col md:flex-row gap-4 md:gap-5 md:items-center">
-            {isOrgUser && (
-              <NavLink href="/" pathname={pathname} onClick={closeMenu}>Home</NavLink>
-            )}
-            {isOrgUser && (
-              <NavLink href="/ngo-partners" pathname={pathname} onClick={closeMenu}>NGO Partners</NavLink>
-            )}
-            <NavLink href="/events" pathname={pathname} onClick={closeMenu}>Events</NavLink>
-
-            {user?.role === 'org_spoc' && (
-              <NavLink href="/dashboard/team" pathname={pathname} onClick={closeMenu}>My Team</NavLink>
-            )}
-            {user?.role === 'ngo' && (
-              <NavLink href="/dashboard/documents" pathname={pathname} onClick={closeMenu}>Documents</NavLink>
-            )}
-
-            {!isAdmin() && isAuthenticated() && (
-              <NavLink href="/dashboard" pathname={pathname} onClick={closeMenu}>Dashboard</NavLink>
-            )}
-
-            {isAdmin() && (
-              <NavLink href="/admin" pathname={pathname} onClick={closeMenu} startsWith>
-                Admin Dashboard
-              </NavLink>
-            )}
+          {/* Desktop Nav Links */}
+          <div className="hidden md:flex items-center gap-1">
+            {navLinks.map((link) => {
+              const isActive = link.startsWith
+                ? pathname.startsWith(link.href)
+                : pathname === link.href || pathname.startsWith(link.href + '/');
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`relative px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                    isActive
+                      ? 'bg-[#0d3b26]/8 text-[#0d3b26]'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  {link.label}
+                  {isActive && (
+                    <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-[#0d3b26] rounded-full" />
+                  )}
+                </Link>
+              );
+            })}
           </div>
 
-          {/* Divider + user */}
-          <div className="flex items-center justify-between md:justify-end gap-3 pt-3 md:pt-0 border-t md:border-0 border-white/10 md:pl-4 md:border-l md:border-white/20">
-            <div className="text-xs text-slate-300 leading-tight">
-              <p className="font-medium text-white">{user?.name}</p>
-              <p className="capitalize">{user?.role?.replace('_', ' ')}</p>
+          {/* Right: User info + Logout */}
+          <div className="hidden md:flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-[13px] font-semibold text-gray-900 leading-none">{user?.name}</p>
+              <p className="text-[11px] text-gray-400 capitalize mt-0.5">{user?.role?.replace(/_/g, ' ')}</p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
+            <div className="w-[1px] h-5 bg-gray-200 mx-1" />
+            <button
               onClick={handleLogout}
-              className="text-slate-300 hover:text-white hover:bg-white/10 gap-1.5 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all"
             >
               <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </Button>
+              Logout
+            </button>
+          </div>
+
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
+          </button>
+        </nav>
+      </header>
+
+      {/* Spacer so content doesn't hide under fixed header */}
+      <div className="h-[60px]" />
+
+      {/* Mobile Menu */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-40 bg-white flex flex-col pt-[60px]" onClick={() => setIsMenuOpen(false)}>
+          <div className="flex flex-col p-4 gap-1" onClick={e => e.stopPropagation()}>
+            {navLinks.map((link) => {
+              const isActive = link.startsWith
+                ? pathname.startsWith(link.href)
+                : pathname === link.href;
+              const Icon = link.icon;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-medium transition-colors ${
+                    isActive
+                      ? 'bg-[#0d3b26]/8 text-[#0d3b26]'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {link.label}
+                </Link>
+              );
+            })}
+
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="px-4 mb-3">
+                <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
+                <p className="text-xs text-gray-400 capitalize">{user?.role?.replace(/_/g, ' ')}</p>
+              </div>
+              <button
+                onClick={() => { setIsMenuOpen(false); handleLogout(); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-medium text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </nav>
+      )}
+    </>
   );
 };
 

@@ -1,30 +1,53 @@
 'use client';
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
-import { Users, Clock, CalendarDays, Building2, Plus, UsersRound, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import dynamic from 'next/dynamic';
+import { Users, Clock, CalendarDays, Building2, Plus, UsersRound } from 'lucide-react';
+
+// Dynamically import recharts to avoid SSR crash
+const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then(m => m.Bar), { ssr: false });
+const LineChart = dynamic(() => import('recharts').then(m => m.LineChart), { ssr: false });
+const Line = dynamic(() => import('recharts').then(m => m.Line), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
 
 export default function CorporateDashboardClient({ stats, monthly }) {
   const router = useRouter();
 
   return (
     <div className="w-full max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="mb-8">
+        <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">SPOC Dashboard</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-1">Team Overview</h1>
+        <p className="text-gray-500 text-sm">Live KPIs for your corporate volunteer programme.</p>
+      </div>
+
       {/* Top Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
         {[
-          { label: 'Total Volunteers', value: stats.totalVolunteers || 0, color: '#0d3b26' },
-          { label: 'Volunteer Hours', value: (stats.volunteerHours || 0).toLocaleString(), color: '#1a5c3a' },
-          { label: 'Events Attended', value: stats.eventsAttended || 0, color: '#2e7d52' },
-          { label: 'NGOs Engaged', value: stats.ngosEngaged || 0, color: '#3d5a99' },
-          { label: 'Beneficiaries Impacted', value: (stats.beneficiariesImpacted || 0).toLocaleString(), color: '#4a6fbf' },
-          { label: 'Avg Feedback', value: stats.avgFeedback ? `${stats.avgFeedback}/5` : '-', color: '#6366f1' },
-        ].map(k => (
-          <div key={k.label} className="border border-gray-100 rounded-xl p-5 bg-white shadow-sm flex flex-col justify-center">
-            <p className="text-3xl font-bold mb-1" style={{ color: k.color }}>{k.value}</p>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{k.label}</p>
-          </div>
-        ))}
+          { label: 'Total Volunteers', value: stats.totalVolunteers || 0, color: '#0d3b26', icon: Users },
+          { label: 'Volunteer Hours', value: (stats.volunteerHours || 0).toLocaleString(), color: '#1a5c3a', icon: Clock },
+          { label: 'Events Attended', value: stats.eventsAttended || 0, color: '#2e7d52', icon: CalendarDays },
+          { label: 'NGOs Engaged', value: stats.ngosEngaged || 0, color: '#3d5a99', icon: Building2 },
+          { label: 'Beneficiaries Impacted', value: (stats.beneficiariesImpacted || 0).toLocaleString(), color: '#4a6fbf', icon: UsersRound },
+          { label: 'Avg Feedback', value: stats.avgFeedback ? `${stats.avgFeedback}/5` : '–', color: '#6366f1', icon: null },
+        ].map(k => {
+          const Icon = k.icon;
+          return (
+            <div key={k.label} className="border border-gray-100 rounded-xl p-5 bg-white shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{k.label}</p>
+                {Icon && <Icon className="w-4 h-4 text-gray-300" />}
+              </div>
+              <p className="text-3xl font-bold" style={{ color: k.color }}>{k.value}</p>
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -43,7 +66,7 @@ export default function CorporateDashboardClient({ stats, monthly }) {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No data available</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No data yet — hours will appear once your team logs attendance.</div>
             )}
           </div>
         </div>
@@ -63,7 +86,7 @@ export default function CorporateDashboardClient({ stats, monthly }) {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No data available</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No data yet.</div>
             )}
           </div>
         </div>
