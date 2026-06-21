@@ -71,11 +71,11 @@ export default function HomePageHeader() {
           <Link href="/" className="flex items-center group">
             <motion.div whileHover={{ scale: 1.05 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}>
               <Image 
-                src="/mylogo.jpeg" 
+                src="/kindera-logo.svg" 
                 alt="Kindera" 
                 width={130} 
                 height={42} 
-                className={`object-contain transition-all duration-300 ${scrolled ? 'brightness-100' : 'brightness-0 invert'}`} 
+                className={`object-contain transition-all duration-300 ${scrolled ? '' : 'brightness-0 invert'}`} 
               />
             </motion.div>
           </Link>
