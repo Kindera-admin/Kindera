@@ -60,10 +60,10 @@ export default function HomePageHeader() {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
         style={{
-          background: scrolled ? 'rgba(255, 255, 255, 0.85)' : 'transparent',
-          backdropFilter: scrolled ? 'blur(12px)' : 'none',
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(12px)',
           boxShadow: scrolled ? '0 4px 24px -4px rgba(0,0,0,0.06)' : 'none',
-          borderBottom: scrolled ? '1px solid rgba(255,255,255,0.3)' : '1px solid transparent',
+          borderBottom: '1px solid rgba(0,0,0,0.05)',
         }}
       >
         <nav className="max-w-[1200px] mx-auto px-5 py-4 flex items-center justify-between">
@@ -75,7 +75,7 @@ export default function HomePageHeader() {
                 alt="Kindera" 
                 width={130} 
                 height={42} 
-                className={`object-contain transition-all duration-300 ${scrolled ? '' : 'brightness-0 invert'}`} 
+                className="object-contain" 
               />
             </motion.div>
           </Link>
@@ -89,7 +89,7 @@ export default function HomePageHeader() {
                 className="relative text-[14px] font-medium tracking-wide transition-colors duration-300 group"
                 style={{
                   fontFamily: "'General Sans', sans-serif",
-                  color: scrolled ? '#2c2c2c' : 'rgba(255,255,255,0.9)',
+                  color: '#2c2c2c',
                 }}
               >
                 {link.label}
@@ -97,7 +97,7 @@ export default function HomePageHeader() {
               </a>
             ))}
 
-            <div className={`w-[1px] h-4 ${scrolled ? 'bg-gray-300' : 'bg-white/20'}`} />
+            <div className="w-[1px] h-4 bg-gray-300" />
 
             {/* Auth Buttons */}
             {mounted && isLoggedIn ? (
@@ -106,7 +106,7 @@ export default function HomePageHeader() {
                   <Link
                     href={isAdmin ? "/admin" : "/dashboard"}
                     className="relative text-[14px] font-medium tracking-wide transition-colors duration-300 group"
-                    style={{ color: scrolled ? '#2c2c2c' : 'rgba(255,255,255,0.9)' }}
+                    style={{ color: '#2c2c2c' }}
                   >
                     Dashboard
                     <span className="absolute -bottom-1 left-0 h-[1.5px] w-0 bg-emerald-400 transition-all duration-300 ease-out group-hover:w-full" />
@@ -116,12 +116,11 @@ export default function HomePageHeader() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleLogout}
-                  className="px-5 py-2 rounded-full text-[13px] font-semibold transition-colors"
+                  className="px-5 py-2 rounded-full text-[13px] font-semibold transition-colors border-none"
                   style={{ 
                     fontFamily: "'General Sans', sans-serif", 
-                    background: scrolled ? '#dc2626' : 'rgba(255,255,255,0.1)', 
+                    background: '#dc2626', 
                     color: '#fff',
-                    border: scrolled ? 'none' : '1px solid rgba(255,255,255,0.2)'
                   }}
                 >
                   Logout
@@ -134,8 +133,8 @@ export default function HomePageHeader() {
                   className="px-6 py-2.5 rounded-full text-[13px] font-semibold transition-all duration-300 hover:shadow-lg"
                   style={{ 
                     fontFamily: "'General Sans', sans-serif", 
-                    background: scrolled ? '#0d3b26' : '#fff', 
-                    color: scrolled ? '#fff' : '#0d3b26' 
+                    background: '#0d3b26', 
+                    color: '#fff' 
                   }}
                 >
                   Login
@@ -154,7 +153,7 @@ export default function HomePageHeader() {
                 key={i}
                 className="block w-6 h-[2px] rounded-sm transition-all duration-300"
                 style={{
-                  background: menuOpen || scrolled ? '#1a1a1a' : '#ffffff',
+                  background: '#1a1a1a',
                   transform: menuOpen
                     ? i === 0 ? 'rotate(45deg) translate(5px, 5px)' 
                     : i === 1 ? 'scaleX(0)' 
