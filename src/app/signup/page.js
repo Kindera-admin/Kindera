@@ -180,12 +180,11 @@ function SignupForm() {
         {/* Role */}
         <div className="space-y-2">
           <Label htmlFor="role">I am registering as an...</Label>
-          <Select value={role} onValueChange={(value) => { setValue('role', value); if (value !== 'ngo') setValue('ngoId', ''); }}>
+          <Select value={role} onValueChange={(value) => { setValue('role', value); }}>
             <SelectTrigger className="w-full"><SelectValue placeholder="Select a role" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="volunteer">Volunteer</SelectItem>
               <SelectItem value="org_spoc">Organisation SPOC</SelectItem>
-              <SelectItem value="ngo">NGO Representative</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -70,7 +70,7 @@ const cards = [
   },
 ];
 
-export default function DashboardClient() {
+export default function DashboardClient({ userRole }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [activeCard, setActiveCard] = useState(null);
@@ -82,6 +82,10 @@ export default function DashboardClient() {
     });
   };
 
+  const visibleCards = userRole === 'employee'
+    ? cards.filter((card) => card.href === '/admin/ngo-partners')
+    : cards;
+
   return (
     <div className="w-full max-w-5xl mx-auto">
       {/* Header */}
@@ -89,15 +93,17 @@ export default function DashboardClient() {
         <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">
           Control Centre
         </p>
-        <h1 className="text-3xl font-bold text-gray-900 mb-1">Admin Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-1">
+          {userRole === 'employee' ? 'Employee Dashboard' : 'Admin Dashboard'}
+        </h1>
         <p className="text-gray-500 text-sm">
-          Manage the Kindera platform — users, events, and NGO partners.
+          {userRole === 'employee' ? 'Manage NGO partners.' : 'Manage the Kindera platform — users, events, and NGO partners.'}
         </p>
       </div>
 
       {/* Card Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        {cards.map((card) => {
+        {visibleCards.map((card) => {
           const Icon = card.icon;
           const isLoading = isPending && activeCard === card.title;
 

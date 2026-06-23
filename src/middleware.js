@@ -21,7 +21,7 @@ export async function middleware(request) {
 
   if (isPublicPath && isAuthenticated) {
     const role = await getTokenRole(token);
-    const dest = role === 'admin' ? '/admin' : '/dashboard';
+    const dest = (role === 'admin' || role === 'employee') ? '/admin' : '/dashboard';
     return NextResponse.redirect(new URL(dest, request.url));
   }
 
@@ -31,13 +31,13 @@ export async function middleware(request) {
     return NextResponse.redirect(url);
   }
 
-  // Protect /admin/* — only admin role allowed
+  // Protect /admin/* — only admin and employee roles allowed
   if (path.startsWith('/admin') && isAuthenticated) {
     const role = await getTokenRole(token);
     if (!role) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
-    if (role !== 'admin') {
+    if (role !== 'admin' && role !== 'employee') {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }

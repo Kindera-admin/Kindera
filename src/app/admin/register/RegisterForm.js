@@ -64,7 +64,7 @@ function CertUpload({ certKey, label, desc, file, onFileSelect, onRemove }) {
 export default function RegisterForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('ngo');
+  const [selectedRole, setSelectedRole] = useState('org_member');
   const [certFiles, setCertFiles] = useState({});
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm({
@@ -154,9 +154,9 @@ export default function RegisterForm() {
             }}>
               <SelectTrigger className="w-full"><SelectValue placeholder="Select a role" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="ngo">NGO Representative</SelectItem>
                 <SelectItem value="org_spoc">Organisation SPOC</SelectItem>
                 <SelectItem value="org_member">Organisation Member</SelectItem>
+                <SelectItem value="employee">Employee / Team</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -979,7 +979,7 @@ export async function signup(formData) {
       return { success: false, message: 'Organization name is required' };
     }
 
-    if (!['volunteer', 'org_member', 'org_spoc', 'ngo'].includes(role)) {
+    if (!['volunteer', 'org_member', 'org_spoc', 'ngo', 'employee'].includes(role)) {
       return { success: false, message: 'Invalid role selected' };
     }
 
@@ -1092,7 +1092,7 @@ export async function createNGOPartner(formData) {
 
     await connectDB();
     const user = await getCurrentUser();
-    if (user.role !== 'admin') return { success: false, message: 'Only admins can add NGO partners' };
+    if (user.role !== 'admin' && user.role !== 'employee') return { success: false, message: 'Only admins and employees can add NGO partners' };
 
     const name = formData.get('name')?.trim();
     const description = formData.get('description')?.trim();
@@ -1141,7 +1141,7 @@ export async function deleteNGOPartner(id) {
 
     await connectDB();
     const user = await getCurrentUser();
-    if (user.role !== 'admin') return { success: false, message: 'Only admins can delete NGO partners' };
+    if (user.role !== 'admin' && user.role !== 'employee') return { success: false, message: 'Only admins and employees can delete NGO partners' };
 
     const partner = await NGOPartner.findByIdAndDelete(id);
     if (!partner) return { success: false, message: 'NGO partner not found' };

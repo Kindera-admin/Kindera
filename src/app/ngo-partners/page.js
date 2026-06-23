@@ -8,9 +8,6 @@ export default async function NGOPartnersPage() {
 
   if (!user) redirect('/login');
 
-  const isOrgUser = user.role === 'org_spoc' || user.role === 'org_member';
-  if (!isOrgUser) redirect('/home');
-
   const { partners = [] } = await getAllNGOPartners();
 
   return (

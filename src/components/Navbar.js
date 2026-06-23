@@ -43,12 +43,15 @@ const Navbar = () => {
 
   // Build nav links based on role
   const navLinks = [];
-  if (isAdmin()) {
+  if (isAdmin() || user?.role === 'employee') {
     navLinks.push({ label: 'Dashboard', href: '/admin', icon: LayoutDashboard, startsWith: true });
-    navLinks.push({ label: 'Events', href: '/admin/events', icon: CalendarDays });
-    navLinks.push({ label: 'Corporate', href: '/admin/corporate', icon: Building2 });
-    navLinks.push({ label: 'Users', href: '/admin/users', icon: Users });
-    navLinks.push({ label: 'Registrations', href: '/admin/registrations', icon: Users });
+    if (isAdmin()) {
+      navLinks.push({ label: 'Events', href: '/admin/events', icon: CalendarDays });
+      navLinks.push({ label: 'Corporate', href: '/admin/corporate', icon: Building2 });
+      navLinks.push({ label: 'Users', href: '/admin/users', icon: Users });
+      navLinks.push({ label: 'Registrations', href: '/admin/registrations', icon: Users });
+    }
+    navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
   } else if (user?.role === 'org_spoc') {
     navLinks.push({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard });
     navLinks.push({ label: 'My Team', href: '/dashboard/team', icon: Users });
@@ -58,12 +61,14 @@ const Navbar = () => {
   } else if (user?.role === 'org_member' || user?.role === 'volunteer') {
     navLinks.push({ label: 'My Impact', href: '/dashboard/my-impact', icon: LayoutDashboard });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
+    navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
   } else if (user?.role === 'ngo') {
     navLinks.push({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
     navLinks.push({ label: 'Registrations', href: '/dashboard/registrations', icon: Users });
     navLinks.push({ label: 'Reports', href: '/reports', icon: FileText });
     navLinks.push({ label: 'Documents', href: '/dashboard/documents', icon: FileText });
+    navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
   }
 
   return (

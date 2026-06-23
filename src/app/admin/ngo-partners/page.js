@@ -7,7 +7,7 @@ export default async function AdminNGOPartnersPage() {
   const user = await getCurrentUser();
 
   if (!user) redirect('/login');
-  if (user.role !== 'admin') redirect('/dashboard');
+  if (user.role !== 'admin' && user.role !== 'employee') redirect('/dashboard');
 
   const { partners = [] } = await getAllNGOPartners();
 
