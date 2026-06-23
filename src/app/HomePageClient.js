@@ -343,7 +343,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
             transition={{ delay: 0.2 }}
             className="flex flex-col sm:flex-row justify-center gap-4"
           >
-            <a href="/signup" className="px-8 py-4 rounded-full bg-emerald-500 text-[#0d3b26] font-semibold hover:bg-emerald-400 transition-all">
+            <a href="https://forms.gle/T1ACRMV27pDQqvWz8" target="_blank" rel="noopener noreferrer" className="px-8 py-4 rounded-full bg-emerald-500 text-[#0d3b26] font-semibold hover:bg-emerald-400 transition-all">
               Register as NGO
             </a>
             <a href="/signup" className="px-8 py-4 rounded-full border border-white/20 text-white font-semibold hover:bg-white/10 transition-all">

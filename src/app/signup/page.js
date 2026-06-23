@@ -187,6 +187,18 @@ function SignupForm() {
               <SelectItem value="org_spoc">Organisation SPOC</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-xs text-gray-500 mt-1">
+            Are you an NGO?{" "}
+            <a
+              href="https://forms.gle/T1ACRMV27pDQqvWz8"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-600 font-semibold hover:underline"
+            >
+              Fill out this form
+            </a>{" "}
+            to register with us.
+          </p>
         </div>
 
         {/* Organization / NGO Name */}
