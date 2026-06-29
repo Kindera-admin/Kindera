@@ -20,8 +20,8 @@ const eventSchema = new mongoose.Schema({
   },
   registrationLink: {
     type: String,
-    required: true,
-    trim: true
+    trim: true,
+    default: ''
   },
   durationHours: {
     type: Number,

@@ -663,14 +663,13 @@ export async function createEvent(formData) {
     const description = formData.get('description');
     const date = formData.get('date');
     const location = formData.get('location');
-    const registrationLink = formData.get('registrationLink');
     const capacity = formData.get('capacity');
     const imageUrl = formData.get('imageUrl');
     const beneficiariesImpacted = formData.get('beneficiariesImpacted');
     const durationHours = formData.get('durationHours') ? parseFloat(formData.get('durationHours')) : 2;
-    
-    if (!title || !description || !date || !location || !registrationLink) {
-      return { success: false, message: 'All required fields must be filled (including Registration Link)' };
+
+    if (!title || !description || !date || !location) {
+      return { success: false, message: 'All required fields must be filled' };
     }
     
     const event = await Event.create({
@@ -678,7 +677,7 @@ export async function createEvent(formData) {
       description,
       date: new Date(date),
       location,
-      registrationLink,
+      registrationLink: '',
       capacity: capacity ? parseInt(capacity) : null,
       durationHours,
       beneficiariesImpacted: beneficiariesImpacted ? parseInt(beneficiariesImpacted) : 0,
