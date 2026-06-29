@@ -83,6 +83,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId }) 
   const [isPending, startTransition] = useTransition();
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
+  const textareaRef = useRef(null);
   const pollRef = useRef(null);
 
   const filteredContacts = contactList.filter((c) =>
@@ -139,6 +140,10 @@ export default function ChatClient({ contacts, currentUser, initialContactId }) 
     fd.append('receiverId', activeContact._id);
     fd.append('content', text.trim());
     setText('');
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
     startTransition(async () => {
       const res = await sendMessage(fd);
       if (res.success) {
@@ -383,13 +388,20 @@ export default function ChatClient({ contacts, currentUser, initialContactId }) 
                   {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
                 </button>
                 <textarea
+                  ref={textareaRef}
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => {
+                    setText(e.target.value);
+                    // Auto-resize
+                    const el = e.target;
+                    el.style.height = 'auto';
+                    el.style.height = Math.min(el.scrollHeight, 128) + 'px';
+                  }}
                   onKeyDown={handleKeyDown}
                   placeholder="Type a message…"
                   rows={1}
-                  className="flex-1 bg-transparent resize-none text-sm text-gray-800 outline-none placeholder-gray-400 max-h-32 leading-relaxed"
-                  style={{ overflowY: text.split('\n').length > 4 ? 'auto' : 'hidden' }}
+                  className="flex-1 bg-transparent resize-none text-sm text-gray-800 outline-none placeholder-gray-400 leading-relaxed"
+                  style={{ height: 'auto', maxHeight: '128px', overflowY: 'auto' }}
                 />
                 <button
                   onClick={handleSend}
