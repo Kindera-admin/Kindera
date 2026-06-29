@@ -2154,15 +2154,40 @@ export async function getChatContacts() {
     if (!currentUser) return { success: false, message: 'Not authenticated' };
     await connectDB();
 
-    let rolesToFetch = [];
-    if (currentUser.role === 'admin') rolesToFetch = ['ngo', 'org_spoc'];
-    else if (currentUser.role === 'ngo') rolesToFetch = ['admin', 'org_spoc'];
-    else if (currentUser.role === 'org_spoc') rolesToFetch = ['admin', 'ngo'];
-    else return { success: false, message: 'Chat not available for your role' };
+    let contacts = [];
 
-    const contacts = await User.find({ role: { $in: rolesToFetch } })
-      .select('name role organizationName ngoId')
-      .lean();
+    if (currentUser.role === 'admin') {
+      // Admin can chat: NGOs, SPOCs, and Employees
+      contacts = await User.find({ role: { $in: ['ngo', 'org_spoc', 'employee'] } })
+        .select('name role organizationName ngoId')
+        .lean();
+    } else if (currentUser.role === 'ngo') {
+      // NGO can chat: Admins and SPOCs
+      contacts = await User.find({ role: { $in: ['admin', 'org_spoc'] } })
+        .select('name role organizationName ngoId')
+        .lean();
+    } else if (currentUser.role === 'org_spoc') {
+      // SPOC can chat: Admins, NGOs, and their own org members
+      const [adminNgo, members] = await Promise.all([
+        User.find({ role: { $in: ['admin', 'ngo'] } })
+          .select('name role organizationName ngoId').lean(),
+        User.find({ role: 'org_member', organizationName: currentUser.organizationName })
+          .select('name role organizationName ngoId').lean(),
+      ]);
+      contacts = [...adminNgo, ...members];
+    } else if (currentUser.role === 'employee') {
+      // Employee can only chat with Admin
+      contacts = await User.find({ role: 'admin' })
+        .select('name role organizationName ngoId')
+        .lean();
+    } else if (currentUser.role === 'org_member') {
+      // Org member can only chat with their SPOC
+      contacts = await User.find({ role: 'org_spoc', organizationName: currentUser.organizationName })
+        .select('name role organizationName ngoId')
+        .lean();
+    } else {
+      return { success: false, message: 'Chat not available for your role' };
+    }
 
     const unreadCounts = await Message.aggregate([
       { $match: { receiver: currentUser._id, read: false } },
@@ -2239,7 +2264,7 @@ export async function sendMessage(formData) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) return { success: false, message: 'Not authenticated' };
-    if (!['admin', 'ngo', 'org_spoc'].includes(currentUser.role)) {
+    if (!['admin', 'ngo', 'org_spoc', 'employee', 'org_member'].includes(currentUser.role)) {
       return { success: false, message: 'Chat not available for your role' };
     }
     await connectDB();

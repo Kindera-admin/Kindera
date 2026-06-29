@@ -13,12 +13,16 @@ const ROLE_LABEL = {
   admin: 'Admin',
   ngo: 'NGO Partner',
   org_spoc: 'Corporate SPOC',
+  employee: 'Team / Employee',
+  org_member: 'Team Member',
 };
 
 const ROLE_COLORS = {
   admin: { bg: 'bg-[#0d3b26]', text: 'text-[#0d3b26]', light: 'bg-[#f0f7f3]' },
   ngo: { bg: 'bg-purple-600', text: 'text-purple-600', light: 'bg-purple-50' },
   org_spoc: { bg: 'bg-blue-600', text: 'text-blue-600', light: 'bg-blue-50' },
+  employee: { bg: 'bg-orange-500', text: 'text-orange-500', light: 'bg-orange-50' },
+  org_member: { bg: 'bg-teal-600', text: 'text-teal-600', light: 'bg-teal-50' },
 };
 
 function getInitials(name) {
@@ -95,6 +99,8 @@ export default function ChatClient({ contacts, currentUser, initialContactId }) 
     admin: filteredContacts.filter((c) => c.role === 'admin'),
     ngo: filteredContacts.filter((c) => c.role === 'ngo'),
     org_spoc: filteredContacts.filter((c) => c.role === 'org_spoc'),
+    employee: filteredContacts.filter((c) => c.role === 'employee'),
+    org_member: filteredContacts.filter((c) => c.role === 'org_member'),
   };
 
   const totalUnread = contactList.reduce((s, c) => s + (c.unread || 0), 0);

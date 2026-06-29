@@ -12,7 +12,7 @@ export default async function MessagesPage({ searchParams }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const allowedRoles = ['admin', 'ngo', 'org_spoc'];
+  const allowedRoles = ['admin', 'ngo', 'org_spoc', 'employee', 'org_member'];
   if (!allowedRoles.includes(user.role)) redirect('/dashboard');
 
   const { contacts = [] } = await getChatContacts();

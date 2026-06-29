@@ -24,7 +24,7 @@ const Navbar = () => {
     return () => { document.body.style.overflow = ''; };
   }, [isMenuOpen]);
 
-  const isChatUser = ['admin', 'ngo', 'org_spoc'].includes(user?.role);
+  const isChatUser = ['admin', 'ngo', 'org_spoc', 'employee', 'org_member'].includes(user?.role);
 
   const fetchUnread = useCallback(async () => {
     if (!isChatUser) return;
@@ -68,6 +68,9 @@ const Navbar = () => {
     navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
     if (isAdmin()) {
       navLinks.push({ label: 'Messages', href: '/messages', icon: MessageSquare, badge: true });
+    } else {
+      // employee
+      navLinks.push({ label: 'Messages', href: '/messages', icon: MessageSquare, badge: true });
     }
   } else if (user?.role === 'org_spoc') {
     navLinks.push({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard });
@@ -80,6 +83,9 @@ const Navbar = () => {
     navLinks.push({ label: 'My Impact', href: '/dashboard/my-impact', icon: LayoutDashboard });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
     navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
+    if (user?.role === 'org_member') {
+      navLinks.push({ label: 'Messages', href: '/messages', icon: MessageSquare, badge: true });
+    }
   } else if (user?.role === 'ngo') {
     navLinks.push({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
