@@ -46,20 +46,12 @@ export default async function DashboardPage() {
   // Define action cards per role
   const actionCards = [
     user.role === 'ngo' && {
-      title: 'Submit Monthly Report',
-      description: 'Submit data about people helped, events conducted, and funds utilized.',
+      title: 'Upload Documents',
+      description: 'Upload your 80G, 12A, and CSR-1 certificates for verification.',
       icon: FileText,
       color: '#0d3b26',
-      href: '/reports/submit',
-      label: 'Submit Report',
-    },
-    user.role === 'ngo' && {
-      title: 'View Reports',
-      description: 'Review your previously submitted monthly impact reports.',
-      icon: FileText,
-      color: '#1a5c3a',
-      href: '/reports',
-      label: 'View Reports',
+      href: '/dashboard/documents',
+      label: 'Manage Documents',
     },
     (user.role === 'ngo' || isOrgUser) && {
       title: 'Events',

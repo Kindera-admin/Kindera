@@ -65,10 +65,7 @@ const Navbar = () => {
   } else if (user?.role === 'ngo') {
     navLinks.push({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
-    navLinks.push({ label: 'Registrations', href: '/dashboard/registrations', icon: Users });
-    navLinks.push({ label: 'Reports', href: '/reports', icon: FileText });
     navLinks.push({ label: 'Documents', href: '/dashboard/documents', icon: FileText });
-    navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
   }
 
   return (
