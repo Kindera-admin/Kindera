@@ -157,6 +157,7 @@ export default function RegisterForm() {
                 <SelectItem value="org_spoc">Organisation SPOC</SelectItem>
                 <SelectItem value="org_member">Organisation Member</SelectItem>
                 <SelectItem value="employee">Employee / Team</SelectItem>
+                <SelectItem value="ngo">NGO Representative</SelectItem>
               </SelectContent>
             </Select>
           </div>
