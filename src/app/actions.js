@@ -7,6 +7,7 @@ import Event from '@/models/Event';
 import NGOPartner from '@/models/NGOPartner';
 import Attendance from '@/models/Attendance';
 import ImpactPhoto from '@/models/ImpactPhoto';
+import Message from '@/models/Message';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
@@ -682,6 +683,7 @@ export async function createEvent(formData) {
       imageUrl: imageUrl || '',
       createdBy: user._id,
       createdByRole: user.role,
+      organizationName: user.role === 'org_spoc' ? user.organizationName : null,
       status: 'upcoming'
     });
     
@@ -712,11 +714,28 @@ export async function createEvent(formData) {
 export async function getHomeEvents() {
   try {
     await connectDB();
+    const currentUser = await getCurrentUser();
 
-    // Remove the old static updateMany
-    // We calculate lifecycle dynamically now.
+    const filter = { status: 'upcoming' };
+    
+    if (!currentUser || currentUser.role === 'volunteer') {
+      filter.$or = [
+        { createdByRole: 'ngo' },
+        { createdByRole: 'admin' },
+        { organizationName: null },
+        { organizationName: { $exists: false } }
+      ];
+    } else if (currentUser.role === 'org_spoc' || currentUser.role === 'org_member') {
+      filter.$or = [
+        { createdByRole: 'ngo' },
+        { createdByRole: 'admin' },
+        { organizationName: null },
+        { organizationName: { $exists: false } },
+        { organizationName: currentUser.organizationName }
+      ];
+    }
 
-    const events = await Event.find({ status: 'upcoming' })
+    const events = await Event.find(filter)
       .sort({ date: 1 })
       .limit(6);
 
@@ -771,13 +790,30 @@ export async function getEvents(optionsOrStatus = {}) {
     const filter = {};
     if (status) filter.status = status;
     
+    const currentUser = await getCurrentUser();
+    if (!currentUser || currentUser.role === 'volunteer') {
+      filter.$or = [
+        { createdByRole: 'ngo' },
+        { createdByRole: 'admin' },
+        { organizationName: null },
+        { organizationName: { $exists: false } }
+      ];
+    } else if (currentUser.role === 'org_spoc' || currentUser.role === 'org_member') {
+      filter.$or = [
+        { createdByRole: 'ngo' },
+        { createdByRole: 'admin' },
+        { organizationName: null },
+        { organizationName: { $exists: false } },
+        { organizationName: currentUser.organizationName }
+      ];
+    }
+
     const events = await Event.find(filter)
       .populate('createdBy', 'name role')
       .sort({ date: 1 })
       .lean();
     
     const now = new Date();
-    const currentUser = await getCurrentUser();
     
     let processedEvents = events.map(event => {
       const start = new Date(event.date);
@@ -829,6 +865,22 @@ export async function getEventById(id) {
     
     if (!event) {
       return { success: false, message: 'Event not found' };
+    }
+
+    const currentUser = await getCurrentUser();
+    
+    if (event.organizationName) {
+      // It's a private SPOC event
+      if (!currentUser) {
+        return { success: false, message: 'You must be logged in to view this private event' };
+      }
+      if (
+        currentUser.role !== 'admin' &&
+        currentUser.role !== 'employee' &&
+        currentUser.organizationName !== event.organizationName
+      ) {
+        return { success: false, message: 'You do not have permission to view this organization-specific event' };
+      }
     }
     
     const now = new Date();
@@ -2091,5 +2143,154 @@ export async function deleteImpactPhoto(id) {
   } catch (error) {
     console.error('Error deleting impact photo:', error);
     return { success: false, message: error.message };
+  }
+}
+
+// ── CHAT / MESSAGING ──────────────────────────────────────────────────────────
+
+export async function getChatContacts() {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return { success: false, message: 'Not authenticated' };
+    await connectDB();
+
+    let rolesToFetch = [];
+    if (currentUser.role === 'admin') rolesToFetch = ['ngo', 'org_spoc'];
+    else if (currentUser.role === 'ngo') rolesToFetch = ['admin', 'org_spoc'];
+    else if (currentUser.role === 'org_spoc') rolesToFetch = ['admin', 'ngo'];
+    else return { success: false, message: 'Chat not available for your role' };
+
+    const contacts = await User.find({ role: { $in: rolesToFetch } })
+      .select('name role organizationName ngoId')
+      .lean();
+
+    const unreadCounts = await Message.aggregate([
+      { $match: { receiver: currentUser._id, read: false } },
+      { $group: { _id: '$sender', count: { $sum: 1 } } },
+    ]);
+    const unreadMap = {};
+    unreadCounts.forEach((u) => { unreadMap[u._id.toString()] = u.count; });
+
+    const serialized = contacts.map((c) => ({
+      _id: c._id.toString(),
+      name: c.name,
+      role: c.role,
+      organizationName: c.organizationName || null,
+      ngoId: c.ngoId || null,
+      unread: unreadMap[c._id.toString()] || 0,
+    }));
+
+    return { success: true, contacts: serialized };
+  } catch (error) {
+    console.error('Error getting chat contacts:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function getMessages(contactId) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return { success: false, message: 'Not authenticated' };
+    await connectDB();
+
+    const mongoose = (await import('mongoose')).default;
+    const cId = new mongoose.Types.ObjectId(contactId);
+    const meId = currentUser._id;
+
+    await Message.updateMany(
+      { sender: cId, receiver: meId, read: false },
+      { $set: { read: true } }
+    );
+
+    const messages = await Message.find({
+      $or: [
+        { sender: meId, receiver: cId },
+        { sender: cId, receiver: meId },
+      ],
+    })
+      .populate('sender', 'name role')
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const serialized = messages.map((m) => ({
+      _id: m._id.toString(),
+      content: m.content,
+      fileUrl: m.fileUrl || null,
+      fileName: m.fileName || null,
+      fileType: m.fileType || null,
+      read: m.read,
+      createdAt: m.createdAt.toISOString(),
+      sender: {
+        _id: m.sender._id.toString(),
+        name: m.sender.name,
+        role: m.sender.role,
+      },
+      isMine: m.sender._id.toString() === meId.toString(),
+    }));
+
+    return { success: true, messages: serialized };
+  } catch (error) {
+    console.error('Error getting messages:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function sendMessage(formData) {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return { success: false, message: 'Not authenticated' };
+    if (!['admin', 'ngo', 'org_spoc'].includes(currentUser.role)) {
+      return { success: false, message: 'Chat not available for your role' };
+    }
+    await connectDB();
+
+    const receiverId = formData.get('receiverId');
+    const content = formData.get('content')?.trim() || '';
+    const fileUrl = formData.get('fileUrl') || null;
+    const fileName = formData.get('fileName') || null;
+    const fileType = formData.get('fileType') || null;
+
+    if (!receiverId) return { success: false, message: 'Receiver is required' };
+    if (!content && !fileUrl) return { success: false, message: 'Message or file is required' };
+
+    const mongoose = (await import('mongoose')).default;
+    const message = await Message.create({
+      sender: currentUser._id,
+      receiver: new mongoose.Types.ObjectId(receiverId),
+      content,
+      fileUrl,
+      fileName,
+      fileType,
+    });
+
+    return {
+      success: true,
+      message: {
+        _id: message._id.toString(),
+        content: message.content,
+        fileUrl: message.fileUrl,
+        fileName: message.fileName,
+        fileType: message.fileType,
+        read: message.read,
+        createdAt: message.createdAt.toISOString(),
+        sender: { _id: currentUser._id.toString(), name: currentUser.name, role: currentUser.role },
+        isMine: true,
+      },
+    };
+  } catch (error) {
+    console.error('Error sending message:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function getUnreadCount() {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return { count: 0 };
+    await connectDB();
+    const count = await Message.countDocuments({ receiver: currentUser._id, read: false });
+    return { count };
+  } catch {
+    return { count: 0 };
   }
 }

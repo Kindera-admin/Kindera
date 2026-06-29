@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import HomeButtons from '@/components/HomeButtons';
 import { getEvents, getOrgStats } from '@/app/actions';
-import { CalendarDays, MapPin, FileText, Users, Building2, ArrowRight } from 'lucide-react';
+import { CalendarDays, MapPin, FileText, Users, Building2, ArrowRight, MessageSquare } from 'lucide-react';
 import CorporateDashboardClient from './CorporateDashboardClient';
 import NameUpdateClient from './NameUpdateClient';
 
@@ -53,6 +53,14 @@ export default async function DashboardPage() {
       href: '/dashboard/documents',
       label: 'Manage Documents',
     },
+    user.role === 'ngo' && {
+      title: 'Messages',
+      description: 'Securely chat with Admins and Corporate SPOCs, share documents and reports.',
+      icon: MessageSquare,
+      color: '#e11d48',
+      href: '/messages',
+      label: 'Open Chat',
+    },
     (user.role === 'ngo' || isOrgUser) && {
       title: 'Events',
       description: isOrgUser
@@ -70,6 +78,14 @@ export default async function DashboardPage() {
       color: '#3d5a99',
       href: '/ngo-partners',
       label: 'View Partners',
+    },
+    user.role === 'org_spoc' && {
+      title: 'Messages',
+      description: 'Securely chat with Admins and NGO partners, share documents and reports.',
+      icon: MessageSquare,
+      color: '#e11d48',
+      href: '/messages',
+      label: 'Open Chat',
     },
   ].filter(Boolean);
 

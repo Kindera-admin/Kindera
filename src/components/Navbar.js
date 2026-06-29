@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import useAuthStore from '@/store/authStore';
-import { logout } from '@/app/actions';
+import { logout, getUnreadCount } from '@/app/actions';
 import { toast } from 'sonner';
-import { LogOut, Menu, X, LayoutDashboard, CalendarDays, Users, FileText, Building2, ChevronDown } from 'lucide-react';
+import { LogOut, Menu, X, LayoutDashboard, CalendarDays, Users, FileText, Building2, MessageSquare } from 'lucide-react';
 
 const Navbar = () => {
   const { user, clearAuth, isAuthenticated, isAdmin } = useAuthStore();
@@ -16,6 +16,7 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -23,7 +24,20 @@ const Navbar = () => {
     return () => { document.body.style.overflow = ''; };
   }, [isMenuOpen]);
 
-  const isOrgUser = user?.role === 'org_spoc' || user?.role === 'org_member';
+  const isChatUser = ['admin', 'ngo', 'org_spoc'].includes(user?.role);
+
+  const fetchUnread = useCallback(async () => {
+    if (!isChatUser) return;
+    const res = await getUnreadCount();
+    setUnreadCount(res.count || 0);
+  }, [isChatUser]);
+
+  useEffect(() => {
+    if (!mounted || !isChatUser) return;
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 10000);
+    return () => clearInterval(interval);
+  }, [mounted, isChatUser, fetchUnread]);
 
   const handleLogout = async () => {
     try {
@@ -52,12 +66,16 @@ const Navbar = () => {
       navLinks.push({ label: 'Registrations', href: '/admin/registrations', icon: Users });
     }
     navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
+    if (isAdmin()) {
+      navLinks.push({ label: 'Messages', href: '/messages', icon: MessageSquare, badge: true });
+    }
   } else if (user?.role === 'org_spoc') {
     navLinks.push({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard });
     navLinks.push({ label: 'My Team', href: '/dashboard/team', icon: Users });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
     navLinks.push({ label: 'Registrations', href: '/dashboard/registrations', icon: Users });
     navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
+    navLinks.push({ label: 'Messages', href: '/messages', icon: MessageSquare, badge: true });
   } else if (user?.role === 'org_member' || user?.role === 'volunteer') {
     navLinks.push({ label: 'My Impact', href: '/dashboard/my-impact', icon: LayoutDashboard });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
@@ -66,6 +84,7 @@ const Navbar = () => {
     navLinks.push({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
     navLinks.push({ label: 'Documents', href: '/dashboard/documents', icon: FileText });
+    navLinks.push({ label: 'Messages', href: '/messages', icon: MessageSquare, badge: true });
   }
 
   return (
@@ -111,7 +130,14 @@ const Navbar = () => {
                       : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                   }`}
                 >
-                  {link.label}
+                  <span className="flex items-center gap-1.5">
+                    {link.label}
+                    {link.badge && unreadCount > 0 && (
+                      <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center leading-none">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </span>
                   {isActive && (
                     <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-[#0d3b26] rounded-full" />
                   )}
@@ -138,10 +164,14 @@ const Navbar = () => {
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
+            {/* Mobile unread dot */}
+            {isChatUser && unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
+            )}
           </button>
         </nav>
       </header>
@@ -171,6 +201,11 @@ const Navbar = () => {
                 >
                   <Icon className="w-5 h-5" />
                   {link.label}
+                  {link.badge && unreadCount > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}

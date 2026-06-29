@@ -68,6 +68,15 @@ const cards = [
     gradient: 'from-[#f59e0b] to-[#fbbf24]',
     lightBg: '#fffbeb',
   },
+  {
+    title: 'Messages',
+    description: 'Securely chat with NGO partners and Corporate SPOCs, share docs and reports.',
+    icon: FileText,
+    href: '/messages',
+    accent: '#e11d48',
+    gradient: 'from-[#e11d48] to-[#fb7185]',
+    lightBg: '#fff1f2',
+  },
 ];
 
 export default function DashboardClient({ userRole }) {

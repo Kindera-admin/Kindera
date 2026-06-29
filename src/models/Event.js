@@ -41,6 +41,11 @@ const eventSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  organizationName: {
+    type: String,
+    trim: true,
+    default: null
+  },
   capacity: {
     type: Number,
     default: null
