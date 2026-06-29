@@ -170,7 +170,20 @@ export default function CreateEventForm() {
                 <p className="text-sm text-red-500">{errors.location.message}</p>
               )}
             </div>
-            
+
+            <div className="space-y-2">
+              <Label htmlFor="registrationLink">Registration Link *</Label>
+              <Input
+                id="registrationLink"
+                className="w-full"
+                placeholder="https://forms.google.com/... or any registration URL"
+                {...register('registrationLink', { required: 'Registration link is required' })}
+              />
+              {errors.registrationLink && (
+                <p className="text-sm text-red-500">{errors.registrationLink.message}</p>
+              )}
+              <p className="text-xs text-gray-500">Google Form or external registration link for participants.</p>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="capacity">Capacity (optional)</Label>
