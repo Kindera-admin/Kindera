@@ -46,7 +46,10 @@ function Counter({ value, label }) {
   );
 }
 
+import useAuthStore from '@/store/authStore';
+
 export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
+  const { isAuthenticated } = useAuthStore();
   const { scrollYProgress } = useScroll();
   const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
@@ -261,58 +264,60 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
         </div>
       </section>
 
-      {/* Events */}
-      <section id="events" className="py-24 bg-white border-t border-black/5">
-        <div className="max-w-7xl mx-auto px-5">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
-            <div>
-              <h2 className="text-4xl md:text-5xl font-serif text-[#0d3b26] mb-4">Upcoming Events</h2>
-              <p className="text-gray-500 max-w-xl">Join our upcoming volunteer initiatives and be part of the change.</p>
+      {/* Events - only shown to logged-in users */}
+      {isAuthenticated() && (
+        <section id="events" className="py-24 bg-white border-t border-black/5">
+          <div className="max-w-7xl mx-auto px-5">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+              <div>
+                <h2 className="text-4xl md:text-5xl font-serif text-[#0d3b26] mb-4">Upcoming Events</h2>
+                <p className="text-gray-500 max-w-xl">Join our upcoming volunteer initiatives and be part of the change.</p>
+              </div>
             </div>
-          </div>
 
-          {upcomingEvents.length === 0 ? (
-            <div className="text-center py-20 bg-gray-50 rounded-3xl border border-gray-100">
-              <p className="text-gray-500 text-lg">No upcoming events right now. Check back soon!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {upcomingEvents.map((ev, i) => (
-                <motion.div
-                  key={ev._id}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="group bg-white rounded-3xl border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-500"
-                >
-                  <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
-                    {ev.imageUrl ? (
-                      <img src={ev.imageUrl} alt={ev.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                    ) : (
-                      <div className="w-full h-full bg-emerald-900/10 flex items-center justify-center text-emerald-800 font-serif text-2xl">Kindera</div>
-                    )}
-                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-4 py-1.5 rounded-full text-xs font-bold text-[#0d3b26] uppercase tracking-wide">
-                      {ev.location}
+            {upcomingEvents.length === 0 ? (
+              <div className="text-center py-20 bg-gray-50 rounded-3xl border border-gray-100">
+                <p className="text-gray-500 text-lg">No upcoming events right now. Check back soon!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {upcomingEvents.map((ev, i) => (
+                  <motion.div
+                    key={ev._id}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="group bg-white rounded-3xl border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-500"
+                  >
+                    <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                      {ev.imageUrl ? (
+                        <img src={ev.imageUrl} alt={ev.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                      ) : (
+                        <div className="w-full h-full bg-emerald-900/10 flex items-center justify-center text-emerald-800 font-serif text-2xl">Kindera</div>
+                      )}
+                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-4 py-1.5 rounded-full text-xs font-bold text-[#0d3b26] uppercase tracking-wide">
+                        {ev.location}
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-8">
-                    <p className="text-emerald-600 text-sm font-semibold mb-3">
-                      {new Date(ev.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                    </p>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3 line-clamp-2">{ev.title}</h3>
-                    <p className="text-gray-500 mb-8 line-clamp-3 leading-relaxed">{ev.description}</p>
-                    <Link href={`/events/${ev._id}/register`} className="inline-flex items-center text-[#0d3b26] font-semibold hover:text-emerald-600 transition-colors">
-                      Register 
-                      <span className="ml-2 transform group-hover:translate-x-1 transition-transform">→</span>
-                    </Link>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+                    <div className="p-8">
+                      <p className="text-emerald-600 text-sm font-semibold mb-3">
+                        {new Date(ev.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      </p>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-3 line-clamp-2">{ev.title}</h3>
+                      <p className="text-gray-500 mb-8 line-clamp-3 leading-relaxed">{ev.description}</p>
+                      <Link href={`/events/${ev._id}/register`} className="inline-flex items-center text-[#0d3b26] font-semibold hover:text-emerald-600 transition-colors">
+                        Register 
+                        <span className="ml-2 transform group-hover:translate-x-1 transition-transform">→</span>
+                      </Link>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* CTA Footer Wrapper */}
       <section className="bg-[#0d3b26] text-white pt-24 pb-12 relative overflow-hidden">
