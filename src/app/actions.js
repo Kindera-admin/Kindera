@@ -2163,8 +2163,8 @@ export async function getChatContacts() {
         .select('name role organizationName ngoId')
         .lean();
     } else if (currentUser.role === 'ngo') {
-      // NGO can chat: Admins and SPOCs
-      contacts = await User.find({ role: { $in: ['admin', 'org_spoc'] } })
+      // NGO can chat: Admins only
+      contacts = await User.find({ role: 'admin' })
         .select('name role organizationName ngoId')
         .lean();
     } else if (currentUser.role === 'org_spoc') {
