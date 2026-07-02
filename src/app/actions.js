@@ -2168,14 +2168,14 @@ export async function getChatContacts() {
         .select('name role organizationName ngoId')
         .lean();
     } else if (currentUser.role === 'org_spoc') {
-      // SPOC can chat: Admins, NGOs, and their own org members
-      const [adminNgo, members] = await Promise.all([
-        User.find({ role: { $in: ['admin', 'ngo'] } })
+      // SPOC can chat: Admins and their own org members only
+      const [admins, members] = await Promise.all([
+        User.find({ role: 'admin' })
           .select('name role organizationName ngoId').lean(),
         User.find({ role: 'org_member', organizationName: currentUser.organizationName })
           .select('name role organizationName ngoId').lean(),
       ]);
-      contacts = [...adminNgo, ...members];
+      contacts = [...admins, ...members];
     } else if (currentUser.role === 'employee') {
       // Employee can only chat with Admin
       contacts = await User.find({ role: 'admin' })
