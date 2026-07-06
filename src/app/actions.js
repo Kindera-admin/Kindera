@@ -726,13 +726,23 @@ export async function getHomeEvents() {
         { organizationName: null },
         { organizationName: { $exists: false } }
       ];
-    } else if (currentUser.role === 'org_spoc' || currentUser.role === 'org_member') {
+    } else if (currentUser.role === 'org_spoc') {
+      // SPOC sees NGO/admin events + only their own org events
       filter.$or = [
         { createdByRole: 'ngo' },
         { createdByRole: 'admin' },
         { organizationName: null },
         { organizationName: { $exists: false } },
-        { organizationName: currentUser.organizationName }
+        { createdBy: currentUser._id }
+      ];
+    } else if (currentUser.role === 'org_member') {
+      // Org member sees NGO/admin events + only events created by their SPOC
+      filter.$or = [
+        { createdByRole: 'ngo' },
+        { createdByRole: 'admin' },
+        { organizationName: null },
+        { organizationName: { $exists: false } },
+        ...(currentUser.spocId ? [{ createdBy: currentUser.spocId }] : [])
       ];
     }
 
@@ -799,13 +809,23 @@ export async function getEvents(optionsOrStatus = {}) {
         { organizationName: null },
         { organizationName: { $exists: false } }
       ];
-    } else if (currentUser.role === 'org_spoc' || currentUser.role === 'org_member') {
+    } else if (currentUser.role === 'org_spoc') {
+      // SPOC sees NGO/admin events + only their own org events
       filter.$or = [
         { createdByRole: 'ngo' },
         { createdByRole: 'admin' },
         { organizationName: null },
         { organizationName: { $exists: false } },
-        { organizationName: currentUser.organizationName }
+        { createdBy: currentUser._id }
+      ];
+    } else if (currentUser.role === 'org_member') {
+      // Org member sees NGO/admin events + only events created by their SPOC
+      filter.$or = [
+        { createdByRole: 'ngo' },
+        { createdByRole: 'admin' },
+        { organizationName: null },
+        { organizationName: { $exists: false } },
+        ...(currentUser.spocId ? [{ createdBy: currentUser.spocId }] : [])
       ];
     }
 
@@ -875,12 +895,20 @@ export async function getEventById(id) {
       if (!currentUser) {
         return { success: false, message: 'You must be logged in to view this private event' };
       }
-      if (
-        currentUser.role !== 'admin' &&
-        currentUser.role !== 'employee' &&
-        currentUser.organizationName !== event.organizationName
-      ) {
-        return { success: false, message: 'You do not have permission to view this organization-specific event' };
+      if (currentUser.role === 'admin' || currentUser.role === 'employee') {
+        // admins and employees can always see everything — allowed
+      } else if (currentUser.role === 'org_spoc') {
+        // SPOC can only see events they created themselves
+        if (event.createdBy.toString() !== currentUser._id.toString()) {
+          return { success: false, message: 'You do not have permission to view this event' };
+        }
+      } else if (currentUser.role === 'org_member') {
+        // Org member can only see events created by their SPOC
+        if (!currentUser.spocId || event.createdBy.toString() !== currentUser.spocId.toString()) {
+          return { success: false, message: 'You do not have permission to view this event' };
+        }
+      } else {
+        return { success: false, message: 'You do not have permission to view this event' };
       }
     }
     
