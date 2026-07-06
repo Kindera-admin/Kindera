@@ -96,7 +96,8 @@ export default function EventsClient({ events: initialEvents, userRole, approved
                     <Calendar className="w-4 h-4 mt-0.5 text-gray-500" />
                     <div>
                       <div className="font-semibold">Date & Time</div>
-                      </div>
+                      <div className="text-gray-600">{formatDate(event.date)}</div>
+                    </div>
                   </div>
                   
                   {event.durationHours && (
