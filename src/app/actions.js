@@ -555,11 +555,14 @@ export async function getPendingEventRegistrations() {
             name: user.name,
             username: user.username,
             role: user.role,
+            organizationName: user.organizationName || '',
             mobile: user.mobile || '',
             email: user.email || '',
             age: user.age || null,
             photoUrl: user.photoUrl || '',
             registrationReason: reg.comment || '',
+            volunteersCount: reg.volunteersCount || 1,
+            volunteerNames: reg.volunteerNames || '',
             registeredForEvent: {
               _id: reg.eventId._id.toString(),
               title: reg.eventId.title
@@ -2051,14 +2054,19 @@ export async function registerForEvent(formData, eventId) {
   }
 }
 
-export async function registerForEventLoggedIn(eventId, comment) {
+export async function registerForEventLoggedIn(eventId, comment, volunteersCount = 1, volunteerNames = '') {
   try {
     const session = await getSession();
     if (!session) return { success: false, message: 'Not authenticated' };
 
     await connectDB();
     const currentUser = await getCurrentUser();
-    
+
+    // org_member cannot register directly for global events — SPOC must do it
+    if (currentUser.role === 'org_member') {
+      return { success: false, message: 'Your SPOC registers for events on your behalf. Please contact your SPOC.' };
+    }
+
     const event = await Event.findById(eventId).populate('createdBy');
     if (!event) return { success: false, message: 'Event not found' };
 
@@ -2086,10 +2094,14 @@ export async function registerForEventLoggedIn(eventId, comment) {
       status = 'approved';
     }
 
+    const count = currentUser.role === 'org_spoc' ? (parseInt(volunteersCount) || 1) : 1;
+
     user.eventRegistrations.push({
       eventId,
       status,
-      comment: comment || `I want to volunteer for this event: ${event.title}`,
+      comment: comment || `Registering ${count} volunteer${count > 1 ? 's' : ''} for: ${event.title}`,
+      volunteersCount: count,
+      volunteerNames: volunteerNames || '',
       appliedAt: new Date()
     });
 

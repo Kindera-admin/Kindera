@@ -49,6 +49,8 @@ const userSchema = new mongoose.Schema({
     eventId: { type: mongoose.Schema.Types.ObjectId, ref: 'Event' },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     comment: { type: String, default: '' },
+    volunteersCount: { type: Number, default: 1 },
+    volunteerNames: { type: String, default: '' },
     appliedAt: { type: Date, default: Date.now }
   }],
   has12A: { type: Boolean, default: false },

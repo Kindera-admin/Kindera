@@ -87,6 +87,18 @@ export default function RegistrationsClient({ initialUsers }) {
                 <p className="text-sm font-medium text-gray-800">{user.mobile} {user.email ? `• ${user.email}` : ''}</p>
               </div>
 
+              {user.volunteersCount > 1 && (
+                <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-100">
+                  <p className="text-xs font-semibold text-emerald-800 mb-1">Group Booking</p>
+                  <p className="text-sm font-bold text-emerald-900">
+                    {user.volunteersCount} employees from {user.organizationName || 'their org'}
+                  </p>
+                  {user.volunteerNames && (
+                    <p className="text-xs text-emerald-700 mt-1">{user.volunteerNames}</p>
+                  )}
+                </div>
+              )}
+
               {user.registrationReason && (
                 <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
                   <p className="text-xs font-semibold text-blue-800 mb-1">Reason / Comment</p>
