@@ -165,7 +165,7 @@ export default function EventRegisterClient({ event, currentUser }) {
           <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800">
-              <strong>Your SPOC registers for global events</strong> on your team's behalf.
+              <strong>Your SPOC registers for global events</strong> on your team&apos;s behalf.
               Please contact your SPOC to be included in the registration for this event.
             </p>
           </div>
