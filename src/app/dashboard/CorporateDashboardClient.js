@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Users, Clock, CalendarDays, Building2, Plus, UsersRound } from 'lucide-react';
+import { Users, Clock, CalendarDays, Building2, Plus, UsersRound, MessageSquare, ClipboardList, PlusCircle } from 'lucide-react';
 
 // Dynamically import recharts to avoid SSR crash
 const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
@@ -132,6 +132,45 @@ export default function CorporateDashboardClient({ stats, monthly }) {
             <div>
               <p className="font-semibold text-gray-900 text-sm">Upcoming Events</p>
               <p className="text-xs text-gray-500">Discover and mark attendance</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => router.push('/events/create')}
+            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
+          >
+            <div className="w-10 h-10 rounded-lg bg-[#3d5a99] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+              <PlusCircle className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 text-sm">Create Event</p>
+              <p className="text-xs text-gray-500">Create a new event for your team</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => router.push('/dashboard/registrations')}
+            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
+          >
+            <div className="w-10 h-10 rounded-lg bg-[#7c3aed] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+              <ClipboardList className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 text-sm">Registrations</p>
+              <p className="text-xs text-gray-500">Approve or reject event sign-ups</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => router.push('/messages')}
+            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
+          >
+            <div className="w-10 h-10 rounded-lg bg-[#e11d48] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+              <MessageSquare className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 text-sm">Messages</p>
+              <p className="text-xs text-gray-500">Chat with Admin and your team</p>
             </div>
           </button>
         </div>
