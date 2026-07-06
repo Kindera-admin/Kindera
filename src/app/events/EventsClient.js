@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Users, ExternalLink, Trash2, Share2 } from 'lucide-react';
+import { Calendar, MapPin, Users, ExternalLink, Trash2, Share2, CheckCircle2, Clock } from 'lucide-react';
 import { deleteEvent } from '@/app/actions';
 import { toast } from 'sonner';
 
-export default function EventsClient({ events: initialEvents, userRole }) {
+export default function EventsClient({ events: initialEvents, userRole, approvedEventIds = [], pendingEventIds = [] }) {
   const [events, setEvents] = useState(initialEvents);
   const canCreateEvent = ['admin', 'ngo', 'org_spoc'].includes(userRole);
   const canRegisterForEvent = ['org_spoc', 'org_member', 'volunteer'].includes(userRole);
@@ -152,13 +152,31 @@ export default function EventsClient({ events: initialEvents, userRole }) {
                   </Button>
                   
                   {canRegisterForEvent && event.lifecycle !== 'ended' && (
-                    <Button
-                      onClick={() => window.location.href = `/events/${event._id}/register`}
-                      className="flex-1 bg-[#0d3b26] hover:bg-[#1a5c3a] text-white"
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Register
-                    </Button>
+                    approvedEventIds.includes(event._id) ? (
+                      <Button
+                        disabled
+                        className="flex-1 bg-emerald-600 text-white cursor-default opacity-100"
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Registered
+                      </Button>
+                    ) : pendingEventIds.includes(event._id) ? (
+                      <Button
+                        disabled
+                        className="flex-1 bg-amber-500 text-white cursor-default opacity-100"
+                      >
+                        <Clock className="w-4 h-4 mr-2" />
+                        Pending Approval
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => window.location.href = `/events/${event._id}/register`}
+                        className="flex-1 bg-[#0d3b26] hover:bg-[#1a5c3a] text-white"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Register
+                      </Button>
+                    )
                   )}
                   {canDelete && (
                     <Button

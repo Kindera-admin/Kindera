@@ -505,6 +505,24 @@ export async function getAllUsers() {
   }
 }
 
+export async function getMyRegisteredEventIds() {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return { success: true, approvedEventIds: [], pendingEventIds: [] };
+    await connectDB();
+    const user = await User.findById(currentUser._id).select('eventRegistrations').lean();
+    const approvedEventIds = (user?.eventRegistrations || [])
+      .filter(r => r.status === 'approved')
+      .map(r => r.eventId.toString());
+    const pendingEventIds = (user?.eventRegistrations || [])
+      .filter(r => r.status === 'pending')
+      .map(r => r.eventId.toString());
+    return { success: true, approvedEventIds, pendingEventIds };
+  } catch (error) {
+    return { success: true, approvedEventIds: [], pendingEventIds: [] };
+  }
+}
+
 export async function getPendingEventRegistrations() {
   try {
     const session = await getSession();

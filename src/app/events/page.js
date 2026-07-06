@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { getEvents } from '@/app/actions';
+import { getEvents, getMyRegisteredEventIds } from '@/app/actions';
 import EventsClient from './EventsClient';
 
 export default async function EventsPage() {
@@ -10,8 +10,13 @@ export default async function EventsPage() {
     redirect('/login');
   }
   
-  const result = await getEvents('upcoming');
+  const [result, regResult] = await Promise.all([
+    getEvents('upcoming'),
+    getMyRegisteredEventIds(),
+  ]);
   const events = result.success ? result.events : [];
+  const approvedEventIds = regResult.approvedEventIds || [];
+  const pendingEventIds = regResult.pendingEventIds || [];
   
-  return <EventsClient events={events} userRole={user.role} />;
+  return <EventsClient events={events} userRole={user.role} approvedEventIds={approvedEventIds} pendingEventIds={pendingEventIds} />;
 }
