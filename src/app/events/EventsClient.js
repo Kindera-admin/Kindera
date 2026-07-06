@@ -127,15 +127,8 @@ export default function EventsClient({ events: initialEvents, userRole }) {
                     </div>
                   )}
                   
-                  {event.createdBy && (
-                    <div className="flex items-start gap-2">
-                      <div className="w-4 h-4 mt-0.5" />
-                      <div>
-                        <div className="font-semibold">Organized by</div>
-                        <div className="text-gray-600">{event.createdBy.name}</div>
-                      </div>
-                    </div>
-                  )}
+
+
                 </div>
                 
                 {event.imageUrl && (
