@@ -236,7 +236,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
               Volunteer With Purpose
             </motion.p>
             <motion.h2 variants={fadeUp} className="text-4xl md:text-5xl font-serif text-[#0d3b26] mb-4">
-              Curated Opportunities
+              Curated Volunteering Opportunities
             </motion.h2>
             <motion.p variants={fadeUp} className="text-gray-500 max-w-xl mx-auto text-base">
               For every occasion — festive, corporate, or humanitarian — we have the perfect volunteering experience ready for your team.
