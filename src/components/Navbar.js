@@ -114,8 +114,8 @@ const Navbar = () => {
             <Image
               src="/kindera-logo.png"
               alt="Kindera"
-              width={160}
-              height={52}
+              width={110}
+              height={36}
               className="object-contain"
             />
           </Link>

@@ -73,8 +73,8 @@ export default function HomePageHeader() {
               <Image 
                 src="/kindera-logo.png" 
                 alt="Kindera" 
-                width={180} 
-                height={58} 
+                width={130} 
+                height={42} 
                 className="object-contain" 
               />
             </motion.div>

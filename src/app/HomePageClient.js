@@ -460,8 +460,8 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
               <Image 
                 src="/kindera-logo.png" 
                 alt="Kindera" 
-                width={190} 
-                height={62} 
+                width={150} 
+                height={48} 
                 className="object-contain brightness-0 invert mb-6" 
               />
               <p className="text-emerald-50/50 max-w-sm leading-relaxed text-sm">
