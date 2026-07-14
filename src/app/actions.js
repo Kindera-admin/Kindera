@@ -2448,3 +2448,86 @@ export async function getEventRegisteredCount(eventId) {
     return { success: true, count: 0 };
   }
 }
+
+// Get admin-wide dashboard impact analytics
+export async function getAdminImpactStats() {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+    const user = await getCurrentUser();
+    if (user.role !== 'admin') return { success: false, message: 'Admin access required' };
+
+    await connectDB();
+
+    // 1. Total KPI counters
+    const [totalHoursResult, totalBeneficiariesResult, totalEvents, totalNGOs, totalOrgs] = await Promise.all([
+      Attendance.aggregate([{ $match: { attended: true } }, { $group: { _id: null, total: { $sum: '$hoursContributed' } } }]),
+      Event.aggregate([{ $match: { status: 'completed' } }, { $group: { _id: null, total: { $sum: '$beneficiariesImpacted' } } }]),
+      Event.countDocuments({ status: 'completed' }),
+      NGOPartner.countDocuments(),
+      User.distinct('organizationName', { organizationName: { $ne: null } }),
+    ]);
+
+    const totalHours = totalHoursResult[0]?.total || 0;
+    const totalBeneficiaries = totalBeneficiariesResult[0]?.total || 0;
+
+    // 2. Events completed by month (past 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const recentEvents = await Event.find({ status: 'completed', date: { $gte: sixMonthsAgo } }).select('date').lean();
+    
+    const monthlyEventsMap = {};
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const mLabel = d.toLocaleString('default', { month: 'short' });
+      monthlyEventsMap[mLabel] = 0;
+    }
+
+    recentEvents.forEach(e => {
+      const mLabel = new Date(e.date).toLocaleString('default', { month: 'short' });
+      if (mLabel in monthlyEventsMap) {
+        monthlyEventsMap[mLabel]++;
+      }
+    });
+
+    const monthlyEvents = Object.keys(monthlyEventsMap).map(key => ({
+      month: key,
+      count: monthlyEventsMap[key]
+    }));
+
+    // 3. Top corporate organisations by volunteer hours
+    const orgStats = await Attendance.aggregate([
+      { $match: { attended: true } },
+      { $group: {
+        _id: '$organizationName',
+        hours: { $sum: '$hoursContributed' },
+        volunteers: { $sum: 1 }
+      }},
+      { $sort: { hours: -1 } },
+      { $limit: 6 }
+    ]);
+
+    const topOrgs = orgStats.map(o => ({
+      name: o._id || 'Individual',
+      hours: o.hours,
+      volunteers: o.volunteers
+    }));
+
+    return {
+      success: true,
+      stats: {
+        totalHours,
+        totalBeneficiaries,
+        totalEvents,
+        totalNGOs,
+        totalOrgs: totalOrgs.length,
+        monthlyEvents,
+        topOrgs
+      }
+    };
+  } catch (error) {
+    console.error('Error generating admin impact stats:', error);
+    return { success: false, message: error.message };
+  }
+}

@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useTransition, useState } from 'react';
-import { Users, CalendarDays, UserPlus, Building2, ArrowRight, Loader2, FileText } from 'lucide-react';
+import { Users, CalendarDays, UserPlus, Building2, ArrowRight, Loader2, FileText, BarChart3 } from 'lucide-react';
 
 const cards = [
   {
@@ -13,6 +13,15 @@ const cards = [
     accent: '#0d3b26',
     gradient: 'from-[#0d3b26] to-[#1a5c3a]',
     lightBg: '#f0f7f3',
+  },
+  {
+    title: 'Impact Dashboard',
+    description: 'Analytics, monthly stats, top organizations and CSR ROI data.',
+    icon: BarChart3,
+    href: '/admin/impact',
+    accent: '#3b82f6',
+    gradient: 'from-[#3b82f6] to-[#60a5fa]',
+    lightBg: '#eff6ff',
   },
   {
     title: 'Corporate Overview',
