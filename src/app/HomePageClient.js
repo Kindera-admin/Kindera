@@ -133,10 +133,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
           </motion.p>
           
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="#events" className="px-8 py-4 rounded-full bg-emerald-500 text-[#0d3b26] font-semibold text-lg hover:bg-emerald-400 hover:scale-105 transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)]">
-              View Events
-            </a>
-            <a href="/signup" className="px-8 py-4 rounded-full bg-transparent border border-white/30 text-white font-semibold text-lg hover:bg-white/10 transition-all">
+            <a href="/signup" className="px-8 py-4 rounded-full bg-emerald-500 text-[#0d3b26] font-semibold text-lg hover:bg-emerald-400 hover:scale-105 transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)]">
               Join as Partner
             </a>
           </motion.div>
@@ -419,7 +416,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
       <section className="bg-[#0d3b26] text-white pt-24 pb-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
         
-        <div className="max-w-4xl mx-auto text-center px-5 relative z-10 mb-24">
+        <div className="max-w-2xl mx-auto text-center px-5 relative z-10 mb-24">
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -442,13 +439,10 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="flex flex-col sm:flex-row justify-center gap-4"
+            className="flex justify-center"
           >
             <a href="https://forms.gle/T1ACRMV27pDQqvWz8" target="_blank" rel="noopener noreferrer" className="px-8 py-4 rounded-full bg-emerald-500 text-[#0d3b26] font-semibold hover:bg-emerald-400 transition-all">
               Register as NGO
-            </a>
-            <a href="/signup" className="px-8 py-4 rounded-full border border-white/20 text-white font-semibold hover:bg-white/10 transition-all">
-              Volunteer Now
             </a>
           </motion.div>
         </div>
