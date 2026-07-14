@@ -219,6 +219,42 @@ export default function CorporateOverviewClient({ orgs }) {
                 No monthly volunteer trend recorded yet.
               </div>
             )}
+
+            {/* Engaged Events History List */}
+            <div className="mt-6 border-t border-gray-100 pt-6">
+              <h3 className="text-xs font-bold text-gray-800 uppercase tracking-widest mb-3">Engaged Events History</h3>
+              {selectedOrgStats.eventsList && selectedOrgStats.eventsList.length > 0 ? (
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                  {selectedOrgStats.eventsList.map(ev => (
+                    <div key={ev._id} className="border border-gray-50 rounded-xl p-3 bg-gray-50/20 hover:bg-gray-50/55 transition-all flex items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-gray-900 leading-snug">{ev.title}</h4>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                            ev.isCorporate 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {ev.isCorporate ? 'Personal/Corp' : 'Global'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-gray-400 block mt-1">
+                          {new Date(ev.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {ev.location ? ` · ${ev.location}` : ''}
+                        </span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-bold text-[#0d3b26] block">{ev.hours.toLocaleString()} hrs</span>
+                        <span className="text-[9px] text-gray-400 block">{ev.attendees} Attended</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 italic">No event participation recorded yet.</p>
+              )}
+            </div>
+
           </div>
         </div>
       )}

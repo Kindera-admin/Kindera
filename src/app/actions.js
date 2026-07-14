@@ -1563,9 +1563,35 @@ export async function getOrgStats(orgName) {
     // Unique NGOs engaged (via events)
     const eventIds = stats.totalEvents || [];
     const eventsData = await Event.find({ _id: { $in: eventIds } })
-      .select('createdBy beneficiariesImpacted').populate('createdBy', 'ngoId').lean();
+      .select('title date location organizationName createdBy beneficiariesImpacted').populate('createdBy', 'ngoId').lean();
     const ngoIds = [...new Set(eventsData.map(e => e.createdBy?.ngoId).filter(Boolean))];
     const totalBeneficiaries = eventsData.reduce((s, e) => s + (e.beneficiariesImpacted || 0), 0);
+
+    // Aggregate attendance per event for detail list
+    const eventAttendanceDetails = await Attendance.aggregate([
+      { $match: { organizationName: orgName, attended: true } },
+      {
+        $group: {
+          _id: '$eventId',
+          hours: { $sum: '$hoursContributed' },
+          attendees: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const eventsList = eventAttendanceDetails.map(detail => {
+      const ev = eventsData.find(e => e._id.toString() === detail._id.toString());
+      if (!ev) return null;
+      return {
+        _id: ev._id.toString(),
+        title: ev.title,
+        date: ev.date.toISOString(),
+        location: ev.location,
+        hours: detail.hours,
+        attendees: detail.attendees,
+        isCorporate: !!ev.organizationName, // corporate/personal vs global
+      };
+    }).filter(Boolean);
 
     return {
       success: true,
@@ -1585,7 +1611,8 @@ export async function getOrgStats(orgName) {
         label: new Date(m._id.year, m._id.month - 1).toLocaleString('default', { month: 'short', year: '2-digit' }),
         count: m.count,
         hours: m.hours,
-      }))
+      })),
+      eventsList
     };
   } catch (error) {
     console.error('Error getting org stats:', error);
