@@ -221,97 +221,93 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
       </section>
 
       {/* Curated Volunteering Opportunities - Public */}
-      <section id="opportunities" className="py-24 bg-[#fafafa] border-t border-black/5">
-        <div className="max-w-7xl mx-auto px-5">
+      <section id="opportunities" className="py-24 bg-[#fafafa] border-t border-black/5 overflow-hidden">
 
-          {/* Section Header */}
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-80px" }}
-            className="mb-14 text-center"
-          >
-            <motion.p variants={fadeUp} className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-3">
-              Volunteer With Purpose
-            </motion.p>
-            <motion.h2 variants={fadeUp} className="text-4xl md:text-5xl font-serif text-[#0d3b26] mb-4">
-              Curated Volunteering Opportunities
-            </motion.h2>
-            <motion.p variants={fadeUp} className="text-gray-500 max-w-xl mx-auto text-base">
-              For every occasion — festive, corporate, or humanitarian — we have the perfect volunteering experience ready for your team.
-            </motion.p>
-          </motion.div>
+        {/* Section Header */}
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+          className="mb-14 text-center px-5"
+        >
+          <motion.p variants={fadeUp} className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-3">
+            Volunteer With Purpose
+          </motion.p>
+          <motion.h2 variants={fadeUp} className="text-4xl md:text-5xl font-serif text-[#0d3b26] mb-4">
+            Curated Volunteering Opportunities
+          </motion.h2>
+          <motion.p variants={fadeUp} className="text-gray-500 max-w-xl mx-auto text-base">
+            For every occasion — festive, corporate, or humanitarian — we have the perfect volunteering experience ready for your team.
+          </motion.p>
+        </motion.div>
 
-          {/* Image Cards Grid */}
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-60px" }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
-          >
+        {/* Infinite Auto-Scroll Carousel — Row 1 (left) */}
+        <div className="relative mb-5">
+          <div className="flex gap-5 carousel-track-left">
             {[
-              { label: 'Retreats and Offsite',          img: '/occasions/retreats-offsite.jpg'   },
-              { label: 'Conference',                     img: '/occasions/conference.jpg'          },
-              { label: 'New Employee Onboarding',        img: '/occasions/onboarding.jpg'          },
-              { label: 'Disaster Relief',                img: '/occasions/disaster-relief.jpg'     },
-              { label: 'Annual Celebration & Culture Days', img: '/occasions/culture-days.jpg'    },
-              { label: 'Welcome Back to Office',         img: '/occasions/welcome-back.jpg'        },
-              { label: 'Month of Service',               img: '/occasions/month-of-service.jpg'    },
-              { label: 'ERG Engagement',                 img: '/occasions/erg-engagement.jpg'      },
-              { label: 'Festivals',                      img: '/occasions/festivals.jpg'           },
+              { label: 'Retreats and Offsite',             img: '/occasions/retreats-offsite.jpg'  },
+              { label: 'Conference',                        img: '/occasions/conference.jpg'         },
+              { label: 'New Employee Onboarding',           img: '/occasions/onboarding.jpg'         },
+              { label: 'Disaster Relief',                   img: '/occasions/disaster-relief.jpg'    },
+              { label: 'Annual Celebration & Culture Days', img: '/occasions/culture-days.jpg'       },
+              // duplicate for seamless loop
+              { label: 'Retreats and Offsite',             img: '/occasions/retreats-offsite.jpg'  },
+              { label: 'Conference',                        img: '/occasions/conference.jpg'         },
+              { label: 'New Employee Onboarding',           img: '/occasions/onboarding.jpg'         },
+              { label: 'Disaster Relief',                   img: '/occasions/disaster-relief.jpg'    },
+              { label: 'Annual Celebration & Culture Days', img: '/occasions/culture-days.jpg'       },
             ].map((card, i) => (
-              <motion.div
-                key={card.label}
-                variants={fadeUp}
-                className="group relative overflow-hidden rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 cursor-pointer hover:-translate-y-1"
+              <div
+                key={i}
+                className="group relative flex-shrink-0 w-72 md:w-80 overflow-hidden rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 cursor-grab active:cursor-grabbing"
               >
-                {/* Photo */}
                 <div className="aspect-[4/3] overflow-hidden">
-                  <img
-                    src={card.img}
-                    alt={card.label}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
+                  <img src={card.img} alt={card.label} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                 </div>
-
-                {/* Dark banner label at bottom — matching user's reference style */}
                 <div className="bg-[#0d1f3c] px-5 py-4 flex items-center justify-between">
-                  <h3 className="text-white font-bold text-sm md:text-base uppercase tracking-wide leading-tight">
-                    {card.label}
-                  </h3>
-                  <span className="text-white/60 group-hover:text-white group-hover:translate-x-1 transition-all text-lg ml-3 flex-shrink-0">→</span>
+                  <h3 className="text-white font-bold text-sm uppercase tracking-wide leading-tight">{card.label}</h3>
+                  <span className="text-white/60 group-hover:text-white transition-all text-lg ml-3 flex-shrink-0">→</span>
                 </div>
-
-                {/* Hover overlay CTA */}
                 <div className="absolute inset-0 bg-[#0d3b26]/0 group-hover:bg-[#0d3b26]/20 transition-all duration-500 pointer-events-none" />
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
-
-          {/* Bottom CTA */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="mt-12 bg-[#0d3b26] rounded-3xl px-8 py-10 flex flex-col md:flex-row items-center justify-between gap-6"
-          >
-            <div>
-              <p className="text-emerald-300 text-xs font-semibold tracking-widest uppercase mb-1">Don&apos;t see your occasion?</p>
-              <h3 className="text-white text-2xl font-serif">We curate opportunities year-round.</h3>
-              <p className="text-emerald-200 text-sm mt-1">Get in touch and we&apos;ll match you with the perfect cause.</p>
-            </div>
-            <Link
-              href="/login"
-              className="flex-shrink-0 bg-white text-[#0d3b26] font-bold px-7 py-3.5 rounded-full hover:bg-emerald-50 transition-colors text-sm tracking-wide"
-            >
-              Get Started →
-            </Link>
-          </motion.div>
-
+          </div>
         </div>
+
+        {/* Infinite Auto-Scroll Carousel — Row 2 (right, reverse) */}
+        <div className="relative">
+          <div className="flex gap-5 carousel-track-right">
+            {[
+              { label: 'Welcome Back to Office', img: '/occasions/welcome-back.jpg'       },
+              { label: 'Month of Service',        img: '/occasions/month-of-service.jpg'   },
+              { label: 'ERG Engagement',          img: '/occasions/erg-engagement.jpg'     },
+              { label: 'Festivals',               img: '/occasions/festivals.jpg'          },
+              { label: 'Retreats and Offsite',    img: '/occasions/retreats-offsite.jpg'   },
+              // duplicate for seamless loop
+              { label: 'Welcome Back to Office', img: '/occasions/welcome-back.jpg'       },
+              { label: 'Month of Service',        img: '/occasions/month-of-service.jpg'   },
+              { label: 'ERG Engagement',          img: '/occasions/erg-engagement.jpg'     },
+              { label: 'Festivals',               img: '/occasions/festivals.jpg'          },
+              { label: 'Retreats and Offsite',    img: '/occasions/retreats-offsite.jpg'   },
+            ].map((card, i) => (
+              <div
+                key={i}
+                className="group relative flex-shrink-0 w-72 md:w-80 overflow-hidden rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 cursor-grab active:cursor-grabbing"
+              >
+                <div className="aspect-[4/3] overflow-hidden">
+                  <img src={card.img} alt={card.label} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                </div>
+                <div className="bg-[#0d1f3c] px-5 py-4 flex items-center justify-between">
+                  <h3 className="text-white font-bold text-sm uppercase tracking-wide leading-tight">{card.label}</h3>
+                  <span className="text-white/60 group-hover:text-white transition-all text-lg ml-3 flex-shrink-0">→</span>
+                </div>
+                <div className="absolute inset-0 bg-[#0d3b26]/0 group-hover:bg-[#0d3b26]/20 transition-all duration-500 pointer-events-none" />
+              </div>
+            ))}
+          </div>
+        </div>
+
       </section>
 
 
