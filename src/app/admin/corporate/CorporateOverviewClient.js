@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { Building2, Users, Clock, CalendarDays, ArrowRight, Plus, Loader2 } from 'lucide-react';
+import { Building2, Users, Clock, CalendarDays, ArrowRight, Plus, Loader2, X, Star, HeartHandshake, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getOrgStats } from '@/app/actions';
 
 const STAT_ICONS = {
   members: Users,
@@ -15,6 +16,8 @@ export default function CorporateOverviewClient({ orgs }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [activeOrg, setActiveOrg] = useState(null);
+  const [selectedOrgStats, setSelectedOrgStats] = useState(null);
+  const [loadingStatsOrg, setLoadingStatsOrg] = useState(null);
 
   const totalOrgs    = orgs.length;
   const totalMembers = orgs.reduce((s, o) => s + o.memberCount, 0);
@@ -23,6 +26,22 @@ export default function CorporateOverviewClient({ orgs }) {
 
   const handleGenerate = (orgName) => {
     router.push(`/dashboard/team/generate?org=${encodeURIComponent(orgName)}`);
+  };
+
+  const handleViewStats = async (orgName) => {
+    setLoadingStatsOrg(orgName);
+    try {
+      const res = await getOrgStats(orgName);
+      if (res.success) {
+        setSelectedOrgStats({ orgName, stats: res.stats, monthly: res.monthly });
+      } else {
+        toast.error(res.message || 'Failed to fetch organisation stats');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingStatsOrg(null);
+    }
   };
 
   return (
@@ -96,12 +115,24 @@ export default function CorporateOverviewClient({ orgs }) {
                   <td className="px-6 py-4 text-sm text-right font-semibold text-[#0d3b26]">{org.volunteerHours.toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm text-right text-gray-600">{org.eventsAttended}</td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => handleGenerate(org.organizationName)}
-                      className="text-xs font-semibold text-[#0d3b26] hover:text-[#2e7d52] flex items-center gap-1 ml-auto transition-colors"
-                    >
-                      + Logins
-                    </button>
+                    <div className="flex items-center justify-end gap-3.5">
+                      <button
+                        onClick={() => handleViewStats(org.organizationName)}
+                        disabled={loadingStatsOrg !== null}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-1"
+                      >
+                        {loadingStatsOrg === org.organizationName ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : null}
+                        View Stats
+                      </button>
+                      <button
+                        onClick={() => handleGenerate(org.organizationName)}
+                        className="text-xs font-semibold text-[#0d3b26] hover:text-[#2e7d52] transition-colors"
+                      >
+                        + Logins
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -109,6 +140,89 @@ export default function CorporateOverviewClient({ orgs }) {
           </table>
         )}
       </div>
+
+      {/* Selected Org Stats Modal */}
+      {selectedOrgStats && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-2xl w-full relative shadow-2xl overflow-y-auto max-h-[90vh] border border-gray-100">
+            <button 
+              onClick={() => setSelectedOrgStats(null)}
+              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-400" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-[#0d3b26] flex items-center justify-center text-white text-base font-bold shadow-md shrink-0">
+                {selectedOrgStats.orgName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-[#2e7d52] uppercase tracking-widest block leading-none mb-1">Corporate Partner Analytics</span>
+                <h2 className="text-xl font-bold text-gray-900 leading-none">{selectedOrgStats.orgName}</h2>
+              </div>
+            </div>
+
+            {/* Metrics grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+              {[
+                { label: 'Volunteered Hours', value: selectedOrgStats.stats.volunteerHours.toLocaleString() + ' hrs', icon: Clock, color: 'text-emerald-700 bg-emerald-50' },
+                { label: 'Employees Joined', value: selectedOrgStats.stats.totalVolunteers, icon: Users, color: 'text-blue-700 bg-blue-50' },
+                { label: 'Events Attended', value: selectedOrgStats.stats.eventsAttended, icon: CalendarDays, color: 'text-purple-700 bg-purple-50' },
+                { label: 'NGOs Engaged', value: selectedOrgStats.stats.ngosEngaged, icon: HeartHandshake, color: 'text-rose-700 bg-rose-50' },
+                { label: 'Impacted Lives', value: selectedOrgStats.stats.beneficiariesImpacted.toLocaleString(), icon: TrendingUp, color: 'text-amber-700 bg-amber-50' },
+                { label: 'Avg Rating Given', value: selectedOrgStats.stats.avgFeedback ? `${selectedOrgStats.stats.avgFeedback}/5` : '–', icon: Star, color: 'text-amber-500 bg-amber-50/50' },
+              ].map((m, idx) => {
+                const Icon = m.icon;
+                return (
+                  <div key={idx} className="border border-gray-100 rounded-2xl p-4 bg-white shadow-sm flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none">{m.label}</span>
+                      <div className={`p-1.5 rounded-lg ${m.color} shrink-0`}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                    </div>
+                    <p className="text-lg font-bold text-gray-900 mt-1">{m.value}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Monthly Trend Chart */}
+            {selectedOrgStats.monthly && selectedOrgStats.monthly.length > 0 ? (
+              <div className="border border-gray-100 rounded-2xl p-5 bg-white">
+                <h3 className="text-xs font-bold text-gray-800 uppercase tracking-widest mb-4">Volunteering Hours Monthly Trend</h3>
+                <div className="h-40 flex items-end gap-2 px-2 pt-2 border-b border-gray-100">
+                  {selectedOrgStats.monthly.map((m, idx) => {
+                    const maxVal = Math.max(...selectedOrgStats.monthly.map(mo => mo.hours), 1);
+                    const pct = Math.max(10, (m.hours / maxVal) * 80);
+                    return (
+                      <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full group">
+                        <span className="text-[10px] font-bold text-gray-800 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {m.hours}h
+                        </span>
+                        <div 
+                          style={{ height: `${pct}%` }} 
+                          className="w-full bg-[#0d3b26] hover:bg-emerald-600 rounded-t transition-all duration-300 relative"
+                        >
+                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap z-20">
+                            {m.hours} hrs ({m.count} events)
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-medium text-gray-400 mt-1.5 truncate max-w-full">{m.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="border border-dashed border-gray-200 rounded-2xl p-6 text-center text-gray-400 text-xs">
+                No monthly volunteer trend recorded yet.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
