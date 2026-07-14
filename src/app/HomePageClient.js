@@ -136,6 +136,9 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
             <a href="/signup" className="px-8 py-4 rounded-full bg-emerald-500 text-[#0d3b26] font-semibold text-lg hover:bg-emerald-400 hover:scale-105 transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)]">
               Join as Partner
             </a>
+            <a href="https://forms.gle/T1ACRMV27pDQqvWz8" target="_blank" rel="noopener noreferrer" className="px-8 py-4 rounded-full bg-transparent border border-white/30 text-white font-semibold text-lg hover:bg-white/10 transition-all">
+              Register as NGO
+            </a>
           </motion.div>
         </motion.div>
       </section>
@@ -412,42 +415,11 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
         </section>
       )}
 
-      {/* CTA Footer Wrapper */}
-      <section className="bg-[#0d3b26] text-white pt-24 pb-12 relative overflow-hidden">
+      {/* Footer */}
+      <section className="bg-[#0d3b26] text-white pt-16 pb-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
-        
-        <div className="max-w-2xl mx-auto text-center px-5 relative z-10 mb-24">
-          <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-5xl md:text-6xl font-serif mb-6"
-          >
-            Ready to make a <span className="text-emerald-400 italic">difference</span>?
-          </motion.h2>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-emerald-50/70 text-lg mb-10 max-w-2xl mx-auto"
-          >
-            Join our network of corporate partners and NGOs creating lasting impact.
-          </motion.p>
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="flex justify-center"
-          >
-            <a href="https://forms.gle/T1ACRMV27pDQqvWz8" target="_blank" rel="noopener noreferrer" className="px-8 py-4 rounded-full bg-emerald-500 text-[#0d3b26] font-semibold hover:bg-emerald-400 transition-all">
-              Register as NGO
-            </a>
-          </motion.div>
-        </div>
 
-        {/* Actual Footer Links */}
+        {/* Footer Links */}
         <div className="max-w-7xl mx-auto px-5 relative z-10 border-t border-white/10 pt-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
             <div className="md:col-span-2">
