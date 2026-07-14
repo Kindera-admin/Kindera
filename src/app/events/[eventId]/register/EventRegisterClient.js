@@ -12,7 +12,7 @@ import { registerForEvent, registerForEventLoggedIn } from '@/app/actions';
 import { Loader2, Calendar, MapPin, Users, Info, Upload, UserCheck, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
-export default function EventRegisterClient({ event, currentUser }) {
+export default function EventRegisterClient({ event, currentUser, registeredCount = 0 }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
@@ -20,6 +20,9 @@ export default function EventRegisterClient({ event, currentUser }) {
   const isSpoc = currentUser?.role === 'org_spoc';
   const isOrgMember = currentUser?.role === 'org_member';
   const isGlobalEvent = !event.organizationName; // NGO or Admin event
+
+  const spotsLeft = event.capacity ? Math.max(0, event.capacity - registeredCount) : null;
+  const isFull = event.capacity ? registeredCount >= event.capacity : false;
 
   const { register, handleSubmit, formState: { errors }, watch } = useForm({
     defaultValues: {
@@ -140,9 +143,22 @@ export default function EventRegisterClient({ event, currentUser }) {
                 <span className="text-gray-700">{event.location}</span>
               </div>
               {event.capacity && (
-                <div className="flex items-start gap-2">
-                  <Users className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
-                  <span className="text-gray-700">Capacity: {event.capacity} volunteers</span>
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-start gap-2">
+                    <Users className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
+                    <span className="text-gray-700">Capacity: {event.capacity} volunteers</span>
+                  </div>
+                  <div className="pl-6">
+                    {isFull ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                        Event Full
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                        {spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} remaining
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -245,11 +261,12 @@ export default function EventRegisterClient({ event, currentUser }) {
                             id="volunteersCount"
                             type="number"
                             min="1"
-                            max={event.capacity || 500}
+                            max={spotsLeft !== null ? spotsLeft : 500}
                             placeholder="e.g. 10"
                             {...register('volunteersCount', {
                               required: 'Please enter the number of volunteers',
-                              min: { value: 1, message: 'Must send at least 1 employee' }
+                              min: { value: 1, message: 'Must send at least 1 employee' },
+                              max: { value: spotsLeft !== null ? spotsLeft : 500, message: spotsLeft !== null ? `Only ${spotsLeft} spots remaining` : 'Exceeds capacity' }
                             })}
                           />
                           {errors.volunteersCount && (
@@ -294,6 +311,16 @@ export default function EventRegisterClient({ event, currentUser }) {
                       />
                     </div>
 
+                    {isFull && (
+                      <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg flex items-start gap-2.5 text-sm">
+                        <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold">Event is at full capacity</p>
+                          <p className="text-xs text-red-700 mt-0.5">We are no longer accepting new registrations for this event.</p>
+                        </div>
+                      </div>
+                    )}
+
                     <p className="text-xs text-gray-500">
                       Registering as <strong>{currentUser.name}</strong>
                       {isSpoc && volunteersCount > 1 && (
@@ -304,26 +331,35 @@ export default function EventRegisterClient({ event, currentUser }) {
                 ) : (
                   /* Guest registration form */
                   <>
+                    {isFull && (
+                      <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg flex items-start gap-2.5 text-sm mb-4">
+                        <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold">Event is at full capacity</p>
+                          <p className="text-xs text-red-700 mt-0.5">We are no longer accepting new registrations for this event.</p>
+                        </div>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Full Name *</Label>
-                        <Input id="name" placeholder="Enter full name" {...register('name', { required: 'Name is required' })} />
+                        <Input id="name" placeholder="Enter full name" disabled={isFull} {...register('name', { required: !isFull && 'Name is required' })} />
                         {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="age">Age</Label>
-                        <Input id="age" type="number" placeholder="Enter age" {...register('age')} />
+                        <Input id="age" type="number" placeholder="Enter age" disabled={isFull} {...register('age')} />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="email">Email Address</Label>
-                        <Input id="email" type="email" placeholder="Enter email address" {...register('email')} />
+                        <Input id="email" type="email" placeholder="Enter email address" disabled={isFull} {...register('email')} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="mobile">Phone Number *</Label>
-                        <Input id="mobile" placeholder="Enter phone number" {...register('mobile', { required: 'Phone is required' })} />
+                        <Input id="mobile" placeholder="Enter phone number" disabled={isFull} {...register('mobile', { required: !isFull && 'Phone is required' })} />
                         {errors.mobile && <p className="text-xs text-red-500">{errors.mobile.message}</p>}
                       </div>
                     </div>
@@ -333,12 +369,12 @@ export default function EventRegisterClient({ event, currentUser }) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="username">Choose Username *</Label>
-                        <Input id="username" placeholder="Choose a username" {...register('username', { required: 'Username is required' })} />
+                        <Input id="username" placeholder="Choose a username" disabled={isFull} {...register('username', { required: !isFull && 'Username is required' })} />
                         {errors.username && <p className="text-xs text-red-500">{errors.username.message}</p>}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="password">Create Password *</Label>
-                        <Input id="password" type="password" placeholder="••••••••" {...register('password', { required: 'Password is required', minLength: { value: 6, message: 'Min 6 chars' } })} />
+                        <Input id="password" type="password" placeholder="••••••••" disabled={isFull} {...register('password', { required: !isFull && 'Password is required', minLength: { value: 6, message: 'Min 6 chars' } })} />
                         {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
                       </div>
                     </div>
@@ -355,6 +391,7 @@ export default function EventRegisterClient({ event, currentUser }) {
                         </div>
                         <Input
                           type="file" accept="image/*"
+                          disabled={isFull}
                           onChange={e => setPhotoFile(e.target.files[0] || null)}
                           className="flex-1 text-sm file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
                         />
@@ -367,11 +404,13 @@ export default function EventRegisterClient({ event, currentUser }) {
               <CardFooter className="flex flex-col gap-3">
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-[#0d3b26] hover:bg-[#1a5c3a] text-white py-6 text-lg"
+                  disabled={isSubmitting || isFull}
+                  className={`w-full text-white py-6 text-lg ${isFull ? 'bg-gray-300 hover:bg-gray-300 cursor-not-allowed text-gray-500' : 'bg-[#0d3b26] hover:bg-[#1a5c3a]'}`}
                 >
                   {isSubmitting ? (
                     <span className="flex items-center gap-2"><Loader2 className="w-5 h-5 animate-spin" /> Submitting...</span>
+                  ) : isFull ? (
+                    'Event Fully Booked'
                   ) : isSpoc && isGlobalEvent
                     ? `Register ${volunteersCount || 1} Employee${parseInt(volunteersCount) > 1 ? 's' : ''}`
                     : 'Complete Registration'}

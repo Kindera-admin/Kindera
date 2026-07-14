@@ -1,4 +1,4 @@
-import { getEventById } from '@/app/actions';
+import { getEventById, getEventRegisteredCount } from '@/app/actions';
 import { notFound } from 'next/navigation';
 import EventRegisterClient from './EventRegisterClient';
 
@@ -18,9 +18,11 @@ export default async function EventRegisterPage({ params }) {
     notFound();
   }
 
+  const { count: registeredCount = 0 } = await getEventRegisteredCount(eventId);
+
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8">
-      <EventRegisterClient event={result.event} currentUser={user} />
+      <EventRegisterClient event={result.event} currentUser={user} registeredCount={registeredCount} />
     </div>
   );
 }

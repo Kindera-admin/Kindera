@@ -30,7 +30,7 @@ function StarRating({ value, onChange }) {
   );
 }
 
-function EventCard({ event }) {
+function EventCard({ event, userName, onShowCertificate }) {
   const [expanded, setExpanded] = useState(false);
   const [hours, setHours] = useState(event.myHours || '');
   const [feedback, setFeedback] = useState(event.myFeedback || null);
@@ -112,20 +112,29 @@ function EventCard({ event }) {
           </div>
 
           {/* Stats if logged */}
-          {saved && (
-            <div className="flex gap-4 mt-2">
-              {event.myHours > 0 && (
+          <div className="flex items-center justify-between gap-4 mt-2">
+            <div className="flex gap-4">
+              {saved && event.myHours > 0 && (
                 <span className="text-xs text-[#0d3b26] font-semibold flex items-center gap-1">
                   <Clock className="w-3 h-3" /> {hours || event.myHours}h logged
                 </span>
               )}
-              {feedback && (
+              {saved && feedback && (
                 <span className="text-xs text-amber-600 font-semibold flex items-center gap-1">
                   <Star className="w-3 h-3 fill-amber-400 stroke-amber-400" /> {feedback}/5
                 </span>
               )}
             </div>
-          )}
+            
+            {event.attended && (
+              <button
+                onClick={() => onShowCertificate(event)}
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 border border-emerald-200 px-2.5 py-1 rounded-lg bg-emerald-50/50 hover:bg-emerald-50 transition-all shrink-0 shadow-sm"
+              >
+                <Award className="w-3.5 h-3.5" /> Certificate
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Log hours button for past events */}
@@ -177,9 +186,16 @@ function EventCard({ event }) {
   );
 }
 
+import { Button } from '@/components/ui/button';
+
 export default function MyImpactClient({ events, stats }) {
   const pastEvents = events.filter(e => e.isPast);
   const upcomingEvents = events.filter(e => !e.isPast);
+  const [activeCertificate, setActiveCertificate] = useState(null);
+
+  const handleShowCertificate = (event) => {
+    setActiveCertificate({ event, userName: stats.name || 'Volunteer' });
+  };
 
   return (
     <div className="w-full max-w-3xl mx-auto">
@@ -217,7 +233,7 @@ export default function MyImpactClient({ events, stats }) {
         <div className="mb-8">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-3">Upcoming Events</h2>
           <div className="space-y-3">
-            {upcomingEvents.map(ev => <EventCard key={ev._id} event={ev} />)}
+            {upcomingEvents.map(ev => <EventCard key={ev._id} event={ev} userName={stats.name} onShowCertificate={handleShowCertificate} />)}
           </div>
         </div>
       )}
@@ -232,10 +248,89 @@ export default function MyImpactClient({ events, stats }) {
           </div>
         ) : (
           <div className="space-y-3">
-            {pastEvents.map(ev => <EventCard key={ev._id} event={ev} />)}
+            {pastEvents.map(ev => <EventCard key={ev._id} event={ev} userName={stats.name} onShowCertificate={handleShowCertificate} />)}
           </div>
         )}
       </div>
+
+      {/* Certificate Modal */}
+      {activeCertificate && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 print:p-0 print:static print:bg-white">
+          <div className="bg-[#fffdf9] border-[12px] double border-[#0d3b26] p-8 md:p-12 max-w-2xl w-full text-center relative rounded-lg print:border-[12px] print:shadow-none shadow-2xl" id="certificate-print-area">
+            {/* Elegant corner decorations */}
+            <div className="absolute top-2 left-2 right-2 bottom-2 border border-emerald-800/20 pointer-events-none" />
+            
+            <div className="py-4 md:py-8">
+              <span className="text-[#2e7d52] font-semibold tracking-widest text-xs uppercase block mb-4">Kindera Impact Network</span>
+              <h1 className="text-2xl md:text-3xl font-serif text-[#0d3b26] mb-2 font-bold">Certificate of Appreciation</h1>
+              <p className="text-[10px] text-gray-400 tracking-wider uppercase mb-8">Proudly Presented To</p>
+              
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 border-b border-gray-200 pb-2 max-w-md mx-auto mb-6 font-serif">{activeCertificate.userName}</h2>
+              
+              <p className="text-gray-600 max-w-lg mx-auto text-sm leading-relaxed mb-8">
+                for outstanding volunteer service and dedication to community development. Your contribution of <strong className="text-[#0d3b26]">{activeCertificate.event.myHours || activeCertificate.event.durationHours} Hours</strong> at the event <strong className="text-[#0d3b26]">&ldquo;{activeCertificate.event.title}&rdquo;</strong> on {new Date(activeCertificate.event.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} has made a meaningful difference.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-8 pt-6 border-t border-gray-100 max-w-md mx-auto">
+                <div>
+                  <p className="text-sm font-bold text-gray-800 border-b border-gray-300 pb-1 max-w-[120px] mx-auto font-serif">Kindera Team</p>
+                  <p className="text-[10px] text-gray-400 mt-1 uppercase">Organiser</p>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-800 border-b border-gray-300 pb-1 max-w-[120px] mx-auto font-serif">{new Date().toLocaleDateString('en-IN')}</p>
+                  <p className="text-[10px] text-gray-400 mt-1 uppercase">Date Issued</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Control buttons inside modal, hidden when printing */}
+            <div className="mt-8 flex justify-center gap-3 print:hidden">
+              <Button
+                onClick={() => window.print()}
+                className="bg-[#0d3b26] hover:bg-[#1a5c3a] text-white"
+              >
+                Print / Save PDF
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setActiveCertificate(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+          
+          {/* Print helper style to hide everything else during print */}
+          <style jsx global>{`
+            @media print {
+              body * {
+                visibility: hidden;
+              }
+              #certificate-print-area, #certificate-print-area * {
+                visibility: visible;
+              }
+              #certificate-print-area {
+                position: fixed;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                width: 100%;
+                max-width: 90%;
+                border: 16px double #0d3b26 !important;
+                box-shadow: none !important;
+                margin: 0;
+                padding: 3rem;
+                background: #fffdf9 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+              .print\\:hidden {
+                display: none !important;
+              }
+            }
+          `}</style>
+        </div>
+      )}
     </div>
   );
 }

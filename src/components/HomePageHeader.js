@@ -46,10 +46,11 @@ export default function HomePageHeader() {
   };
 
   const navLinks = [
-    { label: 'About Us', href: '#about' },
-    { label: 'How It Works', href: '#how-it-works' },
-    { label: 'Gallery', href: '#gallery' },
-    { label: 'Events', href: '#events' },
+    { label: 'About Us', href: '/#about' },
+    { label: 'How It Works', href: '/#how-it-works' },
+    { label: 'Gallery', href: '/#gallery' },
+    { label: 'Events', href: '/#events' },
+    { label: 'NGO Partners', href: '/partners' },
   ];
 
   return (

@@ -48,7 +48,7 @@ function Counter({ value, label }) {
 
 import useAuthStore from '@/store/authStore';
 
-export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
+export default function HomePageClient({ upcomingEvents, impactPhotos = [], stats = {} }) {
   const { isAuthenticated } = useAuthStore();
   const { scrollYProgress } = useScroll();
   const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
@@ -180,10 +180,11 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [] }) {
           </motion.p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Counter value="100+" label="NGOs Registered" />
-          <Counter value="100k+" label="People Helped" />
-          <Counter value="1,000+" label="Events Conducted" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <Counter value={stats.volunteerHours ? `${stats.volunteerHours.toLocaleString()}h` : '0h'} label="Volunteer Hours" />
+          <Counter value={stats.eventsCompleted ? `${stats.eventsCompleted}+` : '0'} label="Events Completed" />
+          <Counter value={stats.ngoPartners ? `${stats.ngoPartners}+` : '0'} label="NGO Partners" />
+          <Counter value={stats.organisations ? `${stats.organisations}+` : '0'} label="Organisations" />
         </div>
         </div>
       </section>

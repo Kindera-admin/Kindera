@@ -2008,6 +2008,18 @@ export async function registerForEvent(formData, eventId) {
       return { success: false, message: 'Registration is closed. This event has ended.' };
     }
 
+    // Capacity check
+    if (event.capacity) {
+      const registeredUsers = await User.find({ 'eventRegistrations.eventId': eventId, 'eventRegistrations.status': { $in: ['pending', 'approved'] } });
+      const totalRegistered = registeredUsers.reduce((sum, u) => {
+        const reg = u.eventRegistrations.find(r => r.eventId.toString() === eventId.toString());
+        return sum + (reg ? (reg.volunteersCount || 1) : 0);
+      }, 0);
+      if (totalRegistered >= event.capacity) {
+        return { success: false, message: 'This event is fully booked. No spots remaining.' };
+      }
+    }
+
     const username = formData.get('username');
     const password = formData.get('password');
     const name = formData.get('name');
@@ -2082,6 +2094,21 @@ export async function registerForEventLoggedIn(eventId, comment, volunteersCount
     const alreadyRegistered = user.eventRegistrations.some(r => r.eventId.toString() === eventId.toString());
     if (alreadyRegistered) {
       return { success: false, message: 'You are already registered for this event' };
+    }
+
+    // Capacity check
+    if (event.capacity) {
+      const registeredUsers = await User.find({ 'eventRegistrations.eventId': eventId, 'eventRegistrations.status': { $in: ['pending', 'approved'] } });
+      const totalRegistered = registeredUsers.reduce((sum, u) => {
+        const reg = u.eventRegistrations.find(r => r.eventId.toString() === eventId.toString());
+        return sum + (reg ? (reg.volunteersCount || 1) : 0);
+      }, 0);
+      const incomingCount = currentUser.role === 'org_spoc' ? (parseInt(volunteersCount) || 1) : 1;
+      if (totalRegistered + incomingCount > event.capacity) {
+        const spotsLeft = event.capacity - totalRegistered;
+        if (spotsLeft <= 0) return { success: false, message: 'This event is fully booked. No spots remaining.' };
+        return { success: false, message: `Only ${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left. You requested ${incomingCount}.` };
+      }
     }
 
     // Auto-approve if the event belongs to the user's SPOC (matching organizationName)
@@ -2376,5 +2403,48 @@ export async function getUnreadCount() {
     return { count };
   } catch {
     return { count: 0 };
+  }
+}
+
+// Live impact stats for homepage
+export async function getImpactStats() {
+  try {
+    await connectDB();
+    const [totalHoursResult, completedEvents, ngoCount, orgUsers] = await Promise.all([
+      User.aggregate([{ $group: { _id: null, total: { $sum: '$totalVolunteerHours' } } }]),
+      Event.countDocuments({ status: 'completed' }),
+      NGOPartner.countDocuments(),
+      User.distinct('organizationName', { organizationName: { $ne: null } }),
+    ]);
+    const totalHours = totalHoursResult[0]?.total || 0;
+    return {
+      success: true,
+      stats: {
+        volunteerHours: totalHours,
+        eventsCompleted: completedEvents,
+        ngoPartners: ngoCount,
+        organisations: orgUsers.length,
+      }
+    };
+  } catch (error) {
+    return { success: false, stats: { volunteerHours: 0, eventsCompleted: 0, ngoPartners: 0, organisations: 0 } };
+  }
+}
+
+// Get registered count for an event (for capacity display)
+export async function getEventRegisteredCount(eventId) {
+  try {
+    await connectDB();
+    const registeredUsers = await User.find({
+      'eventRegistrations.eventId': eventId,
+      'eventRegistrations.status': { $in: ['pending', 'approved'] }
+    });
+    const total = registeredUsers.reduce((sum, u) => {
+      const reg = u.eventRegistrations.find(r => r.eventId.toString() === eventId.toString());
+      return sum + (reg ? (reg.volunteersCount || 1) : 0);
+    }, 0);
+    return { success: true, count: total };
+  } catch {
+    return { success: true, count: 0 };
   }
 }
