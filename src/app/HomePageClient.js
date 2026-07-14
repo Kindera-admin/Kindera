@@ -309,6 +309,29 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
           </div>
         </div>
 
+        {/* Bottom CTA */}
+        <div className="max-w-7xl mx-auto px-5">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="mt-12 bg-[#0d3b26] rounded-3xl px-8 py-10 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg"
+          >
+            <div>
+              <p className="text-emerald-300 text-xs font-semibold tracking-widest uppercase mb-1">Don&apos;t see your occasion?</p>
+              <h3 className="text-white text-2xl font-serif">We curate opportunities year-round.</h3>
+              <p className="text-emerald-200 text-sm mt-1">Get in touch and we&apos;ll match you with the perfect cause.</p>
+            </div>
+            <a
+              href="mailto:volunteering@kindera.co?cc=contactkindera@gmail.com"
+              className="flex-shrink-0 bg-white text-[#0d3b26] font-bold px-7 py-3.5 rounded-full hover:bg-emerald-50 transition-colors text-sm tracking-wide"
+            >
+              Get Started →
+            </a>
+          </motion.div>
+        </div>
+
       </section>
 
 

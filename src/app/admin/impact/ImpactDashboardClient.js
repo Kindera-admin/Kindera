@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, BarChart3, TrendingUp, Users, Calendar, Award, Building, Sparkles, Download, HeartHandshake } from 'lucide-react';
+import { ChevronLeft, BarChart3, TrendingUp, Users, Award, Building, Download } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ImpactDashboardClient({ stats }) {
@@ -23,13 +22,6 @@ export default function ImpactDashboardClient({ stats }) {
   const maxEvents = Math.max(...monthlyEvents.map(m => m.count), 1);
   // Find max hours for scaling orgs chart
   const maxHours = Math.max(...topOrgs.map(o => o.hours), 1);
-
-  // CSR ROI Math (Values calculated dynamically based on real data)
-  const economicValuePerHour = 22.5; // Benchmark CSR economic contribution per hour in USD/equivalent
-  const totalEconomicValue = totalHours * economicValuePerHour;
-  const avgHoursPerVolunteer = topOrgs.length 
-    ? Math.round(totalHours / topOrgs.reduce((acc, curr) => acc + curr.volunteers, 0) * 10) / 10
-    : 0;
 
   return (
     <div className="min-h-screen bg-[#fafafa] pb-24 font-sans text-gray-900">
@@ -77,10 +69,10 @@ export default function ImpactDashboardClient({ stats }) {
       </div>
 
       {/* Analytics Charts & Top Corporates Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         
         {/* Monthly Activity Bar Chart */}
-        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm lg:col-span-2">
+        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <BarChart3 className="w-5 h-5 text-[#0d3b26]" />
             <h2 className="text-lg font-bold text-gray-900">Events Completed (Past 6 Months)</h2>
@@ -110,89 +102,50 @@ export default function ImpactDashboardClient({ stats }) {
           </div>
         </div>
 
-        {/* CSR ROI Value Calculator */}
+        {/* Top Corporate Clients Grid */}
         <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-amber-500" />
-              <h2 className="text-lg font-bold text-gray-900">Social ROI (ROI Calculator)</h2>
+            <div className="flex items-center gap-2 mb-6">
+              <Building className="w-5 h-5 text-[#0d3b26]" />
+              <h2 className="text-lg font-bold text-gray-900">Top Engaged Organizations (By Hours)</h2>
             </div>
-            <p className="text-xs text-gray-400 leading-relaxed mb-6">
-              Calculates corporate contribution value using global standard indicators.
-            </p>
 
-            <div className="space-y-4">
-              <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                <span className="text-xs text-gray-500 font-medium">Economic Value / Hr</span>
-                <span className="text-sm font-bold text-gray-900">${economicValuePerHour.toFixed(2)}</span>
+            {topOrgs.length === 0 ? (
+              <div className="py-12 text-center text-gray-400">
+                <p className="text-sm">No corporate attendance recorded yet.</p>
               </div>
-              <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                <span className="text-xs text-gray-500 font-medium">Corporate Social Impact</span>
-                <span className="text-sm font-bold text-emerald-700">${totalEconomicValue.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                <span className="text-xs text-gray-500 font-medium">Volunteering Intensity</span>
-                <span className="text-sm font-bold text-gray-900">{avgHoursPerVolunteer || '0'} hrs/volunteer</span>
-              </div>
-              <div className="flex justify-between items-center pb-3">
-                <span className="text-xs text-gray-500 font-medium">Events Managed</span>
-                <span className="text-sm font-bold text-purple-700">{totalEvents} completed</span>
-              </div>
-            </div>
-          </div>
+            ) : (
+              <div className="space-y-4">
+                {topOrgs.map((org, index) => {
+                  const widthPct = (org.hours / maxHours) * 100;
+                  return (
+                    <div key={index} className="border border-gray-50 hover:border-gray-100 rounded-xl p-3.5 transition-all bg-gray-50/20">
+                      <div className="flex justify-between items-start mb-1.5">
+                        <div>
+                          <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest block">Rank #{index+1}</span>
+                          <h3 className="font-bold text-gray-900 text-sm leading-tight">{org.name}</h3>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-bold text-gray-900">{org.hours.toLocaleString()} hrs</span>
+                          <span className="text-[10px] text-gray-400 block">{org.volunteers} Volunteers</span>
+                        </div>
+                      </div>
 
-          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mt-4 flex items-start gap-3">
-            <HeartHandshake className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-xs font-bold text-emerald-950">Active Engagement</h4>
-              <p className="text-[10px] text-emerald-800 leading-relaxed mt-0.5">
-                Corporate clients achieve high engagement rates. Every volunteering hour yields a social dividend of community goodwill.
-              </p>
-            </div>
+                      {/* Horizontal custom bar chart */}
+                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mt-2">
+                        <div 
+                          style={{ width: `${widthPct}%` }}
+                          className="h-full bg-gradient-to-r from-[#0d3b26] to-emerald-600 rounded-full transition-all duration-1000"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Top Corporate Clients Grid */}
-      <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-6">
-          <Building className="w-5 h-5 text-[#0d3b26]" />
-          <h2 className="text-lg font-bold text-gray-900">Top Engaged Organizations (By Hours)</h2>
-        </div>
-
-        {topOrgs.length === 0 ? (
-          <div className="py-12 text-center text-gray-400">
-            <p className="text-sm">No corporate attendance recorded yet.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {topOrgs.map((org, index) => {
-              const widthPct = (org.hours / maxHours) * 100;
-              return (
-                <div key={index} className="border border-gray-50 hover:border-gray-100 rounded-2xl p-4 transition-all bg-gray-50/20">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest block mb-0.5">Rank #{index+1}</span>
-                      <h3 className="font-bold text-gray-900 text-sm leading-tight">{org.name}</h3>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-bold text-gray-900">{org.hours.toLocaleString()} hrs</span>
-                      <span className="text-[10px] text-gray-400 block">{org.volunteers} Volunteers</span>
-                    </div>
-                  </div>
-
-                  {/* Horizontal custom bar chart */}
-                  <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden mt-3">
-                    <div 
-                      style={{ width: `${widthPct}%` }}
-                      className="h-full bg-gradient-to-r from-[#0d3b26] to-emerald-600 rounded-full transition-all duration-1000"
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* Print custom global styles */}
