@@ -126,8 +126,8 @@ export async function registerUser(formData) {
     
     const user = await getCurrentUser();
     
-    if (user.role !== 'admin') {
-      return { success: false, message: 'Only admin can register new users' };
+    if (user.role !== 'admin' && user.role !== 'employee') {
+      return { success: false, message: 'Unauthorized' };
     }
     
     const username = formData.get('username');
@@ -136,6 +136,10 @@ export async function registerUser(formData) {
     const ngoId = formData.get('ngoId');
     const name = formData.get('name');
     const organizationName = formData.get('organizationName');
+
+    if (user.role === 'employee' && role !== 'ngo') {
+      return { success: false, message: 'Employees are only allowed to register NGO users' };
+    }
     
     if (!username || !password || !role || !name) {
       return { success: false, message: 'All fields are required' };
@@ -1999,7 +2003,7 @@ export async function adminUploadNGODocument(ngoUserId, docType, label, url) {
     if (!session) return { success: false, message: 'Not authenticated' };
 
     const caller = await getCurrentUser();
-    if (caller.role !== 'admin') return { success: false, message: 'Admin only' };
+    if (caller.role !== 'admin' && caller.role !== 'employee') return { success: false, message: 'Unauthorized' };
 
     await connectDB();
 

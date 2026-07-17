@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,10 +61,14 @@ function CertUpload({ certKey, label, desc, file, onFileSelect, onRemove }) {
   );
 }
 
-export default function RegisterForm() {
+export default function RegisterForm({ userRole }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const roleParam = searchParams.get('role');
+  const defaultRole = userRole === 'employee' ? 'ngo' : (roleParam || 'org_member');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('org_member');
+  const [selectedRole, setSelectedRole] = useState(defaultRole);
   const [certFiles, setCertFiles] = useState({});
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm({
@@ -143,10 +147,9 @@ export default function RegisterForm() {
       </CardHeader>
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-5">
-          {/* Role */}
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
-            <Select value={selectedRole} onValueChange={(value) => {
+            <Select disabled={userRole === 'employee'} value={selectedRole} onValueChange={(value) => {
               setSelectedRole(value);
               setValue('organizationName', '');
               setValue('ngoId', '');
@@ -154,12 +157,21 @@ export default function RegisterForm() {
             }}>
               <SelectTrigger className="w-full"><SelectValue placeholder="Select a role" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="org_spoc">Organisation SPOC</SelectItem>
-                <SelectItem value="org_member">Organisation Member</SelectItem>
-                <SelectItem value="employee">Employee / Team</SelectItem>
+                {userRole !== 'employee' && (
+                  <>
+                    <SelectItem value="org_spoc">Organisation SPOC</SelectItem>
+                    <SelectItem value="org_member">Organisation Member</SelectItem>
+                    <SelectItem value="employee">Employee / Team</SelectItem>
+                  </>
+                )}
                 <SelectItem value="ngo">NGO Representative</SelectItem>
               </SelectContent>
             </Select>
+            {userRole === 'employee' && (
+              <p className="text-[11px] text-emerald-600 font-medium mt-1">
+                You are registered as a platform team member and can only create NGO partner accounts.
+              </p>
+            )}
           </div>
 
           {/* Name */}

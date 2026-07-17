@@ -60,6 +60,15 @@ const cards = [
     lightBg: '#f5f3ff',
   },
   {
+    title: 'Create NGO Login',
+    description: 'Manually create credentials and verify documents for a new NGO.',
+    icon: UserPlus,
+    href: '/admin/register?role=ngo',
+    accent: '#10b981',
+    gradient: 'from-[#10b981] to-[#34d399]',
+    lightBg: '#ecfdf5',
+  },
+  {
     title: 'NGO Partners',
     description: 'Add or remove NGO partners displayed to platform users.',
     icon: Building2,
@@ -101,7 +110,7 @@ export default function DashboardClient({ userRole }) {
   };
 
   const visibleCards = userRole === 'employee'
-    ? cards.filter((card) => card.href === '/admin/ngo-partners')
+    ? cards.filter((card) => card.href === '/admin/ngo-partners' || card.href === '/admin/register?role=ngo')
     : cards;
 
   return (
@@ -115,7 +124,7 @@ export default function DashboardClient({ userRole }) {
           {userRole === 'employee' ? 'Employee Dashboard' : 'Admin Dashboard'}
         </h1>
         <p className="text-gray-500 text-sm">
-          {userRole === 'employee' ? 'Manage NGO partners.' : 'Manage the Kindera platform — users, events, and NGO partners.'}
+          {userRole === 'employee' ? 'Manage NGO partners and generate NGO logins.' : 'Manage the Kindera platform — users, events, and NGO partners.'}
         </p>
       </div>
 
