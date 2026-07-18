@@ -2584,3 +2584,91 @@ export async function getAdminImpactStats() {
     return { success: false, message: error.message };
   }
 }
+
+/**
+ * Get all events history with creation, registration, and attendance details.
+ */
+export async function getAllEventsHistory() {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'admin' && caller.role !== 'employee') {
+      return { success: false, message: 'Unauthorized' };
+    }
+
+    await connectDB();
+
+    // Get all events
+    const events = await Event.find()
+      .populate('createdBy', 'name role organizationName')
+      .sort({ date: -1 })
+      .lean();
+
+    // Aggregate joined count from User model
+    const registrationsAgg = await User.aggregate([
+      { $unwind: '$eventRegistrations' },
+      { $match: { 'eventRegistrations.status': { $in: ['pending', 'approved'] } } },
+      {
+        $group: {
+          _id: '$eventRegistrations.eventId',
+          joinedCount: { $sum: { $ifNull: ['$eventRegistrations.volunteersCount', 1] } }
+        }
+      }
+    ]);
+    const regsMap = registrationsAgg.reduce((acc, curr) => {
+      acc[curr._id.toString()] = curr.joinedCount;
+      return acc;
+    }, {});
+
+    // Aggregate attendance and hours from Attendance model
+    const attendanceAgg = await Attendance.aggregate([
+      { $match: { attended: true } },
+      {
+        $group: {
+          _id: '$eventId',
+          attendanceCount: { $sum: 1 },
+          hoursLogged: { $sum: '$hoursContributed' }
+        }
+      }
+    ]);
+    const attsMap = attendanceAgg.reduce((acc, curr) => {
+      acc[curr._id.toString()] = {
+        attendanceCount: curr.attendanceCount,
+        hoursLogged: curr.hoursLogged
+      };
+      return acc;
+    }, {});
+
+    const history = events.map(event => {
+      const eId = event._id.toString();
+      const joinedCount = regsMap[eId] || 0;
+      const attData = attsMap[eId] || { attendanceCount: 0, hoursLogged: 0 };
+
+      return {
+        _id: eId,
+        title: event.title,
+        date: event.date.toISOString(),
+        location: event.location,
+        capacity: event.capacity,
+        status: event.status,
+        organizationName: event.organizationName || null,
+        createdBy: event.createdBy ? {
+          _id: event.createdBy._id.toString(),
+          name: event.createdBy.name,
+          role: event.createdBy.role,
+          organizationName: event.createdBy.organizationName || null,
+        } : null,
+        joinedCount,
+        attendanceCount: attData.attendanceCount,
+        hoursLogged: attData.hoursLogged,
+      };
+    });
+
+    return { success: true, history };
+  } catch (error) {
+    console.error('Error getting all events history:', error);
+    return { success: false, message: error.message };
+  }
+}

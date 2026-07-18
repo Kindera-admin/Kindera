@@ -15,6 +15,15 @@ const cards = [
     lightBg: '#f0f7f3',
   },
   {
+    title: 'All Events History',
+    description: 'Detailed metrics of all events (registrations, attendance, hours).',
+    icon: FileText,
+    href: '/admin/events-history',
+    accent: '#0f766e',
+    gradient: 'from-[#0f766e] to-[#0d9488]',
+    lightBg: '#f0fdfa',
+  },
+  {
     title: 'Impact Dashboard',
     description: 'Analytics, monthly stats, top organizations and CSR ROI data.',
     icon: BarChart3,
@@ -110,7 +119,7 @@ export default function DashboardClient({ userRole }) {
   };
 
   const visibleCards = userRole === 'employee'
-    ? cards.filter((card) => card.href === '/admin/ngo-partners' || card.href === '/admin/register?role=ngo')
+    ? cards.filter((card) => card.href === '/admin/ngo-partners' || card.href === '/admin/register?role=ngo' || card.href === '/admin/events-history')
     : cards;
 
   return (
