@@ -2752,6 +2752,7 @@ export async function getAllEventsHistory() {
         spocCount: regData.spocCount,
         attendanceCount: attData.attendanceCount,
         hoursLogged: attData.hoursLogged,
+        corporateDetails: corpDetailsMap[eId] || [],
       };
     });
 
