@@ -2132,7 +2132,14 @@ export async function registerForEventLoggedIn(eventId, comment, volunteersCount
     } else {
       // It's a global event
       if (currentUser.role === 'org_member') {
-        return { success: false, message: 'Your SPOC registers for events on your behalf. Please contact your SPOC.' };
+        const spocDoc = await User.findOne({
+          role: 'org_spoc',
+          organizationName: currentUser.organizationName,
+          'eventRegistrations.eventId': eventId
+        });
+        if (!spocDoc) {
+          return { success: false, message: 'Your SPOC has not registered your organization for this event yet. Please contact your SPOC.' };
+        }
       }
     }
 

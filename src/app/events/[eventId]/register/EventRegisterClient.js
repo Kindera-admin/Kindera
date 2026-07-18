@@ -12,7 +12,7 @@ import { registerForEvent, registerForEventLoggedIn } from '@/app/actions';
 import { Loader2, Calendar, MapPin, Users, Info, Upload, UserCheck, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
-export default function EventRegisterClient({ event, currentUser, registeredCount = 0 }) {
+export default function EventRegisterClient({ event, currentUser, registeredCount = 0, spocRegistered = false }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
@@ -210,8 +210,8 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
             </div>
           </Card>
 
-        ) : isOrgMember && isGlobalEvent ? (
-          /* Org Members cannot register for global events */
+        ) : isOrgMember && isGlobalEvent && !spocRegistered ? (
+          /* Org Members cannot register for global events unless SPOC has registered */
           <Card className="shadow-lg border-0 ring-1 ring-amber-100 h-full flex items-center justify-center p-8 text-center">
             <div>
               <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -219,8 +219,8 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">SPOC Registration Required</h3>
               <p className="text-gray-500 mb-6 max-w-sm mx-auto text-sm">
-                For global events, your <strong>Corporate SPOC</strong> registers on behalf of your team
-                and decides how many employees to send. Please reach out to your SPOC.
+                For global events, your <strong>Corporate SPOC</strong> must first register on behalf of your team.
+                Please reach out to your SPOC to express interest.
               </p>
               <Button
                 onClick={() => router.push('/messages')}
@@ -247,6 +247,15 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
             </CardHeader>
             <form onSubmit={handleSubmit(onSubmit)}>
               <CardContent className="space-y-5">
+
+                {isOrgMember && isGlobalEvent && spocRegistered && (
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex gap-3 text-emerald-800 text-sm mb-4">
+                    <UserCheck className="w-5 h-5 flex-shrink-0 text-emerald-600" />
+                    <div>
+                      Your Corporate SPOC has registered your organization for this event! You can register individually below to join the team.
+                    </div>
+                  </div>
+                )}
 
                 {currentUser ? (
                   <>
