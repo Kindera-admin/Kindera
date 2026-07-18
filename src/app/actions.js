@@ -1883,20 +1883,19 @@ export async function logMyHoursAndFeedback(eventId, hours, feedbackScore) {
     }
 
     const existing = await Attendance.findOne({ eventId, userId: caller._id });
+    if (!existing || !existing.attended) {
+      return { success: false, message: 'You can only log hours after your SPOC or Admin has marked your attendance for this event.' };
+    }
 
     await Attendance.findOneAndUpdate(
       { eventId, userId: caller._id },
       {
         $set: {
-          organizationName: caller.organizationName,
-          attended: true,
           hoursContributed: hours,
           feedbackScore: feedbackScore || null,
-          markedAt: new Date(),
-          markedBy: caller._id,
         }
       },
-      { upsert: true, new: true }
+      { new: true }
     );
 
     // Update cached total volunteer hours (diff if updating)
