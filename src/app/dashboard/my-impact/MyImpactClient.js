@@ -197,6 +197,45 @@ export default function MyImpactClient({ events, stats }) {
     setActiveCertificate({ event, userName: stats.name || 'Volunteer' });
   };
 
+  const totalHours = stats.totalHours || 0;
+  
+  let currentBadge = 'Bronze Helper';
+  let nextBadge = 'Silver Hero';
+  let badgeHoursNeeded = 5;
+  let prevBadgeHours = 0;
+  let badgeProgress = 0;
+  let badgeDescription = 'Thank you for starting your volunteering journey with Kindera!';
+  let badgeColor = 'from-amber-600 to-amber-700 text-amber-50';
+
+  if (totalHours >= 30) {
+    currentBadge = 'Impact Legend';
+    nextBadge = 'Max Level';
+    badgeHoursNeeded = 30;
+    prevBadgeHours = 30;
+    badgeProgress = 100;
+    badgeDescription = 'You are a legendary volunteer! Your commitment is inspiring.';
+    badgeColor = 'from-purple-600 to-indigo-700 text-indigo-50';
+  } else if (totalHours >= 15) {
+    currentBadge = 'Gold Champion';
+    nextBadge = 'Impact Legend';
+    badgeHoursNeeded = 30;
+    prevBadgeHours = 15;
+    badgeProgress = ((totalHours - 15) / 15) * 100;
+    badgeDescription = 'Outstanding contributions! Keep up the excellent volunteering work.';
+    badgeColor = 'from-yellow-500 to-amber-600 text-yellow-50';
+  } else if (totalHours >= 5) {
+    currentBadge = 'Silver Hero';
+    nextBadge = 'Gold Champion';
+    badgeHoursNeeded = 15;
+    prevBadgeHours = 5;
+    badgeProgress = ((totalHours - 5) / 10) * 100;
+    badgeDescription = 'Great progress! You are officially a certified Silver Hero.';
+    badgeColor = 'from-slate-400 to-slate-500 text-slate-50';
+  } else {
+    // 0 to 5 hours
+    badgeProgress = (totalHours / 5) * 100;
+  }
+
   return (
     <div className="w-full max-w-3xl mx-auto">
       {/* Header */}
@@ -210,7 +249,7 @@ export default function MyImpactClient({ events, stats }) {
       </div>
 
       {/* Personal KPI Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="border border-gray-100 rounded-xl p-4 bg-white shadow-sm text-center">
           <Clock className="w-5 h-5 text-[#0d3b26] mx-auto mb-1.5" />
           <p className="text-2xl font-bold text-[#0d3b26]">{stats.totalHours || 0}</p>
@@ -225,6 +264,69 @@ export default function MyImpactClient({ events, stats }) {
           <Star className="w-5 h-5 text-amber-500 mx-auto mb-1.5" />
           <p className="text-2xl font-bold text-amber-600">{stats.avgFeedback ? `${stats.avgFeedback}/5` : '–'}</p>
           <p className="text-xs text-gray-500 mt-0.5">Avg Rating Given</p>
+        </div>
+      </div>
+
+      {/* Visual Impact Dashboard Extensions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {/* Achievements / Badge Card */}
+        <div className="md:col-span-2 border border-gray-100 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-bold text-gray-800 uppercase tracking-widest leading-none">Achievement Level</h3>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r ${badgeColor} shrink-0`}>
+                {currentBadge}
+              </span>
+            </div>
+            <p className="text-xs text-gray-400 mb-4">{badgeDescription}</p>
+          </div>
+          
+          {nextBadge !== 'Max Level' ? (
+            <div>
+              <div className="flex justify-between items-center text-[10px] font-semibold text-gray-500 mb-1.5 leading-none">
+                <span>{totalHours} hrs logged</span>
+                <span>{badgeHoursNeeded - totalHours} hrs left for {nextBadge}</span>
+              </div>
+              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-emerald-600 h-full rounded-full transition-all duration-500" 
+                  style={{ width: `${badgeProgress}%` }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-2 bg-purple-50 rounded-xl border border-purple-100 text-[10px] font-semibold text-purple-700">
+              🎉 Congratulations! You have unlocked the highest volunteer badge level!
+            </div>
+          )}
+        </div>
+
+        {/* Social Equivalencies */}
+        <div className="border border-gray-100 rounded-2xl p-5 bg-gradient-to-br from-[#0d3b26] to-[#1a5c3a] text-white shadow-sm flex flex-col justify-between">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-emerald-300 mb-3 leading-none">Your Social Impact</h3>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg leading-none">🌲</span>
+              <div>
+                <span className="text-[10px] text-emerald-100/70 block leading-none mb-0.5">Carbon Offset</span>
+                <span className="text-xs font-bold leading-none">{totalHours * 2} Trees Planted</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg leading-none">🍲</span>
+              <div>
+                <span className="text-[10px] text-emerald-100/70 block leading-none mb-0.5">Hunger Support</span>
+                <span className="text-xs font-bold leading-none">{totalHours * 5} Meals Packed</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg leading-none">📚</span>
+              <div>
+                <span className="text-[10px] text-emerald-100/70 block leading-none mb-0.5">Education Hours</span>
+                <span className="text-xs font-bold leading-none">{totalHours} Students Tutored</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

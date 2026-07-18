@@ -1928,8 +1928,9 @@ export async function getMyImpact() {
 
     await connectDB();
 
-    // Get all events that exist (past + upcoming)
-    const allEvents = await Event.find()
+    // Get only events the user has registered for (participated in)
+    const registeredEventIds = (caller.eventRegistrations || []).map(r => r.eventId);
+    const allEvents = await Event.find({ _id: { $in: registeredEventIds } })
       .select('title date location description beneficiariesImpacted status durationHours')
       .sort({ date: -1 })
       .lean();
