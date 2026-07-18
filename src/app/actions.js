@@ -1931,7 +1931,7 @@ export async function getMyImpact() {
     // Get only events the user has registered for (participated in)
     const registeredEventIds = (caller.eventRegistrations || []).map(r => r.eventId);
     const allEvents = await Event.find({ _id: { $in: registeredEventIds } })
-      .select('title date location description beneficiariesImpacted status durationHours')
+      .select('title date location description beneficiariesImpacted status durationHours organizationName')
       .sort({ date: -1 })
       .lean();
 
@@ -1968,6 +1968,7 @@ export async function getMyImpact() {
         myHours: rec?.hoursContributed || 0,
         myFeedback: rec?.feedbackScore || null,
         attended: rec?.attended || false,
+        organizationName: ev.organizationName || null,
       };
     });
 

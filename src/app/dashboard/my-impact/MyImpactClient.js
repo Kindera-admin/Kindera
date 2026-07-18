@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Award, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, Clock, Loader2, MapPin, Star, Activity } from 'lucide-react';
+import { Award, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, Clock, Loader2, MapPin, Star, Activity, Globe, Building2 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { logMyHoursAndFeedback } from '@/app/actions';
@@ -191,6 +191,7 @@ import { Button } from '@/components/ui/button';
 export default function MyImpactClient({ events, stats }) {
   const pastEvents = events.filter(e => e.isPast);
   const upcomingEvents = events.filter(e => !e.isPast);
+  const attendedEvents = events.filter(e => e.attended);
   const [activeCertificate, setActiveCertificate] = useState(null);
 
   const handleShowCertificate = (event) => {
@@ -311,6 +312,61 @@ export default function MyImpactClient({ events, stats }) {
           </div>
         </div>
       )}
+
+      {/* My Participation Panel */}
+      <div className="mb-8 border border-gray-100 rounded-2xl p-6 bg-white shadow-sm">
+        <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-[#0d3b26]" />
+          My Participation History
+        </h2>
+        
+        {attendedEvents.length === 0 ? (
+          <div className="py-8 text-center text-gray-400 text-sm">
+            You haven&apos;t participated in any events yet. Once marked as attended, your history will populate here!
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {attendedEvents.map(ev => (
+              <div key={ev._id} className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-semibold text-gray-900 text-sm mb-1">{ev.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] text-gray-400 font-medium">
+                      {new Date(ev.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                    <span className="text-gray-300 text-[10px]">•</span>
+                    {ev.organizationName ? (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1">
+                        <Building2 className="w-2.5 h-2.5" />
+                        Internal Event ({ev.organizationName})
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 flex items-center gap-1">
+                        <Globe className="w-2.5 h-2.5" />
+                        Global Event
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                  <span className="text-xs font-semibold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-[#0d3b26]" />
+                    {ev.myHours || ev.durationHours} hrs logged
+                  </span>
+                  
+                  <button
+                    onClick={() => handleShowCertificate(ev)}
+                    className="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 border border-emerald-200 px-2.5 py-1 rounded-lg bg-emerald-50/50 hover:bg-emerald-50 transition-all shadow-sm"
+                  >
+                    <Award className="w-3.5 h-3.5" /> Certificate
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Past Events */}
       <div>
