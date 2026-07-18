@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner'
-import { registerForEvent, registerForEventLoggedIn } from '@/app/actions';
+import { registerForEvent, registerForEventLoggedIn, registerForEventNewUser } from '@/app/actions';
 import { Loader2, Calendar, MapPin, Users, Info, Upload, UserCheck, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
-export default function EventRegisterClient({ event, currentUser, registeredCount = 0, spocRegistered = false }) {
+export default function EventRegisterClient({ event, currentUser, registeredCount = 0, spocCount = 0, spocRegistered = false }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
@@ -58,61 +58,56 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
         if (result.success) {
           toast.success('Registration submitted!', {
             description: result.status === 'approved'
-              ? 'Your registration is confirmed.'
-              : 'Pending approval from the organiser.',
+              ? 'You are approved to join this event.'
+              : 'Your registration is pending approval.',
           });
-          router.push('/events');
+          router.push('/dashboard/my-impact');
+          router.refresh();
         } else {
-          toast.error('Registration failed', { description: result.message });
+          toast.error(result.message);
         }
       } else {
-        const formData = new FormData();
-        formData.append('name', data.name);
-        formData.append('username', data.username);
-        formData.append('password', data.password);
-        formData.append('email', data.email);
-        formData.append('mobile', data.mobile);
-        formData.append('age', data.age);
-
-        if (photoFile) {
-          toast.loading('Uploading photo...', { id: 'photo-upload' });
-          try {
-            const url = await uploadPhoto(photoFile);
-            formData.append('photoUrl', url);
-            toast.dismiss('photo-upload');
-          } catch {
-            toast.dismiss('photo-upload');
-            toast.error('Failed to upload photo, proceeding without it');
-          }
+        if (!photoFile) {
+          toast.error('Please upload a photo/ID');
+          return;
         }
+        const uploadedUrl = await uploadPhoto(photoFile);
+        
+        const fd = new FormData();
+        Object.entries(data).forEach(([k, v]) => fd.append(k, v));
+        fd.append('photoUrl', uploadedUrl);
 
-        const result = await registerForEvent(formData, event._id);
+        const result = await registerForEventNewUser(event._id, fd);
+        
         if (result.success) {
-          toast.success('Registration successful!', {
-            description: 'Your account is pending approval by the organizer.',
-          });
-          router.push('/pending');
+          toast.success('Account created & Registered!');
+          router.push('/login');
         } else {
-          toast.error('Registration failed', { description: result.message });
+          toast.error(result.message);
         }
       }
-    } catch {
-      toast.error('Registration failed', { description: 'An unexpected error occurred.' });
+    } catch (error) {
+      toast.error('An error occurred during registration.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      weekday: 'short', year: 'numeric', month: 'long',
-      day: 'numeric', hour: '2-digit', minute: '2-digit'
+  const formatDate = (isoString) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit'
     });
   };
 
   const start = new Date(event.date);
   const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);
   const isEnded = new Date() > end;
+
+  const isHost = currentUser && event.createdBy && event.createdBy._id.toString() === currentUser._id.toString();
+  const isAdmin = currentUser && currentUser.role === 'admin';
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
@@ -142,10 +137,25 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
                 <MapPin className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
                 <span className="text-gray-700">{event.location}</span>
               </div>
+              
+              {(isHost || isAdmin) && (
+                <div className="flex flex-col gap-1 pt-3 pb-1 border-t border-emerald-100/50 mt-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="text-gray-900 font-semibold">{registeredCount} volunteers registered</span>
+                  </div>
+                  {spocCount > 0 && (
+                    <div className="text-xs text-gray-500 pl-6">
+                      (Including teams from {spocCount} SPOC{spocCount > 1 ? 's' : ''})
+                    </div>
+                  )}
+                </div>
+              )}
+
               {event.capacity && (
                 <div className="space-y-2 pt-1">
                   <div className="flex items-start gap-2">
-                    <Users className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
+                    <Info className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
                     <span className="text-gray-700">Capacity: {event.capacity} volunteers</span>
                   </div>
                   <div className="pl-6">

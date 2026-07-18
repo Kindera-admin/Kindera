@@ -59,6 +59,10 @@ const eventSchema = new mongoose.Schema({
     type: String,
     enum: ['upcoming', 'ongoing', 'completed', 'cancelled'],
     default: 'upcoming'
+  },
+  wrapUpSent: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

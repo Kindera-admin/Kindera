@@ -10,6 +10,10 @@ const ngoPartnerSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  logoUrl: {
+    type: String,
+    default: '',
+  },
   focusAreas: {
     type: String,
     default: '',

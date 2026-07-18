@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getMessages, sendMessage } from '@/app/actions';
+import { getMessages, sendMessage, markAnnouncementRead } from '@/app/actions';
 import { toast } from 'sonner';
 import {
   Send, Paperclip, MessageSquare, Search, X, File,
-  ImageIcon, FileText, Loader2, ChevronRight
+  ImageIcon, FileText, Loader2, ChevronRight, Bell
 } from 'lucide-react';
 
 const ROLE_LABEL = {
@@ -75,12 +75,14 @@ function FilePreview({ fileUrl, fileName, fileType }) {
   );
 }
 
-export default function ChatClient({ contacts, currentUser, initialContactId }) {
+export default function ChatClient({ contacts, currentUser, initialContactId, announcements: initialAnnouncements = [] }) {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState('chats'); // 'chats' | 'announcements'
   const [search, setSearch] = useState('');
   const [activeContact, setActiveContact] = useState(null);
   const [messages, setMessages] = useState([]);
   const [contactList, setContactList] = useState(contacts);
+  const [announcements, setAnnouncements] = useState(initialAnnouncements);
   const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -104,6 +106,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId }) 
   };
 
   const totalUnread = contactList.reduce((s, c) => s + (c.unread || 0), 0);
+  const totalUnreadAnnouncements = announcements.filter(a => !a.read).length;
 
   const loadMessages = useCallback(async (contactId, silent = false) => {
     if (!contactId) return;
@@ -206,37 +209,64 @@ export default function ChatClient({ contacts, currentUser, initialContactId }) 
     }
   };
 
+  const handleMarkAnnouncementRead = async (id) => {
+    // Optimistic update
+    setAnnouncements(prev => prev.map(a => a._id === id ? { ...a, read: true } : a));
+    await markAnnouncementRead(id);
+  };
+
   return (
     <div className="fixed inset-0 top-[60px] flex bg-gray-50">
       {/* ── Sidebar ── */}
       <aside className="w-80 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col h-full">
-        {/* Header */}
+        {/* Header Tabs */}
         <div className="px-5 pt-5 pb-3 border-b border-gray-50">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-[#0d3b26]" />
-              Messages
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setActiveTab('chats')}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
+                activeTab === 'chats' ? 'bg-[#0d3b26] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              Chats
               {totalUnread > 0 && (
-                <span className="ml-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                  {totalUnread > 99 ? '99+' : totalUnread}
+                <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${activeTab === 'chats' ? 'bg-white text-[#0d3b26]' : 'bg-red-500 text-white'}`}>
+                  {totalUnread}
                 </span>
               )}
-            </h2>
+            </button>
+            <button
+              onClick={() => setActiveTab('announcements')}
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
+                activeTab === 'announcements' ? 'bg-[#0d3b26] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              Announcements
+              {totalUnreadAnnouncements > 0 && (
+                <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${activeTab === 'announcements' ? 'bg-white text-[#0d3b26]' : 'bg-red-500 text-white'}`}>
+                  {totalUnreadAnnouncements}
+                </span>
+              )}
+            </button>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search contacts..."
-              className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#0d3b26]/30 focus:bg-white transition-all"
-            />
-          </div>
+          {activeTab === 'chats' && (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search contacts..."
+                className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#0d3b26]/30 focus:bg-white transition-all"
+              />
+            </div>
+          )}
         </div>
 
-        {/* Contact List */}
+        {/* List Content */}
         <div className="flex-1 overflow-y-auto py-2">
-          {Object.entries(grouped).map(([role, list]) => {
+          {activeTab === 'chats' ? (
+            <>
+              {Object.entries(grouped).map(([role, list]) => {
             if (!list.length) return null;
             return (
               <div key={role} className="mb-1">
@@ -285,6 +315,38 @@ export default function ChatClient({ contacts, currentUser, initialContactId }) 
             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
               <Search className="w-8 h-8 mb-2 opacity-40" />
               <p className="text-sm">No contacts found</p>
+            </div>
+          )}
+            </>
+          ) : (
+            <div className="px-3">
+              {announcements.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                  <Bell className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-sm">No announcements</p>
+                </div>
+              ) : (
+                announcements.map((announcement) => (
+                  <div
+                    key={announcement._id}
+                    onClick={() => {
+                      if (!announcement.read) handleMarkAnnouncementRead(announcement._id);
+                    }}
+                    className={`mb-3 p-4 rounded-xl border transition-all cursor-pointer ${
+                      !announcement.read ? 'bg-[#f0f7f3] border-[#0d3b26]/20 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className={`text-sm font-bold ${!announcement.read ? 'text-[#0d3b26]' : 'text-gray-900'}`}>
+                        {announcement.title}
+                      </h4>
+                      {!announcement.read && <span className="w-2 h-2 rounded-full bg-red-500 mt-1 flex-shrink-0" />}
+                    </div>
+                    <p className="text-xs text-gray-600 leading-relaxed">{announcement.content}</p>
+                    <p className="text-[10px] text-gray-400 mt-3">{formatTime(announcement.createdAt)}</p>
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>
@@ -426,6 +488,21 @@ export default function ChatClient({ contacts, currentUser, initialContactId }) 
               </p>
             </div>
           </>
+        ) : activeTab === 'announcements' ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400">
+            <div
+              className="w-24 h-24 rounded-3xl flex items-center justify-center shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #0d3b26 0%, #2e7d52 100%)' }}
+            >
+              <Bell className="w-12 h-12 text-white" />
+            </div>
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-gray-700 mb-1">System Announcements</h3>
+              <p className="text-sm text-gray-400 max-w-xs">
+                Select an announcement on the left to read automated wrap-up reports and important updates.
+              </p>
+            </div>
+          </div>
         ) : (
           /* Empty state */
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400">

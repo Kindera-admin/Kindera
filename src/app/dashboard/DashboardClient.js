@@ -60,19 +60,10 @@ const cards = [
     lightBg: '#f0f5ff',
   },
   {
-    title: 'Register User',
-    description: 'Manually register a new user into the Kindera platform.',
+    title: 'Create Login',
+    description: 'Manually create credentials and verify documents for users or NGOs.',
     icon: UserPlus,
     href: '/admin/register',
-    accent: '#6366f1',
-    gradient: 'from-[#6366f1] to-[#818cf8]',
-    lightBg: '#f5f3ff',
-  },
-  {
-    title: 'Create NGO Login',
-    description: 'Manually create credentials and verify documents for a new NGO.',
-    icon: UserPlus,
-    href: '/admin/register?role=ngo',
     accent: '#10b981',
     gradient: 'from-[#10b981] to-[#34d399]',
     lightBg: '#ecfdf5',
@@ -119,7 +110,7 @@ export default function DashboardClient({ userRole }) {
   };
 
   const visibleCards = userRole === 'employee'
-    ? cards.filter((card) => card.href === '/admin/ngo-partners' || card.href === '/admin/register?role=ngo' || card.href === '/admin/events-history')
+    ? cards.filter((card) => card.href === '/admin/ngo-partners' || card.href === '/admin/register' || card.href === '/admin/events-history')
     : cards;
 
   return (

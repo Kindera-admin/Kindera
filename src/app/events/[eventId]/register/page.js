@@ -19,7 +19,7 @@ export default async function EventRegisterPage({ params }) {
     notFound();
   }
 
-  const { count: registeredCount = 0 } = await getEventRegisteredCount(eventId);
+  const { count: registeredCount = 0, spocCount = 0 } = await getEventRegisteredCount(eventId);
 
   let spocRegistered = false;
   if (user && user.role === 'org_member') {
@@ -37,7 +37,8 @@ export default async function EventRegisterPage({ params }) {
       <EventRegisterClient 
         event={result.event} 
         currentUser={user} 
-        registeredCount={registeredCount} 
+        registeredCount={registeredCount}
+        spocCount={spocCount}
         spocRegistered={spocRegistered}
       />
     </div>

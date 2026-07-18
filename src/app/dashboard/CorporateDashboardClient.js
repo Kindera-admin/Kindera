@@ -161,18 +161,6 @@ export default function CorporateDashboardClient({ stats, monthly }) {
             </div>
           </button>
 
-          <button
-            onClick={() => router.push('/dashboard/registrations')}
-            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
-          >
-            <div className="w-10 h-10 rounded-lg bg-[#7c3aed] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-              <ClipboardList className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Registrations</p>
-              <p className="text-xs text-gray-500">Approve or reject event sign-ups</p>
-            </div>
-          </button>
 
           <button
             onClick={() => router.push('/messages')}

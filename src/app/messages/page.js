@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
-import { getChatContacts } from '@/app/actions';
+import { getChatContacts, getMyAnnouncements } from '@/app/actions';
 import ChatClient from './ChatClient';
 
 export const metadata = {
@@ -16,12 +16,14 @@ export default async function MessagesPage({ searchParams }) {
   if (!allowedRoles.includes(user.role)) redirect('/dashboard');
 
   const { contacts = [] } = await getChatContacts();
+  const { announcements = [] } = await getMyAnnouncements();
   const params = await searchParams;
   const initialContactId = params?.contact || null;
 
   return (
     <ChatClient
       contacts={contacts}
+      announcements={announcements}
       currentUser={{
         _id: user._id.toString(),
         name: user.name,

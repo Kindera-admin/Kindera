@@ -15,16 +15,44 @@ export default function NGOPartnersClient({ initialPartners }) {
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState({ name: '', description: '', focusAreas: '', programs: '', impact: '', registeredOffice: '', location: '', website: '' });
 
+  const [photoFile, setPhotoFile] = useState(null);
+
+  const uploadPhoto = async (file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'kindera/ngo-partners');
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error('Failed to upload photo');
+    return (await res.json()).url;
+  };
+
   const handleAdd = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      let uploadedLogoUrl = '';
+      if (photoFile) {
+        toast.loading('Uploading logo...', { id: 'logo-upload' });
+        try {
+          uploadedLogoUrl = await uploadPhoto(photoFile);
+          toast.dismiss('logo-upload');
+        } catch {
+          toast.dismiss('logo-upload');
+          toast.error('Failed to upload logo, proceeding without it');
+        }
+      }
+
       const formData = new FormData();
       Object.entries(form).forEach(([k, v]) => formData.append(k, v));
+      if (uploadedLogoUrl) {
+        formData.append('logoUrl', uploadedLogoUrl);
+      }
+      
       const result = await createNGOPartner(formData);
       if (result.success) {
         setPartners((prev) => [result.partner, ...prev]);
         setForm({ name: '', description: '', focusAreas: '', programs: '', impact: '', registeredOffice: '', location: '', website: '' });
+        setPhotoFile(null);
         setShowForm(false);
         toast.success('NGO partner added');
       } else {
@@ -106,6 +134,10 @@ export default function NGOPartnersClient({ initialPartners }) {
             <Input id="focusAreas" placeholder="Education, Healthcare, Environment..." value={form.focusAreas} onChange={(e) => setForm((f) => ({ ...f, focusAreas: e.target.value }))} />
           </div>
           <div className="space-y-1">
+            <Label htmlFor="logo">Logo / Picture <span className="text-gray-400 text-xs">(optional)</span></Label>
+            <Input id="logo" type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files[0])} className="file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
+          </div>
+          <div className="space-y-1">
             <Label htmlFor="programs">Programs <span className="text-gray-400 text-xs">(one per line)</span></Label>
             <textarea
               id="programs"
@@ -142,6 +174,11 @@ export default function NGOPartnersClient({ initialPartners }) {
         <div className="space-y-4">
           {partners.map((partner) => (
             <div key={partner._id} className="border rounded-xl p-5 bg-white flex justify-between items-start gap-4">
+              {partner.logoUrl && (
+                <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center">
+                  <img src={partner.logoUrl} alt={`${partner.name} logo`} className="w-full h-full object-contain" />
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h3 className="font-semibold text-base">{partner.name}</h3>

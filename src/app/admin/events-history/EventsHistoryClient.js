@@ -229,8 +229,13 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                       )}
                     </td>
 
-                    <td className="px-6 py-4 text-right font-mono font-medium">
-                      {item.joinedCount}
+                    <td className="px-6 py-4 text-right">
+                      <div className="font-mono font-medium text-gray-900">{item.joinedCount} <span className="font-sans text-xs text-gray-500 font-normal">volunteers</span></div>
+                      {(item.spocCount > 0) && (
+                        <div className="text-[10px] text-gray-500 mt-0.5 leading-tight">
+                          from {item.spocCount} SPOC{item.spocCount > 1 ? 's' : ''}
+                        </div>
+                      )}
                     </td>
 
                     <td className="px-6 py-4 text-right font-mono font-medium text-emerald-700">

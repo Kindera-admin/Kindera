@@ -26,20 +26,27 @@ export default async function NGOPartnersPage() {
       ) : (
         <div className="grid gap-6">
           {partners.map((ngo) => (
-            <Card key={ngo._id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
-                <CardTitle className="text-2xl text-blue-900">{ngo.name}</CardTitle>
-                {ngo.registeredOffice && (
-                  <CardDescription className="text-blue-700 font-medium">
-                    📍 Registered Office: {ngo.registeredOffice}
-                  </CardDescription>
+            <Card key={ngo._id} className="hover:shadow-lg transition-shadow overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 flex flex-col md:flex-row items-center md:items-start gap-6 border-b">
+                {ngo.logoUrl && (
+                  <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center p-2">
+                    <img src={ngo.logoUrl} alt={`${ngo.name} logo`} className="w-full h-full object-contain" />
+                  </div>
                 )}
-                {!ngo.registeredOffice && ngo.location && (
-                  <CardDescription className="text-blue-700 font-medium">
-                    📍 Location: {ngo.location}
-                  </CardDescription>
-                )}
-              </CardHeader>
+                <div className="flex-1 text-center md:text-left">
+                  <h2 className="text-2xl font-bold text-blue-900 mb-2">{ngo.name}</h2>
+                  {ngo.registeredOffice && (
+                    <p className="text-blue-700 font-medium">
+                      📍 Registered Office: {ngo.registeredOffice}
+                    </p>
+                  )}
+                  {!ngo.registeredOffice && ngo.location && (
+                    <p className="text-blue-700 font-medium">
+                      📍 Location: {ngo.location}
+                    </p>
+                  )}
+                </div>
+              </div>
               <CardContent className="pt-6">
                 <p className="text-gray-700 mb-4 leading-relaxed">{ngo.description}</p>
 

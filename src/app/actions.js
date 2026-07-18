@@ -1176,6 +1176,7 @@ export async function getAllNGOPartners() {
         _id: p._id.toString(),
         name: p.name,
         description: p.description,
+        logoUrl: p.logoUrl || '',
         focusAreas: p.focusAreas || '',
         programs: p.programs || [],
         impact: p.impact || '',
@@ -1209,12 +1210,13 @@ export async function createNGOPartner(formData) {
     const registeredOffice = formData.get('registeredOffice')?.trim() || '';
     const location = formData.get('location')?.trim() || '';
     const website = formData.get('website')?.trim() || '';
+    const logoUrl = formData.get('logoUrl')?.trim() || '';
 
     if (!name || !description) {
       return { success: false, message: 'Name and description are required' };
     }
 
-    const partner = await NGOPartner.create({ name, description, focusAreas, programs, impact, registeredOffice, location, website });
+    const partner = await NGOPartner.create({ name, description, logoUrl, focusAreas, programs, impact, registeredOffice, location, website });
 
     revalidatePath('/ngo-partners');
     revalidatePath('/admin/ngo-partners');
@@ -1225,6 +1227,7 @@ export async function createNGOPartner(formData) {
         _id: partner._id.toString(),
         name: partner.name,
         description: partner.description,
+        logoUrl: partner.logoUrl,
         focusAreas: partner.focusAreas,
         programs: partner.programs,
         impact: partner.impact,
@@ -2172,15 +2175,8 @@ export async function registerForEventLoggedIn(eventId, comment, volunteersCount
       }
     }
 
-    // Auto-approve if the event belongs to the user's SPOC (matching organizationName)
-    let status = 'pending';
-    if (
-      user.organizationName && 
-      event.createdBy && 
-      event.createdBy.organizationName === user.organizationName
-    ) {
-      status = 'approved';
-    }
+    // Auto-approve all registrations
+    let status = 'approved';
 
     const count = currentUser.role === 'org_spoc' ? (parseInt(volunteersCount) || 1) : 1;
 
@@ -2492,21 +2488,30 @@ export async function getImpactStats() {
   }
 }
 
-// Get registered count for an event (for capacity display)
+// Get registered count for an event (for capacity display and breakdown)
 export async function getEventRegisteredCount(eventId) {
   try {
     await connectDB();
     const registeredUsers = await User.find({
       'eventRegistrations.eventId': eventId,
-      'eventRegistrations.status': { $in: ['pending', 'approved'] }
+      'eventRegistrations.status': 'approved'
     });
-    const total = registeredUsers.reduce((sum, u) => {
+    
+    let spocCount = 0;
+    let totalCount = 0;
+
+    registeredUsers.forEach((u) => {
       const reg = u.eventRegistrations.find(r => r.eventId.toString() === eventId.toString());
-      return sum + (reg ? (reg.volunteersCount || 1) : 0);
-    }, 0);
-    return { success: true, count: total };
+      const count = reg ? (reg.volunteersCount || 1) : 0;
+      totalCount += count;
+      if (u.role === 'org_spoc') {
+        spocCount += 1;
+      }
+    });
+
+    return { success: true, count: totalCount, spocCount, volunteerCount: totalCount };
   } catch {
-    return { success: true, count: 0 };
+    return { success: true, count: 0, spocCount: 0, volunteerCount: 0 };
   }
 }
 
@@ -2614,19 +2619,25 @@ export async function getAllEventsHistory() {
       .sort({ date: -1 })
       .lean();
 
-    // Aggregate joined count from User model
+    // Aggregate joined count and spoc count from User model
     const registrationsAgg = await User.aggregate([
       { $unwind: '$eventRegistrations' },
-      { $match: { 'eventRegistrations.status': { $in: ['pending', 'approved'] } } },
+      { $match: { 'eventRegistrations.status': 'approved' } },
       {
         $group: {
           _id: '$eventRegistrations.eventId',
-          joinedCount: { $sum: { $ifNull: ['$eventRegistrations.volunteersCount', 1] } }
+          joinedCount: { $sum: { $ifNull: ['$eventRegistrations.volunteersCount', 1] } },
+          spocCount: {
+            $sum: { $cond: [{ $eq: ['$role', 'org_spoc'] }, 1, 0] }
+          }
         }
       }
     ]);
     const regsMap = registrationsAgg.reduce((acc, curr) => {
-      acc[curr._id.toString()] = curr.joinedCount;
+      acc[curr._id.toString()] = {
+        joinedCount: curr.joinedCount,
+        spocCount: curr.spocCount
+      };
       return acc;
     }, {});
 
@@ -2651,7 +2662,7 @@ export async function getAllEventsHistory() {
 
     const history = events.map(event => {
       const eId = event._id.toString();
-      const joinedCount = regsMap[eId] || 0;
+      const regData = regsMap[eId] || { joinedCount: 0, spocCount: 0 };
       const attData = attsMap[eId] || { attendanceCount: 0, hoursLogged: 0 };
 
       return {
@@ -2668,7 +2679,8 @@ export async function getAllEventsHistory() {
           role: event.createdBy.role,
           organizationName: event.createdBy.organizationName || null,
         } : null,
-        joinedCount,
+        joinedCount: regData.joinedCount,
+        spocCount: regData.spocCount,
         attendanceCount: attData.attendanceCount,
         hoursLogged: attData.hoursLogged,
       };
@@ -2677,6 +2689,55 @@ export async function getAllEventsHistory() {
     return { success: true, history };
   } catch (error) {
     console.error('Error getting all events history:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function getMyAnnouncements() {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+    // Assuming Announcement model will be imported at top, or we can just require it
+    const Announcement = (await import('@/models/Announcement')).default;
+    
+    const announcements = await Announcement.find({ recipient: session.userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return {
+      success: true,
+      announcements: announcements.map(a => ({
+        ...a,
+        _id: a._id.toString(),
+        recipient: a.recipient.toString(),
+        createdAt: a.createdAt.toISOString(),
+        updatedAt: a.updatedAt.toISOString(),
+      }))
+    };
+  } catch (error) {
+    console.error('Error getting announcements:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function markAnnouncementRead(announcementId) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+    const Announcement = (await import('@/models/Announcement')).default;
+
+    await Announcement.findOneAndUpdate(
+      { _id: announcementId, recipient: session.userId },
+      { read: true }
+    );
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error marking announcement read:', error);
     return { success: false, message: error.message };
   }
 }
