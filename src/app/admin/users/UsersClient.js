@@ -312,7 +312,12 @@ export default function UsersClient({ initialUsers = [], currentUserId }) {
                       >
                         <TableCell>
                           <div className="font-medium">{user.name}</div>
-                          <div className="text-xs text-gray-500">@{user.username}</div>
+                          {(user.organizationName || user.ngoId) && (
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {user.organizationName || user.ngoId}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-500 mt-0.5">@{user.username}</div>
                           {user.eventRegistrations && user.eventRegistrations.length > 0 && (
                             <div className="text-xs text-emerald-600 mt-0.5 font-medium">
                               Registered for {user.eventRegistrations.length} event(s)

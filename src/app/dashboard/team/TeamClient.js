@@ -87,10 +87,17 @@ export default function TeamClient({ members, stats, orgName }) {
                   <tr key={member._id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#e8f5e9] text-[#2e7d52] flex items-center justify-center font-bold text-xs">
+                        <div className="w-8 h-8 rounded-full bg-[#e8f5e9] text-[#2e7d52] flex items-center justify-center font-bold text-xs shrink-0">
                           {member.name.charAt(0)}
                         </div>
-                        <span className="font-medium text-gray-900 text-sm">{member.name}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-gray-900 text-sm truncate">{member.name}</span>
+                          {(member.organizationName || member.ngoId) && (
+                            <span className="text-xs text-gray-500 truncate">
+                              {member.organizationName || member.ngoId}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 font-mono">{member.username}</td>

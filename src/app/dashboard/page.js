@@ -35,7 +35,11 @@ export default async function DashboardPage() {
 
   if (user.role === 'org_spoc') {
     const { stats = {}, monthly = [] } = await getOrgStats(user.organizationName);
-    return <CorporateDashboardClient stats={stats} monthly={monthly} />;
+    return (
+      <>
+        <CorporateDashboardClient stats={stats} monthly={monthly} />
+      </>
+    );
   }
 
   const eventsResult = await getEvents('upcoming');
@@ -91,7 +95,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="w-full max-w-4xl mx-auto">
-
       {/* Welcome Header */}
       <div className="mb-8">
         <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">

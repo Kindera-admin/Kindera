@@ -42,7 +42,6 @@ const userSchema = new mongoose.Schema({
     default: 'pending'
   },
   mobile: { type: String, default: '' },
-  email: { type: String, default: '' },
   age: { type: Number, default: null },
   photoUrl: { type: String, default: '' },
   eventRegistrations: [{
@@ -88,6 +87,7 @@ const userSchema = new mongoose.Schema({
     status:    { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
     adminNote: { type: String, default: '' },
   }],
+
 
 }, {
   timestamps: true

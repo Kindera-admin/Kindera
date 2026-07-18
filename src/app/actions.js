@@ -102,6 +102,37 @@ export async function login(formData) {
   }
 }
 
+// Add/Update User Email (For Dashboard Prompt)
+export async function updateUserEmail(email) {
+  try {
+    const session = await getCurrentUser();
+    if (!session) return { success: false, message: 'Unauthorized' };
+
+    if (!email || !email.includes('@')) {
+      return { success: false, message: 'Invalid email address' };
+    }
+
+    await connectDB();
+    
+    // Check if email is already taken by another user
+    const existing = await User.findOne({ email, _id: { $ne: session._id } });
+    if (existing) {
+      return { success: false, message: 'Email is already in use by another account' };
+    }
+
+    const user = await User.findById(session._id);
+    if (!user) return { success: false, message: 'User not found' };
+
+    user.email = email;
+    await user.save();
+
+    return { success: true, message: 'Email updated successfully' };
+  } catch (error) {
+    console.error('Update email error:', error);
+    return { success: false, message: 'Server error' };
+  }
+}
+
 export async function logout() {
     const cookieStore = await cookies();
     cookieStore.set({
@@ -2626,7 +2657,7 @@ export async function getAllEventsHistory() {
       {
         $group: {
           _id: '$eventRegistrations.eventId',
-          joinedCount: { $sum: { $ifNull: ['$eventRegistrations.volunteersCount', 1] } },
+          joinedCount: { $sum: 1 },
           spocCount: {
             $sum: { $cond: [{ $eq: ['$role', 'org_spoc'] }, 1, 0] }
           }
@@ -2638,6 +2669,44 @@ export async function getAllEventsHistory() {
         joinedCount: curr.joinedCount,
         spocCount: curr.spocCount
       };
+      return acc;
+    }, {});
+
+    // Aggregate Corporate Breakdown
+    const corpDetailsAgg = await User.aggregate([
+      { $unwind: '$eventRegistrations' },
+      { $match: { 
+          'eventRegistrations.status': 'approved',
+          role: { $in: ['org_spoc', 'org_member'] }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            eventId: '$eventRegistrations.eventId',
+            orgName: '$organizationName'
+          },
+          expected: {
+            $sum: { $cond: [{ $eq: ['$role', 'org_spoc'] }, '$eventRegistrations.volunteersCount', 0] }
+          },
+          actual: {
+            $sum: { $cond: [{ $eq: ['$role', 'org_member'] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    const corpDetailsMap = corpDetailsAgg.reduce((acc, curr) => {
+      const eventId = curr._id.eventId.toString();
+      const orgName = curr._id.orgName;
+      if (!acc[eventId]) acc[eventId] = [];
+      if (orgName) {
+        acc[eventId].push({
+          orgName,
+          expected: curr.expected,
+          actual: curr.actual
+        });
+      }
       return acc;
     }, {});
 
@@ -2738,6 +2807,27 @@ export async function markAnnouncementRead(announcementId) {
     return { success: true };
   } catch (error) {
     console.error('Error marking announcement read:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function updateProfileName(newName) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    if (!newName || newName.trim() === '') {
+      return { success: false, message: 'Name cannot be empty' };
+    }
+
+    await connectDB();
+    const User = (await import('@/models/User')).default;
+
+    await User.findByIdAndUpdate(session.userId, { name: newName.trim() });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating profile name:', error);
     return { success: false, message: error.message };
   }
 }

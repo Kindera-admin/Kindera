@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import useAuthStore from '@/store/authStore';
 import { logout, getUnreadCount } from '@/app/actions';
 import { toast } from 'sonner';
-import { LogOut, Menu, X, LayoutDashboard, CalendarDays, Users, FileText, Building2, MessageSquare } from 'lucide-react';
+import { LogOut, Menu, X, LayoutDashboard, CalendarDays, Users, FileText, Building2, MessageSquare, Settings } from 'lucide-react';
 
 const Navbar = () => {
   const { user, clearAuth, isAuthenticated, isAdmin } = useAuthStore();
@@ -159,6 +159,13 @@ const Navbar = () => {
               <p className="text-[11px] text-gray-400 capitalize mt-0.5">{user?.role?.replace(/_/g, ' ')}</p>
             </div>
             <div className="w-[1px] h-5 bg-gray-200 mx-1" />
+            <Link
+              href="/settings"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-all"
+            >
+              <Settings className="w-4 h-4" />
+              Settings
+            </Link>
             <button
               onClick={handleLogout}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 transition-all"

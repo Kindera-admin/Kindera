@@ -10,5 +10,9 @@ export default async function MyImpactPage() {
 
   const { events = [], stats = {} } = await getMyImpact();
 
-  return <MyImpactClient events={events} stats={stats} />;
+  return (
+    <>
+      <MyImpactClient events={events} stats={stats} />
+    </>
+  );
 }

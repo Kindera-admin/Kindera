@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Calendar, 
@@ -16,7 +16,9 @@ import {
   Award,
   Globe,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { deleteEvent } from '@/app/actions';
@@ -28,6 +30,11 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all'); // all, global, internal
   const [statusFilter, setStatusFilter] = useState('all'); // all, upcoming, ended, live
+  const [expandedRows, setExpandedRows] = useState({});
+
+  const toggleRow = (id) => {
+    setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const canDelete = userRole === 'admin';
 
@@ -185,10 +192,22 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map(item => (
-                  <tr key={item._id} className="hover:bg-gray-50/50 transition-colors text-sm text-gray-700">
+                  <React.Fragment key={item._id}>
+                  <tr 
+                    onClick={() => item.corporateDetails?.length > 0 && toggleRow(item._id)}
+                    className={`hover:bg-gray-50/50 transition-colors text-sm text-gray-700 ${item.corporateDetails?.length > 0 ? 'cursor-pointer' : ''}`}
+                  >
                     <td className="px-6 py-4">
-                      <div>
-                        <span className="font-semibold text-gray-900 block leading-tight mb-1">{item.title}</span>
+                      <div className="flex items-start gap-3">
+                        {item.corporateDetails?.length > 0 ? (
+                          <div className="mt-0.5 text-gray-400">
+                            {expandedRows[item._id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </div>
+                        ) : (
+                          <div className="w-4 h-4" /> // placeholder
+                        )}
+                        <div>
+                          <span className="font-semibold text-gray-900 block leading-tight mb-1">{item.title}</span>
                         <div className="flex items-center gap-2 text-[10px] text-gray-400">
                           <span className={`px-1.5 py-0.5 rounded-full font-bold ${
                             item.status === 'upcoming' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
@@ -197,6 +216,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                           </span>
                           <span>·</span>
                           <span>{new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        </div>
                         </div>
                       </div>
                     </td>
@@ -267,6 +287,37 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                       </div>
                     </td>
                   </tr>
+                  {expandedRows[item._id] && item.corporateDetails?.length > 0 && (
+                    <tr className="bg-gray-50/30">
+                      <td colSpan="7" className="px-12 py-4">
+                        <div className="bg-white border border-gray-100 rounded-lg p-4 shadow-sm">
+                          <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-emerald-700" />
+                            Corporate Breakdown
+                          </h4>
+                          <table className="w-full text-left text-sm">
+                            <thead>
+                              <tr className="text-gray-500 border-b border-gray-100">
+                                <th className="pb-2 font-medium">Organization Name</th>
+                                <th className="pb-2 font-medium text-right">Expected Volunteers</th>
+                                <th className="pb-2 font-medium text-right">Actual Joined</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {item.corporateDetails.map((corp, idx) => (
+                                <tr key={idx} className="text-gray-700">
+                                  <td className="py-2.5 font-medium">{corp.orgName}</td>
+                                  <td className="py-2.5 text-right font-mono text-gray-500">{corp.expected}</td>
+                                  <td className="py-2.5 text-right font-mono font-medium text-emerald-700">{corp.actual}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
