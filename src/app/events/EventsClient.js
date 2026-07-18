@@ -7,7 +7,7 @@ import { Calendar, MapPin, Users, ExternalLink, Trash2, Share2, CheckCircle2, Cl
 import { deleteEvent } from '@/app/actions';
 import { toast } from 'sonner';
 
-export default function EventsClient({ events: initialEvents, userRole, approvedEventIds = [], pendingEventIds = [] }) {
+export default function EventsClient({ events: initialEvents, userRole, currentUserId, approvedEventIds = [], pendingEventIds = [] }) {
   const [events, setEvents] = useState(initialEvents);
   const canCreateEvent = ['admin', 'ngo', 'org_spoc'].includes(userRole);
   const canRegisterForEvent = ['org_spoc', 'org_member', 'volunteer'].includes(userRole);
@@ -152,7 +152,11 @@ export default function EventsClient({ events: initialEvents, userRole, approved
                     Share Event
                   </Button>
                   
-                  {canRegisterForEvent && event.lifecycle !== 'ended' && (
+                  {userRole === 'org_spoc' && event.createdBy && event.createdBy._id === currentUserId ? (
+                    <div className="flex-1 text-center py-2 px-4 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-100 flex items-center justify-center">
+                      ✨ Created by you. You can ask your volunteers to participate.
+                    </div>
+                  ) : canRegisterForEvent && event.lifecycle !== 'ended' && (
                     approvedEventIds.includes(event._id) ? (
                       <Button
                         disabled

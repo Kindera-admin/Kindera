@@ -924,12 +924,12 @@ export async function getEventById(id) {
         // admins and employees can always see everything — allowed
       } else if (currentUser.role === 'org_spoc') {
         // SPOC can only see events they created themselves
-        if (event.createdBy.toString() !== currentUser._id.toString()) {
+        if (event.createdBy._id.toString() !== currentUser._id.toString()) {
           return { success: false, message: 'You do not have permission to view this event' };
         }
       } else if (currentUser.role === 'org_member') {
         // Org member can only see events created by their SPOC
-        if (!currentUser.spocId || event.createdBy.toString() !== currentUser.spocId.toString()) {
+        if (!currentUser.spocId || event.createdBy._id.toString() !== currentUser.spocId.toString()) {
           return { success: false, message: 'You do not have permission to view this event' };
         }
       } else {
@@ -2033,6 +2033,10 @@ export async function registerForEvent(formData, eventId) {
     const event = await Event.findById(eventId);
     if (!event) return { success: false, message: 'Event not found' };
 
+    if (event.organizationName) {
+      return { success: false, message: 'This is a private corporate event. Guest registration is not allowed.' };
+    }
+
     const start = new Date(event.date);
     const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);
     if (new Date() > end) {
@@ -2105,13 +2109,31 @@ export async function registerForEventLoggedIn(eventId, comment, volunteersCount
     await connectDB();
     const currentUser = await getCurrentUser();
 
-    // org_member cannot register directly for global events — SPOC must do it
-    if (currentUser.role === 'org_member') {
-      return { success: false, message: 'Your SPOC registers for events on your behalf. Please contact your SPOC.' };
-    }
-
     const event = await Event.findById(eventId).populate('createdBy');
     if (!event) return { success: false, message: 'Event not found' };
+
+    // Role-based registration restrictions for internal/global events
+    if (event.organizationName) {
+      // It's a private internal corporate event
+      if (currentUser.role === 'org_member') {
+        if (!currentUser.spocId || event.createdBy._id.toString() !== currentUser.spocId.toString()) {
+          return { success: false, message: 'Only members whose logins are created by the hosting SPOC can register for this event.' };
+        }
+      } else if (currentUser.role === 'org_spoc') {
+        if (event.createdBy._id.toString() === currentUser._id.toString()) {
+          return { success: false, message: 'This is an internal event created by you. You can ask your volunteers to participate.' };
+        } else {
+          return { success: false, message: 'Only corporate members of the hosting organization can register for this event.' };
+        }
+      } else {
+        return { success: false, message: 'Only corporate members of this organization can register for this event.' };
+      }
+    } else {
+      // It's a global event
+      if (currentUser.role === 'org_member') {
+        return { success: false, message: 'Your SPOC registers for events on your behalf. Please contact your SPOC.' };
+      }
+    }
 
     const start = new Date(event.date);
     const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);

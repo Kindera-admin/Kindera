@@ -18,5 +18,13 @@ export default async function EventsPage() {
   const approvedEventIds = regResult.approvedEventIds || [];
   const pendingEventIds = regResult.pendingEventIds || [];
   
-  return <EventsClient events={events} userRole={user.role} approvedEventIds={approvedEventIds} pendingEventIds={pendingEventIds} />;
+  return (
+    <EventsClient 
+      events={events} 
+      userRole={user.role} 
+      currentUserId={user._id.toString()}
+      approvedEventIds={approvedEventIds} 
+      pendingEventIds={pendingEventIds} 
+    />
+  );
 }
