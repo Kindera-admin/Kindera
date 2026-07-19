@@ -48,7 +48,6 @@ export default function ImpactDashboardClient({ stats }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         {[
           { label: 'Volunteered Hours', value: totalHours.toLocaleString() + ' hrs', icon: TrendingUp, desc: 'Log-verified CSR service', color: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-          { label: 'Beneficiaries Impacted', value: totalBeneficiaries.toLocaleString(), icon: Users, desc: 'Lives positively touched', color: 'text-blue-700 bg-blue-50 border-blue-100' },
           { label: 'NGO Partnerships', value: totalNGOs, icon: Award, desc: 'Active verified NGOs', color: 'text-purple-700 bg-purple-50 border-purple-100' },
           { label: 'Corporate Partners', value: totalOrgs, icon: Building, desc: 'Engaged organizations', color: 'text-amber-700 bg-amber-50 border-amber-100' },
         ].map((k, i) => {

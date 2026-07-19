@@ -169,7 +169,6 @@ export default function CorporateOverviewClient({ orgs }) {
                 { label: 'Employees Joined', value: selectedOrgStats.stats.totalVolunteers, icon: Users, color: 'text-blue-700 bg-blue-50' },
                 { label: 'Events Attended', value: selectedOrgStats.stats.eventsAttended, icon: CalendarDays, color: 'text-purple-700 bg-purple-50' },
                 { label: 'NGOs Engaged', value: selectedOrgStats.stats.ngosEngaged, icon: HeartHandshake, color: 'text-rose-700 bg-rose-50' },
-                { label: 'Impacted Lives', value: selectedOrgStats.stats.beneficiariesImpacted.toLocaleString(), icon: TrendingUp, color: 'text-amber-700 bg-amber-50' },
                 { label: 'Avg Rating Given', value: selectedOrgStats.stats.avgFeedback ? `${selectedOrgStats.stats.avgFeedback}/5` : '–', icon: Star, color: 'text-amber-500 bg-amber-50/50' },
               ].map((m, idx) => {
                 const Icon = m.icon;

@@ -34,7 +34,6 @@ export default function CorporateDashboardClient({ stats, monthly }) {
           { label: 'Volunteer Hours', value: (stats.volunteerHours || 0).toLocaleString(), color: '#1a5c3a', icon: Clock },
           { label: 'Events Attended', value: stats.eventsAttended || 0, color: '#2e7d52', icon: CalendarDays },
           { label: 'NGOs Engaged', value: stats.ngosEngaged || 0, color: '#3d5a99', icon: Building2 },
-          { label: 'Beneficiaries Impacted', value: (stats.beneficiariesImpacted || 0).toLocaleString(), color: '#4a6fbf', icon: UsersRound },
           { label: 'Avg Feedback', value: stats.avgFeedback ? `${stats.avgFeedback}/5` : '–', color: '#6366f1', icon: null },
         ].map(k => {
           const Icon = k.icon;
