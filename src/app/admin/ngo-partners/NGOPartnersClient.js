@@ -22,7 +22,10 @@ export default function NGOPartnersClient({ initialPartners }) {
     fd.append('file', file);
     fd.append('folder', 'kindera/ngo-partners');
     const res = await fetch('/api/upload', { method: 'POST', body: fd });
-    if (!res.ok) throw new Error('Failed to upload photo');
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to upload photo');
+    }
     return (await res.json()).url;
   };
 
@@ -36,9 +39,9 @@ export default function NGOPartnersClient({ initialPartners }) {
         try {
           uploadedLogoUrl = await uploadPhoto(photoFile);
           toast.dismiss('logo-upload');
-        } catch {
+        } catch (err) {
           toast.dismiss('logo-upload');
-          toast.error('Failed to upload logo, proceeding without it');
+          toast.error(err.message || 'Failed to upload logo', { description: 'Proceeding without it' });
         }
       }
 
