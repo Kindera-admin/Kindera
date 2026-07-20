@@ -7,11 +7,13 @@ import { toast } from 'sonner';
 import { Loader2, Upload, Trash2, Image as ImageIcon } from 'lucide-react';
 import { addImpactPhoto, deleteImpactPhoto } from '@/app/actions';
 import Image from 'next/image';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function ImpactPhotosClient({ initialPhotos }) {
   const [photos, setPhotos] = useState(initialPhotos || []);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleFileUpload = async (e) => {
@@ -45,7 +47,7 @@ export default function ImpactPhotosClient({ initialPhotos }) {
       const result = await addImpactPhoto(uploadData.secure_url, uploadData.public_id);
       if (result.success) {
         setPhotos([result.photo, ...photos]);
-        toast.success('Photo uploaded successfully');
+        toast.success('Photo added to homepage gallery');
       } else {
         throw new Error(result.message);
       }
@@ -58,14 +60,14 @@ export default function ImpactPhotosClient({ initialPhotos }) {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this photo? It will be removed from the homepage.')) return;
+  const handleDeleteConfirm = async () => {
+    if (!confirmDeleteId) return;
 
-    setDeletingId(id);
+    setDeletingId(confirmDeleteId);
     try {
-      const result = await deleteImpactPhoto(id);
+      const result = await deleteImpactPhoto(confirmDeleteId);
       if (result.success) {
-        setPhotos(photos.filter(p => p._id !== id));
+        setPhotos(photos.filter(p => p._id !== confirmDeleteId));
         toast.success('Photo deleted successfully');
       } else {
         throw new Error(result.message);
@@ -75,6 +77,7 @@ export default function ImpactPhotosClient({ initialPhotos }) {
       toast.error(error.message || 'Failed to delete photo');
     } finally {
       setDeletingId(null);
+      setConfirmDeleteId(null);
     }
   };
 
@@ -125,7 +128,7 @@ export default function ImpactPhotosClient({ initialPhotos }) {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() => handleDelete(photo._id)}
+                  onClick={() => setConfirmDeleteId(photo._id)}
                   disabled={deletingId === photo._id}
                 >
                   {deletingId === photo._id ? (
@@ -142,6 +145,16 @@ export default function ImpactPhotosClient({ initialPhotos }) {
           </Card>
         ))}
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmDeleteId}
+        onClose={() => !deletingId && setConfirmDeleteId(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Photo"
+        message="Are you sure you want to delete this photo? It will be removed from the homepage. This action cannot be undone."
+        confirmText="Delete Photo"
+        isLoading={!!deletingId}
+      />
     </div>
   );
 }

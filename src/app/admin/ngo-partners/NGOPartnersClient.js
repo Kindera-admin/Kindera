@@ -2,16 +2,19 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Trash2, Plus, X, Building2 } from 'lucide-react';
+import { Trash2, Plus, X, Building2, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { createNGOPartner, deleteNGOPartner } from '@/app/actions';
+import { createNGOPartner, updateNGOPartner, deleteNGOPartner } from '@/app/actions';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function NGOPartnersClient({ initialPartners }) {
   const [partners, setPartners] = useState(initialPartners);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState({ name: '', description: '', focusAreas: '', programs: '', impact: '', registeredOffice: '', location: '', website: '' });
 
@@ -29,7 +32,7 @@ export default function NGOPartnersClient({ initialPartners }) {
     return (await res.json()).url;
   };
 
-  const handleAdd = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
@@ -51,30 +54,63 @@ export default function NGOPartnersClient({ initialPartners }) {
         formData.append('logoUrl', uploadedLogoUrl);
       }
       
-      const result = await createNGOPartner(formData);
+      let result;
+      if (editingId) {
+        result = await updateNGOPartner(editingId, formData);
+      } else {
+        result = await createNGOPartner(formData);
+      }
+
       if (result.success) {
-        setPartners((prev) => [result.partner, ...prev]);
-        setForm({ name: '', description: '', focusAreas: '', programs: '', impact: '', registeredOffice: '', location: '', website: '' });
-        setPhotoFile(null);
-        setShowForm(false);
-        toast.success('NGO partner added');
+        if (editingId) {
+          setPartners((prev) => prev.map(p => p._id === editingId ? result.partner : p));
+          toast.success('NGO partner updated');
+        } else {
+          setPartners((prev) => [result.partner, ...prev]);
+          toast.success('NGO partner added');
+        }
+        resetForm();
       } else {
         toast.error(result.message);
       }
     } catch {
-      toast.error('Failed to add NGO partner');
+      toast.error(editingId ? 'Failed to update NGO partner' : 'Failed to add NGO partner');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this NGO partner? This cannot be undone.')) return;
-    setDeletingId(id);
+  const handleEditClick = (partner) => {
+    setForm({
+      name: partner.name || '',
+      description: partner.description || '',
+      focusAreas: partner.focusAreas || '',
+      programs: partner.programs?.join('\n') || '',
+      impact: partner.impact || '',
+      registeredOffice: partner.registeredOffice || '',
+      location: partner.location || '',
+      website: partner.website || ''
+    });
+    setEditingId(partner._id);
+    setPhotoFile(null);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetForm = () => {
+    setForm({ name: '', description: '', focusAreas: '', programs: '', impact: '', registeredOffice: '', location: '', website: '' });
+    setPhotoFile(null);
+    setEditingId(null);
+    setShowForm(false);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!confirmDeleteId) return;
+    setDeletingId(confirmDeleteId);
     try {
-      const result = await deleteNGOPartner(id);
+      const result = await deleteNGOPartner(confirmDeleteId);
       if (result.success) {
-        setPartners((prev) => prev.filter((p) => p._id !== id));
+        setPartners((prev) => prev.filter((p) => p._id !== confirmDeleteId));
         toast.success('NGO partner removed');
       } else {
         toast.error(result.message);
@@ -83,6 +119,7 @@ export default function NGOPartnersClient({ initialPartners }) {
       toast.error('Failed to delete NGO partner');
     } finally {
       setDeletingId(null);
+      setConfirmDeleteId(null);
     }
   };
 
@@ -94,15 +131,15 @@ export default function NGOPartnersClient({ initialPartners }) {
           <h1 className="text-2xl font-bold">Manage NGO Partners</h1>
           <p className="text-gray-500 text-sm mt-1">{partners.length} partner{partners.length !== 1 ? 's' : ''}</p>
         </div>
-        <Button onClick={() => setShowForm((v) => !v)} variant={showForm ? 'outline' : 'default'}>
+        <Button onClick={() => showForm ? resetForm() : setShowForm(true)} variant={showForm ? 'outline' : 'default'}>
           {showForm ? <><X className="w-4 h-4 mr-2" />Cancel</> : <><Plus className="w-4 h-4 mr-2" />Add Partner</>}
         </Button>
       </div>
 
-      {/* Add Form */}
+      {/* Add/Edit Form */}
       {showForm && (
-        <form onSubmit={handleAdd} className="border rounded-xl p-5 mb-6 bg-gray-50 space-y-4">
-          <h2 className="font-semibold text-sm uppercase tracking-wide text-gray-600">New NGO Partner</h2>
+        <form onSubmit={handleSubmit} className="border rounded-xl p-5 mb-6 bg-gray-50 space-y-4">
+          <h2 className="font-semibold text-sm uppercase tracking-wide text-gray-600">{editingId ? 'Edit NGO Partner' : 'New NGO Partner'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label htmlFor="name">Name *</Label>
@@ -137,7 +174,7 @@ export default function NGOPartnersClient({ initialPartners }) {
             <Input id="focusAreas" placeholder="Education, Healthcare, Environment..." value={form.focusAreas} onChange={(e) => setForm((f) => ({ ...f, focusAreas: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="logo">Logo / Picture <span className="text-gray-400 text-xs">(optional)</span></Label>
+            <Label htmlFor="logo">Logo / Picture <span className="text-gray-400 text-xs">(optional{editingId ? ', leave empty to keep current' : ''})</span></Label>
             <Input id="logo" type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files[0])} className="file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
           </div>
           <div className="space-y-1">
@@ -161,8 +198,8 @@ export default function NGOPartnersClient({ initialPartners }) {
             />
           </div>
           <div className="flex justify-end gap-3 pt-1">
-            <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Adding...' : 'Add Partner'}</Button>
+            <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? (editingId ? 'Updating...' : 'Adding...') : (editingId ? 'Update Partner' : 'Add Partner')}</Button>
           </div>
         </form>
       )}
@@ -199,19 +236,40 @@ export default function NGOPartnersClient({ initialPartners }) {
                   </a>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
-                onClick={() => handleDelete(partner._id)}
-                disabled={deletingId === partner._id}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              <div className="flex flex-col gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-gray-500 hover:text-blue-700 hover:bg-blue-50"
+                  onClick={() => handleEditClick(partner)}
+                  disabled={deletingId === partner._id}
+                >
+                  <Edit2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => setConfirmDeleteId(partner._id)}
+                  disabled={deletingId === partner._id}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!confirmDeleteId}
+        onClose={() => !deletingId && setConfirmDeleteId(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete NGO Partner"
+        message="Are you sure you want to delete this NGO partner? This action cannot be undone."
+        confirmText="Delete NGO"
+        isLoading={!!deletingId}
+      />
     </div>
   );
 }

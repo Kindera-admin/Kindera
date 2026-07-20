@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { deleteEvent } from '@/app/actions';
 import { toast } from 'sonner';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function EventsHistoryClient({ history: initialHistory, userRole }) {
   const router = useRouter();
@@ -32,21 +33,27 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
   const [statusFilter, setStatusFilter] = useState('all'); // all, upcoming, ended, live
   const [expandedRows, setExpandedRows] = useState({});
 
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const toggleRow = (id) => {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const canDelete = userRole === 'admin';
 
-  const handleDelete = async (id, title) => {
-    if (!window.confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) return;
-    const res = await deleteEvent(id);
+  const handleDeleteConfirm = async () => {
+    if (!confirmDelete) return;
+    setIsDeleting(true);
+    const res = await deleteEvent(confirmDelete.id);
     if (res.success) {
-      setHistory(prev => prev.filter(e => e._id !== id));
+      setHistory(prev => prev.filter(e => e._id !== confirmDelete.id));
       toast.success('Event deleted successfully');
     } else {
       toast.error(res.message || 'Failed to delete event');
     }
+    setIsDeleting(false);
+    setConfirmDelete(null);
   };
 
   // Filter logic
@@ -277,7 +284,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                         </button>
                         {canDelete && (
                           <button
-                            onClick={() => handleDelete(item._id, item.title)}
+                            onClick={() => setConfirmDelete({ id: item._id, title: item.title })}
                             className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
                             title="Delete Event"
                           >
@@ -324,6 +331,16 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        onClose={() => !isDeleting && setConfirmDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Event"
+        message={`Are you sure you want to delete "${confirmDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete Event"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

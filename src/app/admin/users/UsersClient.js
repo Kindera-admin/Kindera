@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import { deleteUser, updateUserStatus } from '@/app/actions';
 import { useRouter } from 'next/navigation';
+import { Trash2 } from 'lucide-react';
+import ConfirmModal from '@/components/ConfirmModal';
 
 function CertRow({ label, has, reg, color }) {
   return (
@@ -377,27 +379,14 @@ export default function UsersClient({ initialUsers = [], currentUserId }) {
                                 Approve
                               </Button>
                             )}
-                            {showConfirmation === user._id ? (
-                              <>
-                                <Button variant="outline" size="sm" onClick={handleCancelDelete}>Cancel</Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleDelete(user._id)}
-                                  disabled={isDeleting === user._id}
-                                >
-                                  {isDeleting === user._id ? 'Deleting...' : 'Confirm'}
-                                </Button>
-                              </>
-                            ) : (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleConfirmDelete(user._id)}
-                              >
-                                Delete
-                              </Button>
-                            )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleConfirmDelete(user._id)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -416,6 +405,16 @@ export default function UsersClient({ initialUsers = [], currentUserId }) {
           Deleting a user will also remove all their associated data, including reports. This action cannot be undone.
         </p>
       </div>
+
+      <ConfirmModal
+        isOpen={!!showConfirmation}
+        onClose={() => !isDeleting && setShowConfirmation(null)}
+        onConfirm={() => handleDelete(showConfirmation)}
+        title="Delete User"
+        message="Are you sure you want to delete this user? All their associated data will be removed. This action cannot be undone."
+        confirmText="Delete User"
+        isLoading={!!isDeleting}
+      />
     </div>
   );
 }

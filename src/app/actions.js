@@ -1274,6 +1274,63 @@ export async function createNGOPartner(formData) {
   }
 }
 
+export async function updateNGOPartner(id, formData) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+    const user = await getCurrentUser();
+    if (user.role !== 'admin' && user.role !== 'employee') return { success: false, message: 'Only admins and employees can edit NGO partners' };
+
+    const name = formData.get('name')?.trim();
+    const description = formData.get('description')?.trim();
+    const focusAreas = formData.get('focusAreas')?.trim() || '';
+    const programsRaw = formData.get('programs')?.trim() || '';
+    const programs = programsRaw ? programsRaw.split('\n').map((l) => l.trim()).filter(Boolean) : [];
+    const impact = formData.get('impact')?.trim() || '';
+    const registeredOffice = formData.get('registeredOffice')?.trim() || '';
+    const location = formData.get('location')?.trim() || '';
+    const website = formData.get('website')?.trim() || '';
+    const logoUrl = formData.get('logoUrl')?.trim(); // Can be undefined if no new logo uploaded
+
+    if (!name || !description) {
+      return { success: false, message: 'Name and description are required' };
+    }
+
+    const updateData = { name, description, focusAreas, programs, impact, registeredOffice, location, website };
+    if (logoUrl) {
+      updateData.logoUrl = logoUrl;
+    }
+
+    const partner = await NGOPartner.findByIdAndUpdate(id, updateData, { new: true });
+    if (!partner) return { success: false, message: 'NGO partner not found' };
+
+    revalidatePath('/ngo-partners');
+    revalidatePath('/admin/ngo-partners');
+
+    return {
+      success: true,
+      partner: {
+        _id: partner._id.toString(),
+        name: partner.name,
+        description: partner.description,
+        logoUrl: partner.logoUrl,
+        focusAreas: partner.focusAreas,
+        programs: partner.programs,
+        impact: partner.impact,
+        registeredOffice: partner.registeredOffice,
+        location: partner.location,
+        website: partner.website,
+        createdAt: partner.createdAt.toISOString(),
+      },
+    };
+  } catch (error) {
+    console.error('Error updating NGO partner:', error);
+    return { success: false, message: error.message };
+  }
+}
+
 export async function deleteNGOPartner(id) {
   try {
     const session = await getSession();

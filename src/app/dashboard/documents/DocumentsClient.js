@@ -5,6 +5,7 @@ import { FileText, Upload, CheckCircle2, XCircle, Clock, Trash2, Loader2, Extern
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { uploadNGODocument, deleteNGODocument } from '@/app/actions';
+import ConfirmModal from '@/components/ConfirmModal';
 
 const STATUS_CONFIG = {
   pending:  { label: 'Pending Review', color: 'bg-amber-100 text-amber-700',  icon: Clock },
@@ -72,15 +73,19 @@ export default function DocumentsClient({ documents: initial }) {
     }
   };
 
-  const handleDelete = (docId) => {
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  const handleDeleteConfirm = () => {
+    if (!confirmDeleteId) return;
     startTransition(async () => {
-      const res = await deleteNGODocument(docId);
+      const res = await deleteNGODocument(confirmDeleteId);
       if (res.success) {
         toast.success('Document removed');
-        setDocuments(prev => prev.filter(d => d._id !== docId));
+        setDocuments(prev => prev.filter(d => d._id !== confirmDeleteId));
       } else {
         toast.error(res.message);
       }
+      setConfirmDeleteId(null);
     });
   };
 
@@ -183,7 +188,7 @@ export default function DocumentsClient({ documents: initial }) {
                   <ExternalLink className="w-4 h-4 text-gray-400" />
                 </a>
                 <button
-                  onClick={() => handleDelete(doc._id)}
+                  onClick={() => setConfirmDeleteId(doc._id)}
                   disabled={isPending}
                   className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
                 >
@@ -194,6 +199,16 @@ export default function DocumentsClient({ documents: initial }) {
           );
         })}
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmDeleteId}
+        onClose={() => !isPending && setConfirmDeleteId(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Document"
+        message="Are you sure you want to delete this document? This action cannot be undone."
+        confirmText="Delete Document"
+        isLoading={isPending}
+      />
     </div>
   );
 }

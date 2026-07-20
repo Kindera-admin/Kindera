@@ -6,22 +6,29 @@ import { Button } from '@/components/ui/button';
 import { Calendar, MapPin, Users, ExternalLink, Trash2, Share2, CheckCircle2, Clock } from 'lucide-react';
 import { deleteEvent } from '@/app/actions';
 import { toast } from 'sonner';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function EventsClient({ events: initialEvents, userRole, currentUserId, approvedEventIds = [], pendingEventIds = [] }) {
   const [events, setEvents] = useState(initialEvents);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const canCreateEvent = ['admin', 'ngo', 'org_spoc'].includes(userRole);
   const canRegisterForEvent = ['org_spoc', 'org_member', 'volunteer'].includes(userRole);
   const canDelete = userRole === 'admin';
 
-  const handleDelete = async (id, title) => {
-    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
-    const result = await deleteEvent(id);
+  const handleDeleteConfirm = async () => {
+    if (!confirmDelete) return;
+    setIsDeleting(true);
+    const result = await deleteEvent(confirmDelete.id);
     if (result.success) {
-      setEvents(prev => prev.filter(e => e._id !== id));
+      setEvents(prev => prev.filter(e => e._id !== confirmDelete.id));
       toast.success('Event deleted');
     } else {
       toast.error(result.message || 'Failed to delete event');
     }
+    setIsDeleting(false);
+    setConfirmDelete(null);
   };
 
   const handleShare = (eventId) => {
@@ -186,7 +193,7 @@ export default function EventsClient({ events: initialEvents, userRole, currentU
                   {canDelete && (
                     <Button
                       variant="destructive"
-                      onClick={() => handleDelete(event._id, event.title)}
+                      onClick={() => setConfirmDelete({ id: event._id, title: event.title })}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Delete
@@ -199,6 +206,16 @@ export default function EventsClient({ events: initialEvents, userRole, currentU
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!confirmDelete}
+        onClose={() => !isDeleting && setConfirmDelete(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Event"
+        message={`Are you sure you want to delete "${confirmDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete Event"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
