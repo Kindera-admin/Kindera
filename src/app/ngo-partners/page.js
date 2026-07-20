@@ -48,7 +48,7 @@ export default async function NGOPartnersPage() {
                 </div>
               </div>
               <CardContent className="pt-6">
-                <p className="text-gray-700 mb-4 leading-relaxed">{ngo.description}</p>
+                <p className="text-gray-700 mb-4 leading-relaxed whitespace-pre-wrap">{ngo.description}</p>
 
                 {ngo.programs && ngo.programs.length > 0 && (
                   <div className="mb-4">
