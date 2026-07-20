@@ -2657,7 +2657,9 @@ export async function getAllEventsHistory() {
       {
         $group: {
           _id: '$eventRegistrations.eventId',
-          joinedCount: { $sum: 1 },
+          joinedCount: { 
+            $sum: { $cond: [{ $ne: ['$role', 'org_spoc'] }, 1, 0] } 
+          },
           spocCount: {
             $sum: { $cond: [{ $eq: ['$role', 'org_spoc'] }, 1, 0] }
           }
