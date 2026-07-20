@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner'
-import { registerForEvent, registerForEventLoggedIn, registerForEventNewUser } from '@/app/actions';
+import { registerForEvent, registerForEventLoggedIn } from '@/app/actions';
 import { Loader2, Calendar, MapPin, Users, Info, Upload, UserCheck, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 

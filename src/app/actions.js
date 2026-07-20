@@ -2820,6 +2820,103 @@ export async function getAllEventsHistory() {
   }
 }
 
+export async function getOrgEventsHistory(orgName) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+
+    // 1. Get all users from this org that have approved event registrations
+    const orgUsers = await User.find({
+      organizationName: orgName,
+      'eventRegistrations.status': 'approved',
+      role: { $in: ['org_spoc', 'org_member'] }
+    }).lean();
+
+    const eventIdsSet = new Set();
+    const registrationsByEvent = {}; // eventId -> []
+
+    orgUsers.forEach(u => {
+      u.eventRegistrations.forEach(reg => {
+        if (reg.status === 'approved') {
+          const eId = reg.eventId.toString();
+          eventIdsSet.add(eId);
+          if (!registrationsByEvent[eId]) registrationsByEvent[eId] = [];
+          registrationsByEvent[eId].push({
+            userId: u._id.toString(),
+            name: u.name,
+            role: u.role,
+            volunteersCount: reg.volunteersCount || 0
+          });
+        }
+      });
+    });
+
+    const eventIds = Array.from(eventIdsSet);
+
+    // 2. Fetch those events
+    const events = await Event.find({ _id: { $in: eventIds } }).sort({ date: -1 }).lean();
+
+    // 3. Fetch attendance for this org for these events
+    const attendanceRecords = await Attendance.find({
+      eventId: { $in: eventIds },
+      organizationName: orgName,
+      attended: true
+    }).lean();
+
+    const attendanceByEvent = {};
+    attendanceRecords.forEach(a => {
+      const eId = a.eventId.toString();
+      if (!attendanceByEvent[eId]) attendanceByEvent[eId] = new Set();
+      attendanceByEvent[eId].add(a.userId.toString());
+    });
+
+    // 4. Map everything
+    const history = events.map(event => {
+      const eId = event._id.toString();
+      const regs = registrationsByEvent[eId] || [];
+      const atts = attendanceByEvent[eId] || new Set();
+
+      let expected = 0;
+      let joined = 0;
+      const volunteers = [];
+
+      regs.forEach(r => {
+        if (r.role === 'org_spoc') {
+          expected += r.volunteersCount;
+        } else if (r.role === 'org_member') {
+          expected += 1;
+          joined += 1;
+          const attended = atts.has(r.userId);
+          volunteers.push({
+            id: r.userId,
+            name: r.name,
+            attended
+          });
+        }
+      });
+
+      return {
+        _id: eId,
+        title: event.title,
+        date: event.date.toISOString(),
+        location: event.location,
+        type: event.organizationName === orgName ? 'internal' : 'global',
+        status: event.status,
+        expected,
+        joined,
+        volunteers
+      };
+    });
+
+    return { success: true, history };
+  } catch (error) {
+    console.error('Error getting org events history:', error);
+    return { success: false, message: error.message };
+  }
+}
+
 export async function getMyAnnouncements() {
   try {
     const session = await getSession();

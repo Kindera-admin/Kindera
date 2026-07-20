@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Users, Clock, CalendarDays, Building2, Plus, UsersRound, MessageSquare, ClipboardList, PlusCircle, ClipboardCheck } from 'lucide-react';
+import { Users, Clock, CalendarDays, Building2, Plus, UsersRound, MessageSquare, ClipboardList, PlusCircle, ClipboardCheck, FileText } from 'lucide-react';
 
 // Dynamically import recharts to avoid SSR crash
 const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
@@ -131,6 +131,19 @@ export default function CorporateDashboardClient({ stats, monthly }) {
             <div>
               <p className="font-semibold text-gray-900 text-sm">Upcoming Events</p>
               <p className="text-xs text-gray-500">Browse all events</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => router.push('/dashboard/events-history')}
+            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
+          >
+            <div className="w-10 h-10 rounded-lg bg-[#3d5a99] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+              <FileText className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 text-sm">Event History</p>
+              <p className="text-xs text-gray-500">View past participation</p>
             </div>
           </button>
 
