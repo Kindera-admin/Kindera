@@ -2698,15 +2698,13 @@ export async function getAllEventsHistory() {
 
     const corpDetailsMap = corpDetailsAgg.reduce((acc, curr) => {
       const eventId = curr._id.eventId.toString();
-      const orgName = curr._id.orgName;
+      const orgName = curr._id.orgName || 'Unknown Corporation';
       if (!acc[eventId]) acc[eventId] = [];
-      if (orgName) {
-        acc[eventId].push({
-          orgName,
-          expected: curr.expected,
-          actual: curr.actual
-        });
-      }
+      acc[eventId].push({
+        orgName,
+        expected: curr.expected,
+        actual: curr.actual
+      });
       return acc;
     }, {});
 

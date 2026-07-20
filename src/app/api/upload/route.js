@@ -20,16 +20,7 @@ export async function POST(request) {
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
-
-    const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
-    const isDoc   = ALLOWED_DOC_TYPES.includes(file.type);
-
-    if (!isImage && !isDoc) {
-      return NextResponse.json(
-        { error: 'Only JPG, PNG, WEBP, GIF, SVG, HEIC, PDF, and DOC files are allowed' },
-        { status: 400 }
-      );
-    }
+    const isDoc = file.type === 'application/pdf' || file.type.includes('wordprocessingml') || file.type === 'application/msword';
 
     const bytes  = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
