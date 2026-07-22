@@ -1531,30 +1531,54 @@ export async function markAttendance(eventId, attendanceList) {
     await connectDB();
 
     const now = new Date();
-    const ops = attendanceList.map(entry => ({
-      updateOne: {
-        filter: { eventId, userId: entry.userId },
-        update: {
-          $set: {
-            organizationName: caller.organizationName || entry.organizationName,
-            attended: entry.attended ?? false,
-            hoursContributed: entry.hoursContributed ?? 0,
-            feedbackScore: entry.feedbackScore || null,
-            markedAt: now,
-            markedBy: caller._id,
-          }
-        },
-        upsert: true,
+    
+    // Fetch existing records first to correctly calculate hours diff
+    const userIds = attendanceList.map(a => a.userId);
+    const existingRecords = await Attendance.find({ eventId, userId: { $in: userIds } }).lean();
+    const existingMap = {};
+    existingRecords.forEach(r => existingMap[r.userId.toString()] = r);
+
+    const ops = [];
+    const userIncOps = [];
+
+    for (const entry of attendanceList) {
+      const existing = existingMap[entry.userId];
+      
+      // Calculate diff in hours to credit/deduct
+      const oldHours = existing?.attended ? (existing.hoursContributed || 0) : 0;
+      const newHours = entry.attended ? (entry.hoursContributed || 0) : 0;
+      const diff = newHours - oldHours;
+      
+      if (diff !== 0) {
+        userIncOps.push({ userId: entry.userId, diff });
       }
-    }));
 
-    await Attendance.bulkWrite(ops);
+      ops.push({
+        updateOne: {
+          filter: { eventId, userId: entry.userId },
+          update: {
+            $set: {
+              organizationName: caller.organizationName || entry.organizationName,
+              attended: entry.attended ?? false,
+              hoursContributed: entry.hoursContributed ?? 0,
+              feedbackScore: entry.feedbackScore || null,
+              markedAt: now,
+              markedBy: caller._id,
+            }
+          },
+          upsert: true,
+        }
+      });
+    }
 
-    // Update cached totalVolunteerHours for each user that attended
-    const attended = attendanceList.filter(e => e.attended && e.hoursContributed > 0);
-    for (const entry of attended) {
-      await User.findByIdAndUpdate(entry.userId, {
-        $inc: { totalVolunteerHours: entry.hoursContributed }
+    if (ops.length > 0) {
+      await Attendance.bulkWrite(ops);
+    }
+
+    // Update cached totalVolunteerHours for each user
+    for (const { userId, diff } of userIncOps) {
+      await User.findByIdAndUpdate(userId, {
+        $inc: { totalVolunteerHours: diff }
       });
     }
 
@@ -1974,26 +1998,30 @@ export async function logMyHoursAndFeedback(eventId, hours, feedbackScore) {
     }
 
     const existing = await Attendance.findOne({ eventId, userId: caller._id });
-    if (!existing || !existing.attended) {
-      return { success: false, message: 'You can only log hours after your SPOC or Admin has marked your attendance for this event.' };
-    }
 
+    // UPSERT the hours and feedback, but do NOT override `attended` if it exists.
+    // If it doesn't exist, it defaults to attended: false by omitting it (handled by mongoose or just left out).
     await Attendance.findOneAndUpdate(
       { eventId, userId: caller._id },
       {
         $set: {
           hoursContributed: hours,
           feedbackScore: feedbackScore || null,
+          organizationName: caller.organizationName, // Ensure org name is captured
         }
       },
-      { new: true }
+      { new: true, upsert: true }
     );
 
-    // Update cached total volunteer hours (diff if updating)
-    const prevHours = existing?.hoursContributed || 0;
-    const diff = hours - prevHours;
-    if (diff !== 0) {
-      await User.findByIdAndUpdate(caller._id, { $inc: { totalVolunteerHours: diff } });
+    // Update cached total volunteer hours ONLY IF they are marked as attended.
+    // If they log hours BEFORE SPOC marks attendance, totalVolunteerHours will be updated LATER by the SPOC.
+    // If they are ALREADY marked as attended, we update their totalVolunteerHours by the difference.
+    if (existing?.attended) {
+      const prevHours = existing.hoursContributed || 0;
+      const diff = hours - prevHours;
+      if (diff !== 0) {
+        await User.findByIdAndUpdate(caller._id, { $inc: { totalVolunteerHours: diff } });
+      }
     }
 
     revalidatePath('/dashboard');

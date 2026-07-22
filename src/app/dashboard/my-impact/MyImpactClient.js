@@ -35,7 +35,7 @@ function EventCard({ event, userName, onShowCertificate }) {
   const [hours, setHours] = useState(event.myHours || '');
   const [feedback, setFeedback] = useState(event.myFeedback || null);
   const [isPending, startTransition] = useTransition();
-  const [saved, setSaved] = useState(event.attended && event.myHours > 0);
+  const [saved, setSaved] = useState(event.myHours > 0);
 
   const handleSave = () => {
     const h = parseFloat(hours);
@@ -139,19 +139,13 @@ function EventCard({ event, userName, onShowCertificate }) {
 
         {/* Log hours button for past events */}
         {event.isPast && (
-          event.attended ? (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="flex-shrink-0 text-xs font-semibold text-[#0d3b26] hover:text-emerald-600 flex items-center gap-1 transition-colors"
-            >
-              {saved ? 'Edit' : 'Log Hours'}
-              {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-          ) : (
-            <span className="flex-shrink-0 text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100/60 flex items-center gap-1">
-              Pending Attendance
-            </span>
-          )
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex-shrink-0 text-xs font-semibold text-[#0d3b26] hover:text-emerald-600 flex items-center gap-1 transition-colors"
+          >
+            {saved ? 'Edit' : 'Log Hours'}
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
         )}
       </div>
 

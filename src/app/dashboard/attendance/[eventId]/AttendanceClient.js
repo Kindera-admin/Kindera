@@ -15,43 +15,44 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
   const [records, setRecords] = useState(initialRecords);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
-  // If this is an org_spoc and they haven't marked anyone yet, fetch their team members
+  // If this is an org_spoc, always fetch their team members and merge with existing records
   useEffect(() => {
-    if (orgName !== 'All Organizations' && initialRecords.length === 0) {
+    if (orgName !== 'All Organizations') {
       setLoadingMembers(true);
       getOrgMembers(orgName).then(res => {
         if (res.success) {
-          // Pre-populate with team members, unattended
-          const initial = res.members.map(m => ({
-            userId: m._id,
-            name: m.name,
-            username: m.username,
-            attended: false,
-            hoursContributed: 0,
-            feedbackScore: null,
-          }));
-          setRecords(initial);
+          const initialMap = {};
+          initialRecords.forEach(r => initialMap[r.userId] = r);
+          
+          const merged = res.members.map(m => {
+            const existing = initialMap[m._id];
+            return {
+              userId: m._id,
+              name: m.name,
+              username: m.username,
+              attended: existing ? existing.attended : false,
+              hoursContributed: existing ? existing.hoursContributed : 0,
+              feedbackScore: existing ? existing.feedbackScore : null,
+            };
+          });
+          setRecords(merged);
         }
         setLoadingMembers(false);
       });
     }
-  }, [orgName, initialRecords.length]);
+  }, [orgName, initialRecords]);
 
   const handleToggleAttendance = (userId) => {
     setRecords(prev => prev.map(r => {
       if (r.userId === userId) {
-        // If marking attended, default to 2 hours
-        return { ...r, attended: !r.attended, hoursContributed: !r.attended ? 2 : 0 };
+        const newAttended = !r.attended;
+        return { ...r, attended: newAttended };
       }
       return r;
     }));
   };
 
-  const handleUpdateHours = (userId, hours) => {
-    setRecords(prev => prev.map(r => 
-      r.userId === userId ? { ...r, hoursContributed: parseFloat(hours) || 0 } : r
-    ));
-  };
+
 
   const handleSave = () => {
     startTransition(async () => {
@@ -174,14 +175,7 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
                     </td>
                     <td className="px-6 py-4 text-right">
                       {r.attended ? (
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={r.hoursContributed}
-                          onChange={e => handleUpdateHours(r.userId, e.target.value)}
-                          className="w-20 px-2 py-1.5 text-right text-sm border border-gray-300 rounded-md focus:outline-none focus:border-[#0d3b26] focus:ring-1 focus:ring-[#0d3b26] font-semibold text-[#0d3b26]"
-                        />
+                        <span className="font-semibold text-[#0d3b26]">{r.hoursContributed}h</span>
                       ) : (
                         <span className="text-gray-300 text-sm">-</span>
                       )}
