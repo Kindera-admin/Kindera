@@ -226,6 +226,14 @@ const Navbar = () => {
                 <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
                 <p className="text-xs text-gray-400 capitalize">{user?.role?.replace(/_/g, ' ')}</p>
               </div>
+              <Link
+                href="/settings"
+                onClick={() => setIsMenuOpen(false)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <Settings className="w-5 h-5" />
+                Settings
+              </Link>
               <button
                 onClick={() => { setIsMenuOpen(false); handleLogout(); }}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-medium text-red-600 hover:bg-red-50 transition-colors"
