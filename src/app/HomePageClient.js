@@ -181,7 +181,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Counter value="100+" label="NGOs Registered" />
+          <Counter value="500+" label="NGOs Registered" />
           <Counter value="100k+" label="People Helped" />
           <Counter value="1,000+" label="Events Conducted" />
         </div>
