@@ -71,6 +71,19 @@ export default function CreateEventForm() {
       if (data.beneficiariesImpacted) formData.append('beneficiariesImpacted', data.beneficiariesImpacted);
       if (imageUrl) formData.append('imageUrl', imageUrl);
 
+      // Calculate total duration in decimal hours
+      const hrs = parseFloat(data.durationHours || 0);
+      const mins = parseFloat(data.durationMinutes || 0);
+      const totalDuration = hrs + (mins / 60);
+      
+      if (totalDuration < 0.5) {
+        toast.error('Invalid Duration', { description: 'Duration must be at least 30 minutes.' });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      formData.append('durationHours', totalDuration.toString());
+
       const result = await createEvent(formData);
 
       if (result.success) {
@@ -140,18 +153,34 @@ export default function CreateEventForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="durationHours">Duration (Hours) *</Label>
-                <Input
-                  id="durationHours"
-                  type="number"
-                  step="0.5"
-                  min="0.5"
-                  className="w-full"
-                  defaultValue="2"
-                  {...register('durationHours', { required: 'Duration is required', min: 0.5 })}
-                />
-                {errors.durationHours && (
-                  <p className="text-sm text-red-500">{errors.durationHours.message}</p>
+                <Label>Duration *</Label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex items-center gap-2">
+                    <Input
+                      id="durationHours"
+                      type="number"
+                      min="0"
+                      className="w-full"
+                      defaultValue="2"
+                      {...register('durationHours', { required: 'Required', min: 0 })}
+                    />
+                    <span className="text-sm text-gray-500 font-medium">hrs</span>
+                  </div>
+                  <div className="flex-1 flex items-center gap-2">
+                    <Input
+                      id="durationMinutes"
+                      type="number"
+                      min="0"
+                      max="59"
+                      className="w-full"
+                      defaultValue="0"
+                      {...register('durationMinutes', { min: 0, max: 59 })}
+                    />
+                    <span className="text-sm text-gray-500 font-medium">mins</span>
+                  </div>
+                </div>
+                {(errors.durationHours || errors.durationMinutes) && (
+                  <p className="text-sm text-red-500">Please enter a valid duration (e.g. at least 30 mins)</p>
                 )}
               </div>
             </div>
