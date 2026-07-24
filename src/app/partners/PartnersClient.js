@@ -103,9 +103,15 @@ export default function PartnersClient({ partners }) {
                 <div>
                   {/* NGO header with logo badge */}
                   <div className="flex items-start gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-2xl bg-[#0d3b26] flex items-center justify-center text-white text-lg font-bold shadow-md shrink-0">
-                      {ngo.name.charAt(0).toUpperCase()}
-                    </div>
+                    {ngo.logoUrl ? (
+                      <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm shrink-0 overflow-hidden border border-gray-100">
+                        <img src={ngo.logoUrl} alt={`${ngo.name} logo`} className="w-full h-full object-contain p-1" />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 rounded-2xl bg-[#0d3b26] flex items-center justify-center text-white text-lg font-bold shadow-md shrink-0">
+                        {ngo.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <h2 className="text-xl font-bold text-gray-900 leading-snug">{ngo.name}</h2>
                       {(ngo.registeredOffice || ngo.location) && (
