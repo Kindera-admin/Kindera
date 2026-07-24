@@ -33,7 +33,7 @@ export default function CorporateOverviewClient({ orgs }) {
     try {
       const res = await getOrgStats(orgName);
       if (res.success) {
-        setSelectedOrgStats({ orgName, stats: res.stats, monthly: res.monthly });
+        setSelectedOrgStats({ orgName, stats: res.stats, monthly: res.monthly, eventsList: res.eventsList });
       } else {
         toast.error(res.message || 'Failed to fetch organisation stats');
       }

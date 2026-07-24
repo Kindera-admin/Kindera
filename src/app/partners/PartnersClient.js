@@ -63,21 +63,20 @@ export default function PartnersClient({ partners }) {
             />
           </div>
 
-          {/* Focus Area Filter Badges */}
-          <div className="flex flex-wrap gap-2 justify-start md:justify-end w-full overflow-x-auto no-scrollbar py-1">
-            {allFocusAreas.map(focus => (
-              <button
-                key={focus}
-                onClick={() => setSelectedFocus(focus)}
-                className={`text-xs px-3.5 py-1.5 rounded-full font-medium transition-all ${
-                  selectedFocus === focus
-                    ? 'bg-[#0d3b26] text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {focus}
-              </button>
-            ))}
+          {/* Focus Area Filter Dropdown */}
+          <div className="w-full md:w-64 shrink-0">
+            <select
+              value={selectedFocus}
+              onChange={(e) => setSelectedFocus(e.target.value)}
+              className="w-full px-4 py-2.5 text-sm border border-gray-100 rounded-xl focus:outline-none focus:border-emerald-500 bg-gray-50/50 appearance-none cursor-pointer"
+              style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239CA3AF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem top 50%', backgroundSize: '0.65rem auto' }}
+            >
+              {allFocusAreas.map(focus => (
+                <option key={focus} value={focus}>
+                  {focus === 'All' ? 'All Focus Areas' : focus}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
