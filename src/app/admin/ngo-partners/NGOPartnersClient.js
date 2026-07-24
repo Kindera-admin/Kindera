@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Trash2, Plus, X, Building2, Edit2 } from 'lucide-react';
+import { Trash2, Plus, X, Building2, Edit2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import ConfirmModal from '@/components/ConfirmModal';
 
 export default function NGOPartnersClient({ initialPartners }) {
   const [partners, setPartners] = useState(initialPartners);
+  const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -19,6 +20,8 @@ export default function NGOPartnersClient({ initialPartners }) {
   const [form, setForm] = useState({ name: '', description: '', focusAreas: '', programs: '', impact: '', registeredOffice: '', location: '', website: '' });
 
   const [photoFile, setPhotoFile] = useState(null);
+
+  const filteredPartners = partners.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const uploadPhoto = async (file) => {
     const fd = new FormData();
@@ -205,14 +208,26 @@ export default function NGOPartnersClient({ initialPartners }) {
       )}
 
       {/* Partners List */}
-      {partners.length === 0 ? (
+      <div className="flex items-center gap-2 mb-4">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input 
+            placeholder="Search partners by name..." 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      {filteredPartners.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Building2 className="w-10 h-10 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">No NGO partners yet. Add one above.</p>
+          <p className="text-sm">{partners.length === 0 ? 'No NGO partners yet. Add one above.' : 'No partners found matching search.'}</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {partners.map((partner) => (
+          {filteredPartners.map((partner) => (
             <div key={partner._id} className="border rounded-xl p-5 bg-white flex justify-between items-start gap-4">
               {partner.logoUrl && (
                 <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center">

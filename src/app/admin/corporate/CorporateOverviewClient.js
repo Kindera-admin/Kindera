@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { Building2, Users, Clock, CalendarDays, ArrowRight, Plus, Loader2, X, Star, HeartHandshake, TrendingUp } from 'lucide-react';
+import { Building2, Users, Clock, CalendarDays, ArrowRight, Plus, Loader2, X, Star, HeartHandshake, TrendingUp, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { getOrgStats } from '@/app/actions';
 
 const STAT_ICONS = {
@@ -18,6 +19,9 @@ export default function CorporateOverviewClient({ orgs }) {
   const [activeOrg, setActiveOrg] = useState(null);
   const [selectedOrgStats, setSelectedOrgStats] = useState(null);
   const [loadingStatsOrg, setLoadingStatsOrg] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredOrgs = orgs.filter(o => o.organizationName.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const totalOrgs    = orgs.length;
   const totalMembers = orgs.reduce((s, o) => s + o.memberCount, 0);
@@ -70,22 +74,33 @@ export default function CorporateOverviewClient({ orgs }) {
 
       {/* Table */}
       <div className="border border-gray-100 rounded-2xl overflow-hidden bg-white shadow-sm">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-b border-gray-100 gap-4">
           <h2 className="font-semibold text-gray-800">All Organisations</h2>
-          <Button
-            size="sm"
-            onClick={() => router.push('/dashboard/team/generate')}
-            className="gap-1.5 bg-[#0d3b26] hover:bg-[#1a5c3a] text-white"
-          >
-            <Plus className="w-4 h-4" />
-            Generate Logins
-          </Button>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input 
+                placeholder="Search organisations..." 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                className="pl-9 h-9 text-sm"
+              />
+            </div>
+            <Button
+              size="sm"
+              onClick={() => router.push('/dashboard/team/generate')}
+              className="gap-1.5 bg-[#0d3b26] hover:bg-[#1a5c3a] text-white shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              Generate Logins
+            </Button>
+          </div>
         </div>
 
-        {orgs.length === 0 ? (
+        {filteredOrgs.length === 0 ? (
           <div className="py-16 text-center">
             <Building2 className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">No corporate organisations yet.</p>
+            <p className="text-gray-400 text-sm">{orgs.length === 0 ? 'No corporate organisations yet.' : 'No organisations found matching search.'}</p>
           </div>
         ) : (
           <table className="w-full">
@@ -100,7 +115,7 @@ export default function CorporateOverviewClient({ orgs }) {
               </tr>
             </thead>
             <tbody>
-              {orgs.map(org => (
+              {filteredOrgs.map(org => (
                 <tr key={org.spocId} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
