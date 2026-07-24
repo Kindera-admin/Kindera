@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+import { getCurrentUser } from '@/lib/auth';
 import { getAllNGOPartners } from '@/app/actions';
 import PartnersClient from './PartnersClient';
 
@@ -9,6 +11,9 @@ export const metadata = {
 };
 
 export default async function PartnersPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
   const { partners = [] } = await getAllNGOPartners();
 
   return <PartnersClient partners={partners} />;

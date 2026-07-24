@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { deleteEvent } from '@/app/actions';
 import { toast } from 'sonner';
 import ConfirmModal from '@/components/ConfirmModal';
+import EventDetailsModal from './EventDetailsModal';
 
 export default function EventsHistoryClient({ history: initialHistory, userRole }) {
   const router = useRouter();
@@ -35,6 +36,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
 
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [viewDetailsId, setViewDetailsId] = useState(null);
 
   const toggleRow = (id) => {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
@@ -276,7 +278,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={() => router.push(`/events`)}
+                          onClick={(e) => { e.stopPropagation(); setViewDetailsId(item._id); }}
                           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-900"
                           title="View Event Details"
                         >
@@ -340,6 +342,11 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
         message={`Are you sure you want to delete "${confirmDelete?.title}"? This action cannot be undone.`}
         confirmText="Delete Event"
         isLoading={isDeleting}
+      />
+
+      <EventDetailsModal 
+        eventId={viewDetailsId} 
+        onClose={() => setViewDetailsId(null)} 
       />
     </div>
   );

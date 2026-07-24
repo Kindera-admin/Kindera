@@ -2848,6 +2848,81 @@ export async function getAllEventsHistory() {
   }
 }
 
+export async function getAdminEventDetails(eventId) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'admin' && caller.role !== 'employee') {
+      return { success: false, message: 'Unauthorized' };
+    }
+
+    await connectDB();
+
+    const event = await Event.findById(eventId)
+      .populate('createdBy', 'name role organizationName email')
+      .lean();
+
+    if (!event) return { success: false, message: 'Event not found' };
+
+    // Find users who are approved for this event
+    const registeredUsers = await User.find({
+      'eventRegistrations': {
+        $elemMatch: { eventId, status: 'approved' }
+      }
+    }).select('name role organizationName email').lean();
+
+    // Get attendance records
+    const attendanceRecords = await Attendance.find({ eventId }).lean();
+    const attMap = attendanceRecords.reduce((acc, curr) => {
+      acc[curr.userId.toString()] = curr;
+      return acc;
+    }, {});
+
+    // Combine users with attendance
+    const participants = registeredUsers.map(u => {
+      const att = attMap[u._id.toString()];
+      return {
+        _id: u._id.toString(),
+        name: u.name,
+        role: u.role,
+        organizationName: u.organizationName,
+        email: u.email,
+        attended: att ? att.attended : false,
+        hoursContributed: att ? att.hoursContributed : 0,
+        feedbackScore: att ? att.feedbackScore : null,
+      };
+    });
+
+    return {
+      success: true,
+      event: {
+        _id: event._id.toString(),
+        title: event.title,
+        description: event.description,
+        date: event.date.toISOString(),
+        location: event.location,
+        durationHours: event.durationHours || 0,
+        capacity: event.capacity,
+        beneficiariesImpacted: event.beneficiariesImpacted,
+        status: event.status,
+        organizationName: event.organizationName,
+        createdBy: event.createdBy ? {
+          name: event.createdBy.name,
+          role: event.createdBy.role,
+          organizationName: event.createdBy.organizationName,
+          email: event.createdBy.email
+        } : null,
+      },
+      participants
+    };
+  } catch (error) {
+    console.error('Error getting event details:', error);
+    return { success: false, message: error.message };
+  }
+}
+
 export async function getOrgEventsHistory(orgName) {
   try {
     const session = await getSession();
