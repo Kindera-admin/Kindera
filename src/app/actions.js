@@ -1634,17 +1634,19 @@ export async function getEventAttendance(eventId, orgName) {
 /**
  * Get full KPI stats for a corporate org (used by SPOC dashboard and Admin drill-down).
  */
-export async function getOrgStats(orgName) {
+export async function getOrgStats(orgName, targetYear) {
   try {
     const session = await getSession();
     if (!session) return { success: false, message: 'Not authenticated' };
 
     await connectDB();
 
+    const year = targetYear ? parseInt(targetYear, 10) : new Date().getFullYear();
+
     // Total members
     const totalVolunteers = await User.countDocuments({ organizationName: orgName, role: 'org_member' });
 
-    // Aggregate from Attendance
+    // Aggregate from Attendance (for all time or we could scope it to the year, but usually top-level stats are all-time)
     const agg = await Attendance.aggregate([
       { $match: { organizationName: orgName, attended: true } },
       {
@@ -1660,12 +1662,12 @@ export async function getOrgStats(orgName) {
 
     const stats = agg[0] || {};
 
-    // Monthly participation (last 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    // Yearly and Quarterly participation
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
 
     const monthly = await Attendance.aggregate([
-      { $match: { organizationName: orgName, attended: true, markedAt: { $gte: sixMonthsAgo } } },
+      { $match: { organizationName: orgName, attended: true, markedAt: { $gte: startOfYear, $lte: endOfYear } } },
       {
         $group: {
           _id: {
@@ -1678,6 +1680,34 @@ export async function getOrgStats(orgName) {
       },
       { $sort: { '_id.year': 1, '_id.month': 1 } },
     ]);
+
+    // Ensure all 12 months are present for the chart
+    const fullMonthly = Array.from({ length: 12 }, (_, i) => {
+      const monthNum = i + 1;
+      const mData = monthly.find(m => m._id.month === monthNum);
+      const d = new Date(year, i, 1);
+      return {
+        month: `${year}-${String(monthNum).padStart(2, '0')}`,
+        label: d.toLocaleString('default', { month: 'short' }),
+        count: mData ? mData.count : 0,
+        hours: mData ? mData.hours : 0,
+      };
+    });
+
+    // Quarterly aggregation
+    const quarterlyMap = { Q1: { count: 0, hours: 0 }, Q2: { count: 0, hours: 0 }, Q3: { count: 0, hours: 0 }, Q4: { count: 0, hours: 0 } };
+    
+    monthly.forEach(m => {
+      const q = Math.floor((m._id.month - 1) / 3) + 1;
+      quarterlyMap[`Q${q}`].count += m.count;
+      quarterlyMap[`Q${q}`].hours += m.hours;
+    });
+
+    const quarterly = Object.keys(quarterlyMap).map(q => ({
+      quarter: q,
+      count: quarterlyMap[q].count,
+      hours: quarterlyMap[q].hours
+    }));
 
     // Unique NGOs engaged (via events)
     const eventIds = stats.totalEvents || [];
@@ -1725,12 +1755,8 @@ export async function getOrgStats(orgName) {
           ? Math.round(((stats.attendanceCount || 0) / totalVolunteers) * 100)
           : 0,
       },
-      monthly: monthly.map(m => ({
-        month: `${m._id.year}-${String(m._id.month).padStart(2, '0')}`,
-        label: new Date(m._id.year, m._id.month - 1).toLocaleString('default', { month: 'short', year: '2-digit' }),
-        count: m.count,
-        hours: m.hours,
-      })),
+      monthly: fullMonthly,
+      quarterly,
       eventsList
     };
   } catch (error) {
@@ -2632,7 +2658,7 @@ export async function getEventRegisteredCount(eventId) {
 }
 
 // Get admin-wide dashboard impact analytics
-export async function getAdminImpactStats() {
+export async function getAdminImpactStats(targetYear) {
   try {
     const session = await getSession();
     if (!session) return { success: false, message: 'Not authenticated' };
@@ -2640,6 +2666,8 @@ export async function getAdminImpactStats() {
     if (user.role !== 'admin') return { success: false, message: 'Admin access required' };
 
     await connectDB();
+
+    const year = targetYear ? parseInt(targetYear, 10) : new Date().getFullYear();
 
     // 1. Total KPI counters
     const [totalHoursResult, totalBeneficiariesResult, totalEvents, totalNGOs, totalOrgs] = await Promise.all([
@@ -2653,15 +2681,15 @@ export async function getAdminImpactStats() {
     const totalHours = totalHoursResult[0]?.total || 0;
     const totalBeneficiaries = totalBeneficiariesResult[0]?.total || 0;
 
-    // 2. Events completed by month (past 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const recentEvents = await Event.find({ status: 'completed', date: { $gte: sixMonthsAgo } }).select('date').lean();
+    // 2. Events completed by year and quarters
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
+    
+    const recentEvents = await Event.find({ status: 'completed', date: { $gte: startOfYear, $lte: endOfYear } }).select('date').lean();
     
     const monthlyEventsMap = {};
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(year, i, 1);
       const mLabel = d.toLocaleString('default', { month: 'short' });
       monthlyEventsMap[mLabel] = 0;
     }
@@ -2678,9 +2706,21 @@ export async function getAdminImpactStats() {
       count: monthlyEventsMap[key]
     }));
 
-    // 3. Top corporate organisations by volunteer hours
+    const quarterlyMap = { Q1: { count: 0 }, Q2: { count: 0 }, Q3: { count: 0 }, Q4: { count: 0 } };
+    monthlyEvents.forEach((m, idx) => {
+      const q = Math.floor(idx / 3) + 1;
+      quarterlyMap[`Q${q}`].count += m.count;
+    });
+
+    const quarterlyEvents = Object.keys(quarterlyMap).map(q => ({
+      quarter: q,
+      count: quarterlyMap[q].count
+    }));
+
+    // 3. Top corporate organisations by volunteer hours (overall or within year)
+    // To match the CSR tracking, let's filter top corps by year
     const orgStats = await Attendance.aggregate([
-      { $match: { attended: true } },
+      { $match: { attended: true, markedAt: { $gte: startOfYear, $lte: endOfYear } } },
       { $group: {
         _id: '$organizationName',
         hours: { $sum: '$hoursContributed' },
@@ -2705,6 +2745,7 @@ export async function getAdminImpactStats() {
         totalNGOs,
         totalOrgs: totalOrgs.length,
         monthlyEvents,
+        quarterlyEvents,
         topOrgs
       }
     };

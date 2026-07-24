@@ -13,7 +13,7 @@ const ROLE_LABELS = {
   org_member: 'Organisation Member',
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }) {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -34,10 +34,11 @@ export default async function DashboardPage() {
   }
 
   if (user.role === 'org_spoc') {
-    const { stats = {}, monthly = [] } = await getOrgStats(user.organizationName);
+    const year = searchParams?.year || new Date().getFullYear();
+    const { stats = {}, monthly = [], quarterly = [] } = await getOrgStats(user.organizationName, year);
     return (
       <>
-        <CorporateDashboardClient stats={stats} monthly={monthly} />
+        <CorporateDashboardClient stats={stats} monthly={monthly} quarterly={quarterly} selectedYear={year} />
       </>
     );
   }

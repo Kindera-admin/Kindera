@@ -15,16 +15,36 @@ const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: fa
 const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false });
 const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
 
-export default function CorporateDashboardClient({ stats, monthly }) {
+export default function CorporateDashboardClient({ stats, monthly, quarterly, selectedYear }) {
   const router = useRouter();
+
+  const handleYearChange = (e) => {
+    router.push(`/dashboard?year=${e.target.value}`);
+  };
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   return (
     <div className="w-full max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">SPOC Dashboard</p>
-        <h1 className="text-3xl font-bold text-gray-900 mb-1">Team Overview</h1>
-        <p className="text-gray-500 text-sm">Live KPIs for your corporate volunteer programme.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
+        <div>
+          <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">SPOC Dashboard</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">Team Overview</h1>
+          <p className="text-gray-500 text-sm">Live KPIs for your corporate volunteer programme.</p>
+        </div>
+        <div>
+          <select 
+            value={selectedYear || currentYear} 
+            onChange={handleYearChange}
+            className="border-gray-200 border rounded-lg px-4 py-2 text-sm font-semibold text-gray-700 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            {years.map(y => (
+              <option key={y} value={y}>{y} Impact Report</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Top Stats */}
@@ -50,31 +70,31 @@ export default function CorporateDashboardClient({ stats, monthly }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Chart 1 */}
+        {/* Chart 1: Quarterly */}
         <div className="border border-gray-100 rounded-2xl bg-white shadow-sm p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-6">Monthly Participation (Hours)</h2>
+          <h2 className="text-sm font-semibold text-gray-800 mb-6">Quarterly CSR Performance ({selectedYear || currentYear})</h2>
           <div className="h-64">
-            {monthly && monthly.length > 0 ? (
+            {quarterly && quarterly.some(q => q.hours > 0) ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthly} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <BarChart data={quarterly} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                  <XAxis dataKey="quarter" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <Tooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                   <Bar dataKey="hours" fill="#0d3b26" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No data yet — hours will appear once your team logs attendance.</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No quarterly data yet for {selectedYear || currentYear}.</div>
             )}
           </div>
         </div>
 
-        {/* Chart 2 */}
+        {/* Chart 2: Monthly Trend */}
         <div className="border border-gray-100 rounded-2xl bg-white shadow-sm p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-6">Employee Engagement Trend</h2>
+          <h2 className="text-sm font-semibold text-gray-800 mb-6">Monthly Engagement Trend ({selectedYear || currentYear})</h2>
           <div className="h-64">
-            {monthly && monthly.length > 0 ? (
+            {monthly && monthly.some(m => m.count > 0) ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthly} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
@@ -85,7 +105,7 @@ export default function CorporateDashboardClient({ stats, monthly }) {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No data yet.</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No monthly data yet for {selectedYear || currentYear}.</div>
             )}
           </div>
         </div>
