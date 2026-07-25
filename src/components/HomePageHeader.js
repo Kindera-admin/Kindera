@@ -50,8 +50,10 @@ export default function HomePageHeader() {
     { label: 'How It Works', href: '/#how-it-works' },
     { label: 'Gallery', href: '/#gallery' },
     { label: 'Events', href: '/#events' },
-    { label: 'NGO Partners', href: '/partners' },
   ];
+  if (isLoggedIn) {
+    navLinks.push({ label: 'NGO Partners', href: '/partners' });
+  }
 
   return (
     <>

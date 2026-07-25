@@ -1582,8 +1582,7 @@ export async function markAttendance(eventId, attendanceList) {
       });
     }
 
-    revalidatePath('/dashboard');
-    revalidatePath('/admin/corporate');
+    revalidatePath('/', 'layout');
 
     return { success: true };
   } catch (error) {
@@ -2050,8 +2049,7 @@ export async function logMyHoursAndFeedback(eventId, hours, feedbackScore) {
       }
     }
 
-    revalidatePath('/dashboard');
-    revalidatePath('/dashboard/my-impact');
+    revalidatePath('/', 'layout');
     return { success: true };
   } catch (error) {
     console.error('Error logging hours:', error);
