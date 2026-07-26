@@ -199,7 +199,7 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={(e) => { e.stopPropagation(); router.push(`/events/${item._id}`); }}
+                          onClick={(e) => { e.stopPropagation(); router.push(`/events/${item._id}/register`); }}
                           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-900"
                           title="View Event Details"
                         >

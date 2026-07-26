@@ -146,9 +146,13 @@ export default function CreateEventForm() {
                 <Label htmlFor="date">Date & Time *</Label>
                 <Input
                   id="date"
-                  type="datetime-local"
+                  type="text"
+                  placeholder="e.g. 25 Oct 2026 10:00 AM"
                   className="w-full"
-                  {...register('date', { required: 'Date and time are required' })}
+                  {...register('date', { 
+                    required: 'Date and time are required',
+                    validate: (value) => !isNaN(new Date(value).getTime()) || 'Invalid date format'
+                  })}
                 />
                 {errors.date && (
                   <p className="text-sm text-red-500">{errors.date.message}</p>
