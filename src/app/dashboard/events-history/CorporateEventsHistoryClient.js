@@ -159,7 +159,9 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
                           <span className="font-semibold text-gray-900 block leading-tight mb-1">{item.title}</span>
                           <div className="flex items-center gap-2 text-[10px] text-gray-400">
                             <span className={`px-1.5 py-0.5 rounded-full font-bold ${
-                              item.status === 'upcoming' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                              item.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
+                              item.status === 'live' ? 'bg-emerald-100 text-emerald-700 animate-pulse' :
+                              'bg-gray-100 text-gray-700'
                             }`}>
                               {item.status.toUpperCase()}
                             </span>

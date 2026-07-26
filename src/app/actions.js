@@ -3034,6 +3034,7 @@ export async function getOrgEventsHistory(orgName) {
     });
 
     // 4. Map everything
+    const now = new Date();
     const history = events.map(event => {
       const eId = event._id.toString();
       const regs = registrationsByEvent[eId] || [];
@@ -3058,13 +3059,19 @@ export async function getOrgEventsHistory(orgName) {
         }
       });
 
+      const start = new Date(event.date);
+      const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);
+      let lifecycle = 'upcoming';
+      if (now > end) lifecycle = 'ended';
+      else if (now >= start && now <= end) lifecycle = 'live';
+
       return {
         _id: eId,
         title: event.title,
         date: event.date.toISOString(),
         location: event.location,
         type: event.organizationName === orgName ? 'internal' : 'global',
-        status: event.status,
+        status: lifecycle,
         expected,
         joined,
         volunteers
