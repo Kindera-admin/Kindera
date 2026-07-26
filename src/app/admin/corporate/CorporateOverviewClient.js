@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { Building2, Users, Clock, CalendarDays, ArrowRight, Plus, Loader2, X, Star, HeartHandshake, TrendingUp, Search } from 'lucide-react';
+import { Building2, Users, Clock, CalendarDays, ArrowRight, Plus, Loader2, X, Star, HeartHandshake, TrendingUp, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getOrgStats } from '@/app/actions';
@@ -20,6 +20,11 @@ export default function CorporateOverviewClient({ orgs }) {
   const [selectedOrgStats, setSelectedOrgStats] = useState(null);
   const [loadingStatsOrg, setLoadingStatsOrg] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedEvents, setExpandedEvents] = useState({});
+
+  const toggleEventExpand = (id) => {
+    setExpandedEvents(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const filteredOrgs = orgs.filter(o => o.organizationName.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -239,30 +244,57 @@ export default function CorporateOverviewClient({ orgs }) {
               <h3 className="text-xs font-bold text-gray-800 uppercase tracking-widest mb-3">Engaged Events History</h3>
               {selectedOrgStats.eventsList && selectedOrgStats.eventsList.length > 0 ? (
                 <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                  {selectedOrgStats.eventsList.map(ev => (
-                    <div key={ev._id} className="border border-gray-50 rounded-xl p-3 bg-gray-50/20 hover:bg-gray-50/55 transition-all flex items-center justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-gray-900 leading-snug">{ev.title}</h4>
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                            ev.isCorporate 
-                              ? 'bg-emerald-100 text-emerald-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {ev.isCorporate ? 'Personal/Corp' : 'Global'}
+                  {selectedOrgStats.eventsList.map(ev => {
+                    const isExpanded = expandedEvents[ev._id];
+                    return (
+                    <div key={ev._id} className="border border-gray-50 rounded-xl bg-gray-50/20 hover:bg-gray-50/55 transition-all overflow-hidden">
+                      <div 
+                        className="p-3 flex items-center justify-between gap-4 cursor-pointer"
+                        onClick={() => toggleEventExpand(ev._id)}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-gray-900 leading-snug">{ev.title}</h4>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                              ev.isCorporate 
+                                ? 'bg-emerald-100 text-emerald-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {ev.isCorporate ? 'Personal/Corp' : 'Global'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-gray-400 block mt-1">
+                            {new Date(ev.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {ev.location ? ` · ${ev.location}` : ''}
                           </span>
                         </div>
-                        <span className="text-[10px] text-gray-400 block mt-1">
-                          {new Date(ev.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          {ev.location ? ` · ${ev.location}` : ''}
-                        </span>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-right">
+                            <span className="text-xs font-bold text-[#0d3b26] block">{ev.hours.toLocaleString()} hrs</span>
+                            <span className="text-[9px] text-gray-400 block">{ev.attendees} Attended</span>
+                          </div>
+                          {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                        </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-xs font-bold text-[#0d3b26] block">{ev.hours.toLocaleString()} hrs</span>
-                        <span className="text-[9px] text-gray-400 block">{ev.attendees} Attended</span>
-                      </div>
+                      
+                      {isExpanded && ev.attendeeDetails && ev.attendeeDetails.length > 0 && (
+                        <div className="px-3 pb-3 pt-1 border-t border-gray-100/60 bg-gray-50/40">
+                          <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Attendees</h5>
+                          <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 text-xs">
+                            {ev.attendeeDetails.map((att, i) => (
+                              <div key={i} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-gray-100 shadow-sm">
+                                <div>
+                                  <span className="font-semibold text-gray-800 block">{att.name}</span>
+                                  <span className="text-[10px] text-gray-500">{att.username}</span>
+                                </div>
+                                <span className="font-bold text-[#0d3b26]">{att.hours}h</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                  )})}
                 </div>
               ) : (
                 <p className="text-xs text-gray-400 italic">No event participation recorded yet.</p>

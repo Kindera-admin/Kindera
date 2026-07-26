@@ -1719,10 +1719,28 @@ export async function getOrgStats(orgName, targetYear) {
     const eventAttendanceDetails = await Attendance.aggregate([
       { $match: { organizationName: orgName, attended: true } },
       {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $unwind: { path: '$user', preserveNullAndEmptyArrays: true }
+      },
+      {
         $group: {
           _id: '$eventId',
           hours: { $sum: '$hoursContributed' },
-          attendees: { $sum: 1 }
+          attendees: { $sum: 1 },
+          attendeeDetails: {
+            $push: {
+              name: '$user.name',
+              username: '$user.username',
+              hours: '$hoursContributed'
+            }
+          }
         }
       }
     ]);
@@ -1737,6 +1755,7 @@ export async function getOrgStats(orgName, targetYear) {
         location: ev.location,
         hours: detail.hours,
         attendees: detail.attendees,
+        attendeeDetails: detail.attendeeDetails,
         isCorporate: !!ev.organizationName, // corporate/personal vs global
       };
     }).filter(Boolean);
