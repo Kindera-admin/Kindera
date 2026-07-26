@@ -21,7 +21,7 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
 
   const currentYear = new Date().getFullYear();
   const year = selectedYear || currentYear;
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+  const years = Array.from({ length: 5 }, (_, i) => currentYear + i);
 
   const handleYearChange = (e) => {
     router.push(`/admin/impact?year=${e.target.value}`);
