@@ -65,7 +65,10 @@ export default function CreateEventForm() {
       const formData = new FormData();
       formData.append('title', data.title);
       formData.append('description', data.description);
-      formData.append('date', data.date);
+      
+      const localDate = new Date(data.date);
+      formData.append('date', localDate.toISOString());
+      
       formData.append('location', data.location);
       if (data.capacity) formData.append('capacity', data.capacity);
       if (data.beneficiariesImpacted) formData.append('beneficiariesImpacted', data.beneficiariesImpacted);
