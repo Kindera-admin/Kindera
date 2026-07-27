@@ -282,7 +282,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-900"
                           title="View Event Details"
                         >
-                          <ExternalLink className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                         </button>
                         {canDelete && (
                           <button

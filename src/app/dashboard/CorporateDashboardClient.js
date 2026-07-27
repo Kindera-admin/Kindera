@@ -1,8 +1,9 @@
 'use client';
 
+import { useTransition, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Users, Clock, CalendarDays, Building2, Plus, UsersRound, MessageSquare, ClipboardList, PlusCircle, ClipboardCheck, FileText, Settings } from 'lucide-react';
+import { Users, Clock, CalendarDays, Building2, Plus, UsersRound, MessageSquare, ClipboardList, PlusCircle, ClipboardCheck, FileText, Settings, ArrowRight, Loader2 } from 'lucide-react';
 
 // Dynamically import recharts to avoid SSR crash
 const BarChart = dynamic(() => import('recharts').then(m => m.BarChart), { ssr: false });
@@ -15,8 +16,84 @@ const Tooltip = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: fa
 const CartesianGrid = dynamic(() => import('recharts').then(m => m.CartesianGrid), { ssr: false });
 const ResponsiveContainer = dynamic(() => import('recharts').then(m => m.ResponsiveContainer), { ssr: false });
 
+const actionCards = [
+  {
+    title: 'Generate Logins',
+    description: 'Add more team members',
+    icon: Plus,
+    href: '/dashboard/team/generate',
+    accent: '#0d3b26',
+    gradient: 'from-[#0d3b26] to-[#1a5c3a]',
+  },
+  {
+    title: 'View Team',
+    description: 'Manage your volunteers',
+    icon: UsersRound,
+    href: '/dashboard/team',
+    accent: '#1a5c3a',
+    gradient: 'from-[#1a5c3a] to-[#2e7d52]',
+  },
+  {
+    title: 'Upcoming Events',
+    description: 'Browse all events',
+    icon: CalendarDays,
+    href: '/events',
+    accent: '#2e7d52',
+    gradient: 'from-[#2e7d52] to-[#3a9e68]',
+  },
+  {
+    title: 'Event History',
+    description: 'View past participation',
+    icon: FileText,
+    href: '/dashboard/events-history',
+    accent: '#3d5a99',
+    gradient: 'from-[#3d5a99] to-[#4a6fbf]',
+  },
+  {
+    title: 'Mark Attendance',
+    description: 'Record team attendance for events',
+    icon: ClipboardCheck,
+    href: '/dashboard/attendance',
+    accent: '#0d7490',
+    gradient: 'from-[#0d7490] to-[#0891b2]',
+  },
+  {
+    title: 'Create Event',
+    description: 'Create a new event for your team',
+    icon: PlusCircle,
+    href: '/events/create',
+    accent: '#6366f1',
+    gradient: 'from-[#6366f1] to-[#818cf8]',
+  },
+  {
+    title: 'Messages',
+    description: 'Chat with Admin and your team',
+    icon: MessageSquare,
+    href: '/messages',
+    accent: '#e11d48',
+    gradient: 'from-[#e11d48] to-[#fb7185]',
+  },
+  {
+    title: 'Settings & Branding',
+    description: 'Update profile and corporate logo',
+    icon: Settings,
+    href: '/settings',
+    accent: '#4b5563',
+    gradient: 'from-[#4b5563] to-[#6b7280]',
+  }
+];
+
 export default function CorporateDashboardClient({ stats, monthly, quarterly, selectedYear }) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [activeCard, setActiveCard] = useState(null);
+
+  const handleNavigate = (href, title) => {
+    setActiveCard(title);
+    startTransition(() => {
+      router.push(href);
+    });
+  };
 
   const handleYearChange = (e) => {
     router.push(`/dashboard?year=${e.target.value}`);
@@ -115,111 +192,55 @@ export default function CorporateDashboardClient({ stats, monthly, quarterly, se
       {/* Quick Actions */}
       <div className="mb-4">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={() => router.push('/dashboard/team/generate')}
-            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
-          >
-            <div className="w-10 h-10 rounded-lg bg-[#0d3b26] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-              <Plus className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Generate Logins</p>
-              <p className="text-xs text-gray-500">Add more team members</p>
-            </div>
-          </button>
-          
-          <button
-            onClick={() => router.push('/dashboard/team')}
-            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
-          >
-            <div className="w-10 h-10 rounded-lg bg-[#1a5c3a] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-              <UsersRound className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">View Team</p>
-              <p className="text-xs text-gray-500">Manage your volunteers</p>
-            </div>
-          </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {actionCards.map((card) => {
+            const Icon = card.icon;
+            const isLoading = isPending && activeCard === card.title;
 
-          <button
-            onClick={() => router.push('/events')}
-            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
-          >
-            <div className="w-10 h-10 rounded-lg bg-[#2e7d52] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-              <CalendarDays className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Upcoming Events</p>
-              <p className="text-xs text-gray-500">Browse all events</p>
-            </div>
-          </button>
+            return (
+              <button
+                key={card.title}
+                onClick={() => handleNavigate(card.href, card.title)}
+                disabled={isPending}
+                className="group relative text-left border border-gray-100 rounded-2xl p-6 bg-white shadow-sm
+                           hover:shadow-xl hover:-translate-y-1 transition-all duration-200
+                           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d3b26]
+                           disabled:cursor-not-allowed overflow-hidden"
+              >
+                {/* Top accent bar */}
+                <div
+                  className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${card.gradient} 
+                              opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
+                />
 
-          <button
-            onClick={() => router.push('/dashboard/events-history')}
-            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
-          >
-            <div className="w-10 h-10 rounded-lg bg-[#3d5a99] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Event History</p>
-              <p className="text-xs text-gray-500">View past participation</p>
-            </div>
-          </button>
+                {/* Icon */}
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform duration-200 group-hover:scale-105"
+                  style={{ background: card.accent }}
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  ) : (
+                    <Icon className="w-5 h-5 text-white" />
+                  )}
+                </div>
 
-          <button
-            onClick={() => router.push('/dashboard/attendance')}
-            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
-          >
-            <div className="w-10 h-10 rounded-lg bg-[#0d7490] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-              <ClipboardCheck className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Mark Attendance</p>
-              <p className="text-xs text-gray-500">Record team attendance for events</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => router.push('/events/create')}
-            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
-          >
-            <div className="w-10 h-10 rounded-lg bg-[#3d5a99] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-              <PlusCircle className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Create Event</p>
-              <p className="text-xs text-gray-500">Create a new event for your team</p>
-            </div>
-          </button>
-
-
-          <button
-            onClick={() => router.push('/messages')}
-            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
-          >
-            <div className="w-10 h-10 rounded-lg bg-[#e11d48] flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-              <MessageSquare className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Messages</p>
-              <p className="text-xs text-gray-500">Chat with Admin and your team</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => router.push('/settings')}
-            className="group border border-gray-100 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition-all text-left flex items-center gap-4"
-          >
-            <div className="w-10 h-10 rounded-lg bg-gray-600 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-              <Settings className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Settings & Branding</p>
-              <p className="text-xs text-gray-500">Update profile and corporate logo</p>
-            </div>
-          </button>
+                {/* Content */}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-900 mb-1">
+                      {isLoading ? 'Loading…' : card.title}
+                    </h2>
+                    <p className="text-sm text-gray-500 leading-relaxed">{card.description}</p>
+                  </div>
+                  <ArrowRight
+                    className="w-4 h-4 text-gray-300 flex-shrink-0 mt-0.5 group-hover:text-gray-500 
+                               group-hover:translate-x-0.5 transition-all duration-200"
+                  />
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

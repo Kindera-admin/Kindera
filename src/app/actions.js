@@ -2952,7 +2952,7 @@ export async function getAdminEventDetails(eventId) {
     if (!session) return { success: false, message: 'Not authenticated' };
 
     const caller = await getCurrentUser();
-    if (caller.role !== 'admin' && caller.role !== 'employee') {
+    if (caller.role !== 'admin' && caller.role !== 'employee' && caller.role !== 'org_spoc') {
       return { success: false, message: 'Unauthorized' };
     }
 
@@ -2964,12 +2964,18 @@ export async function getAdminEventDetails(eventId) {
 
     if (!event) return { success: false, message: 'Event not found' };
 
-    // Find users who are approved for this event
-    const registeredUsers = await User.find({
+    const registeredQuery = {
       'eventRegistrations': {
         $elemMatch: { eventId, status: 'approved' }
       }
-    }).select('name role organizationName email').lean();
+    };
+
+    if (caller.role === 'org_spoc') {
+      registeredQuery.organizationName = caller.organizationName;
+    }
+
+    // Find users who are approved for this event
+    const registeredUsers = await User.find(registeredQuery).select('name role organizationName email').lean();
 
     // Get attendance records
     const attendanceRecords = await Attendance.find({ eventId }).lean();

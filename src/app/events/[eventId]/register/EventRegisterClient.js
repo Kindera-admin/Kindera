@@ -182,7 +182,6 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
             <p className="text-xs text-blue-800">
               As a <strong>Corporate SPOC</strong>, you are registering on behalf of your team.
               Specify how many employees you are sending and their names/notes below.
-              The organiser will review and approve your group booking.
             </p>
           </div>
         )}
