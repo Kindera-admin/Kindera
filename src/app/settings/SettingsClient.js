@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { User, Loader2, Building2, ImagePlus, X } from 'lucide-react';
+import { User, Loader2, Building2, ImagePlus, X, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { updateProfileName, updateOrganizationLogo } from '@/app/actions';
+import { updateProfileName, updateOrganizationLogo, updatePassword } from '@/app/actions';
 
 export default function SettingsClient({ user }) {
   const router = useRouter();
@@ -30,6 +30,28 @@ export default function SettingsClient({ user }) {
       router.refresh();
     } else {
       toast.error(res.message || 'Failed to update nickname');
+    }
+  };
+
+  // Password State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword) return;
+
+    setIsUpdatingPassword(true);
+    const res = await updatePassword(currentPassword, newPassword);
+    setIsUpdatingPassword(false);
+
+    if (res.success) {
+      toast.success('Password updated successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+    } else {
+      toast.error(res.message || 'Failed to update password');
     }
   };
 
@@ -126,6 +148,47 @@ export default function SettingsClient({ user }) {
               <Button type="submit" disabled={isUpdatingName} className="w-full bg-[#0d3b26] hover:bg-[#1a5c3a]">
                 {isUpdatingName && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Update Name
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Password Settings */}
+        <Card className="shadow-sm mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Lock className="w-5 h-5 text-gray-500" /> Security
+            </CardTitle>
+            <CardDescription>Update your password.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  required
+                  minLength={6}
+                />
+              </div>
+              <Button type="submit" disabled={isUpdatingPassword || !currentPassword || !newPassword} className="w-full bg-gray-900 hover:bg-gray-800 text-white">
+                {isUpdatingPassword && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Change Password
               </Button>
             </form>
           </CardContent>

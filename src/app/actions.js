@@ -1985,6 +1985,27 @@ export async function deleteNGODocument(docId) {
   }
 }
 
+export async function updatePassword(currentPassword, newPassword) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+    const user = await User.findById(session.userId);
+    if (!user) return { success: false, message: 'User not found' };
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) return { success: false, message: 'Incorrect current password' };
+
+    user.password = newPassword;
+    await user.save();
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+}
+
 export async function updateMemberName(newName) {
   try {
     const session = await getSession();
