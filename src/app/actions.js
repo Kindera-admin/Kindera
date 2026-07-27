@@ -2013,6 +2013,37 @@ export async function updateMemberName(newName) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// CORPORATE LOGO
+// ─────────────────────────────────────────────────────────────
+
+export async function updateOrganizationLogo(url) {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    await connectDB();
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, message: 'User not found' };
+
+    if (caller.role !== 'org_spoc') {
+      return { success: false, message: 'Only SPOCs can update organization logo' };
+    }
+
+    await User.updateOne(
+      { _id: caller._id },
+      { $set: { organizationLogo: url } }
+    );
+
+    revalidatePath('/dashboard');
+    revalidatePath('/settings');
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating organization logo:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // ORG MEMBER SELF-REPORTING (Hours & Feedback)
 // ─────────────────────────────────────────────────────────────
 
@@ -2140,6 +2171,14 @@ export async function getMyImpact() {
       ? Math.round((feedbacks.reduce((s, r) => s + r.feedbackScore, 0) / feedbacks.length) * 10) / 10
       : null;
 
+    let organizationLogo = null;
+    if (caller.organizationName) {
+      const spoc = await User.findOne({ role: 'org_spoc', organizationName: caller.organizationName }).select('organizationLogo').lean();
+      if (spoc) {
+        organizationLogo = spoc.organizationLogo;
+      }
+    }
+
     return {
       success: true,
       events,
@@ -2149,6 +2188,7 @@ export async function getMyImpact() {
         avgFeedback,
         name: caller.name,
         organizationName: caller.organizationName,
+        organizationLogo,
       }
     };
   } catch (error) {

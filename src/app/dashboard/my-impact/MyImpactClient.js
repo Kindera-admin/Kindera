@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Award, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, Clock, Loader2, MapPin, Star, Activity, Globe, Building2 } from 'lucide-react';
+import { Award, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, Clock, Loader2, MapPin, Star, Activity, Globe, Building2, Users } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { logMyHoursAndFeedback } from '@/app/actions';
@@ -385,48 +385,149 @@ export default function MyImpactClient({ events, stats }) {
 
       {/* Certificate Modal */}
       {activeCertificate && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 print:p-0 print:static print:bg-white">
-          <div className="bg-[#fffdf9] border-[12px] double border-[#0d3b26] p-8 md:p-12 max-w-2xl w-full text-center relative rounded-lg print:border-[12px] print:shadow-none shadow-2xl" id="certificate-print-area">
-            {/* Elegant corner decorations */}
-            <div className="absolute top-2 left-2 right-2 bottom-2 border border-emerald-800/20 pointer-events-none" />
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 print:p-0 print:static print:bg-white overflow-y-auto">
+          <style dangerouslySetInnerHTML={{ __html: `
+            @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+            @media print {
+              @page { size: landscape; margin: 0; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            }
+          `}} />
+          
+          <div className="bg-white max-w-4xl w-full relative overflow-hidden shadow-2xl print:shadow-none min-h-[600px] flex flex-col justify-center" id="certificate-print-area">
             
-            <div className="py-4 md:py-8">
-              <span className="text-[#2e7d52] font-semibold tracking-widest text-xs uppercase block mb-4">Kindera Impact Network</span>
-              <h1 className="text-2xl md:text-3xl font-serif text-[#0d3b26] mb-2 font-bold">Certificate of Appreciation</h1>
-              <p className="text-[10px] text-gray-400 tracking-wider uppercase mb-8">Proudly Presented To</p>
-              
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 border-b border-gray-200 pb-2 max-w-md mx-auto mb-6 font-serif">{activeCertificate.userName}</h2>
-              
-              <p className="text-gray-600 max-w-lg mx-auto text-sm leading-relaxed mb-8">
-                for outstanding volunteer service and dedication to community development. Your contribution of <strong className="text-[#0d3b26]">{activeCertificate.event.myHours || activeCertificate.event.durationHours} Hours</strong> at the event <strong className="text-[#0d3b26]">&ldquo;{activeCertificate.event.title}&rdquo;</strong> on {new Date(activeCertificate.event.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} has made a meaningful difference.
-              </p>
-              
-              <div className="grid grid-cols-2 gap-8 pt-6 border-t border-gray-100 max-w-md mx-auto">
-                <div>
-                  <p className="text-sm font-bold text-gray-800 border-b border-gray-300 pb-1 max-w-[120px] mx-auto font-serif">Kindera Team</p>
-                  <p className="text-[10px] text-gray-400 mt-1 uppercase">Organiser</p>
+            {/* Top Right Dark Blue curved shape & "Where Kindness Takes Action" */}
+            <div className="absolute top-0 right-0 w-80 h-32 bg-[#0A1A3B] rounded-bl-full z-0 flex items-center justify-center pl-8 pt-4">
+              <div className="flex items-center text-white gap-3 transform -translate-y-2">
+                <div className="w-8 h-8 rounded-full border border-white flex items-center justify-center">
+                  <div className="w-4 h-4 text-[#76A854]">
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-800 border-b border-gray-300 pb-1 max-w-[120px] mx-auto font-serif">{new Date().toLocaleDateString('en-IN')}</p>
-                  <p className="text-[10px] text-gray-400 mt-1 uppercase">Date Issued</p>
-                </div>
+                <div className="text-xs font-semibold leading-tight">Where<br/>Kindness<br/>Takes Action</div>
               </div>
             </div>
             
-            {/* Control buttons inside modal, hidden when printing */}
-            <div className="mt-8 flex justify-center gap-3 print:hidden">
-              <Button
-                onClick={() => window.print()}
-                className="bg-[#0d3b26] hover:bg-[#1a5c3a] text-white"
+            {/* Top Right Green Curve Underneath */}
+            <div className="absolute top-24 right-0 w-64 h-16 bg-[#76A854] rounded-bl-full z-[-1] transform -translate-y-4 translate-x-4"></div>
+
+            {/* Bottom Left Green Curve */}
+            <div className="absolute bottom-0 left-0 w-64 h-32 bg-[#76A854] rounded-tr-full z-0 transform translate-y-8 -translate-x-8"></div>
+            {/* Bottom Left Dark Blue Curve */}
+            <div className="absolute bottom-0 left-0 w-48 h-20 bg-[#0A1A3B] rounded-tr-full z-0"></div>
+            
+            <div className="relative z-10 px-12 py-16 text-center h-full flex flex-col">
+              
+              {/* Top Left: Corporate Logo */}
+              <div className="absolute top-10 left-12 flex items-center gap-3 text-left">
+                {stats.organizationLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={stats.organizationLogo} alt={stats.organizationName} className="h-12 object-contain" />
+                ) : (
+                  <span className="text-xl font-bold text-[#0A1A3B] border-l-4 border-[#76A854] pl-3">
+                    {stats.organizationName || 'Corporate Partner'}
+                  </span>
+                )}
+              </div>
+              
+              <div className="mt-16 mb-4 flex-grow">
+                <h1 className="text-4xl md:text-5xl font-bold text-[#0A1A3B] tracking-widest mb-1">CERTIFICATE</h1>
+                <div className="flex items-center justify-center gap-4">
+                  <div className="h-px bg-[#76A854] w-16"></div>
+                  <h2 className="text-lg md:text-xl font-semibold tracking-[0.2em] text-[#0A1A3B]">OF VOLUNTEERING</h2>
+                  <div className="h-px bg-[#76A854] w-16"></div>
+                </div>
+              </div>
+              
+              <p className="text-gray-500 text-sm mt-8 mb-2">This is to certify that</p>
+              
+              {/* Volunteer Name */}
+              <h2 
+                className="text-5xl md:text-6xl text-[#0A1A3B] mb-2 px-12 pb-2 inline-block border-b border-gray-300"
+                style={{ fontFamily: "'Great Vibes', cursive" }}
               >
-                Print / Save PDF
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setActiveCertificate(null)}
-              >
-                Close
-              </Button>
+                {activeCertificate.userName}
+              </h2>
+              
+              <p className="text-gray-600 mt-2 mb-4">
+                from <strong className="text-[#0A1A3B]">{stats.organizationName || 'our corporate partner'}</strong>
+              </p>
+              
+              <p className="text-gray-500 text-sm mb-2">has participated in</p>
+              <p className="text-lg md:text-xl font-bold text-[#76A854] mb-4">
+                {activeCertificate.event.title}
+              </p>
+              
+              <p className="text-gray-600 text-sm max-w-lg mx-auto mb-10 leading-relaxed">
+                Your contribution has made a positive impact on the environment and inspiring change in the community.
+              </p>
+              
+              {/* Stats Footer */}
+              <div className="flex justify-center items-start gap-12 border-t border-gray-100 pt-6 max-w-2xl mx-auto mb-12">
+                <div className="text-center">
+                  <div className="w-10 h-10 mx-auto bg-[#76A854] rounded-full flex items-center justify-center text-white mb-2 shadow-md">
+                    <CalendarDays className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-bold text-gray-800">Date</p>
+                  <p className="text-xs text-gray-500">{new Date(activeCertificate.event.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+                
+                <div className="text-center border-l border-r border-gray-200 px-12">
+                  <div className="w-10 h-10 mx-auto bg-[#76A854] rounded-full flex items-center justify-center text-white mb-2 shadow-md">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-bold text-gray-800">Volunteer Hours</p>
+                  <p className="text-xs text-gray-500">{activeCertificate.event.myHours || activeCertificate.event.durationHours} Hours</p>
+                </div>
+                
+                <div className="text-center">
+                  <div className="w-10 h-10 mx-auto bg-[#76A854] rounded-full flex items-center justify-center text-white mb-2 shadow-md">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-bold text-gray-800">Location</p>
+                  <p className="text-xs text-gray-500 truncate max-w-[100px]">{activeCertificate.event.location?.split(',')[0] || 'Remote'}</p>
+                </div>
+              </div>
+              
+              {/* Very Bottom Footer */}
+              <div className="flex justify-between items-end px-4">
+                {/* Signature */}
+                <div className="text-left w-48">
+                  <p className="font-['Great_Vibes'] text-2xl text-[#0A1A3B] border-b border-gray-300 pb-1 mb-1" style={{ fontFamily: "'Great Vibes', cursive" }}>Kindera Team</p>
+                  <p className="text-[10px] font-bold text-[#0A1A3B]">Kindera Team</p>
+                  <p className="text-[10px] text-gray-500">On behalf of Kindera</p>
+                </div>
+                
+                {/* Powered By */}
+                <div className="text-center pb-2">
+                  <p className="text-[8px] font-bold tracking-widest text-gray-500 uppercase mb-1">POWERED BY</p>
+                  <div className="flex items-center justify-center gap-1.5">
+                    {/* Kindera Icon */}
+                    <div className="w-6 h-6 flex">
+                      <div className="w-3 bg-[#a5d6a7] rounded-l-md"></div>
+                      <div className="w-3 bg-[#76A854] rounded-r-md rounded-tl-md translate-y-1"></div>
+                    </div>
+                    <span className="font-bold text-[#0A1A3B] text-lg tracking-wide">KINDERA</span>
+                  </div>
+                </div>
+                
+                {/* Badge */}
+                <div className="w-48 flex justify-end">
+                  <div className="relative w-24 h-24">
+                    <div className="absolute inset-0 bg-[#0A1A3B] rounded-full flex items-center justify-center shadow-lg border-2 border-dashed border-white m-1 ring-4 ring-[#0A1A3B]">
+                      <div className="text-center bg-white rounded-full w-16 h-16 flex flex-col justify-center items-center p-2">
+                         <div className="text-[#76A854] mb-0.5">
+                           <svg viewBox="0 0 24 24" className="w-4 h-4 mx-auto" fill="currentColor" stroke="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                         </div>
+                         <p className="text-[5px] font-bold text-[#0A1A3B] leading-tight mt-1">THANK YOU<br/>FOR MAKING A<br/>DIFFERENCE</p>
+                      </div>
+                    </div>
+                    {/* Ribbons */}
+                    <div className="absolute -bottom-3 left-3 w-4 h-8 bg-[#76A854] transform rotate-12 -z-10" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)' }}></div>
+                    <div className="absolute -bottom-3 right-3 w-4 h-8 bg-[#76A854] transform -rotate-12 -z-10" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)' }}></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           

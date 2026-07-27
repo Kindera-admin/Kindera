@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { User, Loader2 } from 'lucide-react';
+import { User, Loader2, Building2, ImagePlus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { updateProfileName } from '@/app/actions';
+import { updateProfileName, updateOrganizationLogo } from '@/app/actions';
 
 export default function SettingsClient({ user }) {
   const router = useRouter();
@@ -30,6 +30,69 @@ export default function SettingsClient({ user }) {
       router.refresh();
     } else {
       toast.error(res.message || 'Failed to update nickname');
+    }
+  };
+
+  const [logo, setLogo] = useState(user.organizationLogo || '');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    const toastId = toast.loading('Uploading logo...');
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('folder', 'kindera/organization-logos');
+
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: fd
+      });
+
+      if (!uploadRes.ok) throw new Error('Upload failed');
+      const { url } = await uploadRes.json();
+
+      const saveRes = await updateOrganizationLogo(url);
+      if (saveRes.success) {
+        setLogo(url);
+        toast.success('Organization logo updated!', { id: toastId });
+        router.refresh();
+      } else {
+        throw new Error(saveRes.message);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload logo', { id: toastId });
+    } finally {
+      setIsUploadingLogo(false);
+      e.target.value = ''; // Reset input
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    setIsUploadingLogo(true);
+    const toastId = toast.loading('Removing logo...');
+    try {
+      const saveRes = await updateOrganizationLogo('');
+      if (saveRes.success) {
+        setLogo('');
+        toast.success('Organization logo removed!', { id: toastId });
+        router.refresh();
+      } else {
+        throw new Error(saveRes.message);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to remove logo', { id: toastId });
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
@@ -67,6 +130,54 @@ export default function SettingsClient({ user }) {
             </form>
           </CardContent>
         </Card>
+        
+        {/* Organization Logo Settings (SPOC only) */}
+        {user.role === 'org_spoc' && (
+          <Card className="shadow-sm mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Building2 className="w-5 h-5 text-[#3d5a99]" /> Corporate Branding
+              </CardTitle>
+              <CardDescription>Upload your organization logo to display on volunteer certificates.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {logo ? (
+                  <div className="relative inline-block border rounded-lg p-2 bg-gray-50">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={logo} alt="Organization Logo" className="h-24 object-contain" />
+                    <button
+                      onClick={handleRemoveLogo}
+                      disabled={isUploadingLogo}
+                      className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 hover:bg-red-200 transition-colors"
+                      title="Remove logo"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center bg-gray-50">
+                    <ImagePlus className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500 mb-4">No logo uploaded yet</p>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-4">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    disabled={isUploadingLogo}
+                    className="max-w-xs cursor-pointer"
+                    id="logo-upload"
+                  />
+                  {isUploadingLogo && <Loader2 className="w-5 h-5 animate-spin text-gray-400" />}
+                </div>
+                <p className="text-xs text-gray-400">Recommended size: 400x150px. Max 2MB.</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

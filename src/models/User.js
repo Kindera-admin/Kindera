@@ -32,6 +32,10 @@ const userSchema = new mongoose.Schema({
       return this.role === 'org_spoc' || this.role === 'org_member';
     }
   },
+  organizationLogo: {
+    type: String,
+    default: ''
+  },
   name: {
     type: String,
     required: true
