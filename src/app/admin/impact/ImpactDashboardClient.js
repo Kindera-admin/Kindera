@@ -10,7 +10,6 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
   // Handle empty defaults
   const {
     totalHours = 0,
-    totalBeneficiaries = 0,
     totalEvents = 0,
     totalNGOs = 0,
     totalOrgs = 0,

@@ -93,10 +93,6 @@ export default function EventDetailsModal({ eventId, onClose }) {
                     <MapPin className="w-5 h-5 text-red-600" />
                     <span className="font-medium">{data.event.location}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-sm text-gray-700">
-                    <Target className="w-5 h-5 text-amber-600" />
-                    <span className="font-medium">Impact: {data.event.beneficiariesImpacted || 0} beneficiaries</span>
-                  </div>
                   {data.event.createdBy && (
                     <div className="pt-3 border-t border-gray-200 mt-3">
                       <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-semibold">Created By</p>

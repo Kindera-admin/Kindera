@@ -29,7 +29,6 @@ export default function CreateEventForm() {
       date: '',
       location: '',
       capacity: '',
-      beneficiariesImpacted: '',
     },
   });
 
@@ -71,7 +70,6 @@ export default function CreateEventForm() {
       
       formData.append('location', data.location);
       if (data.capacity) formData.append('capacity', data.capacity);
-      if (data.beneficiariesImpacted) formData.append('beneficiariesImpacted', data.beneficiariesImpacted);
       if (imageUrl) formData.append('imageUrl', imageUrl);
 
       // Calculate total duration in decimal hours

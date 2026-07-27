@@ -721,7 +721,6 @@ export async function createEvent(formData) {
     const location = formData.get('location');
     const capacity = formData.get('capacity');
     const imageUrl = formData.get('imageUrl');
-    const beneficiariesImpacted = formData.get('beneficiariesImpacted');
     const durationHours = formData.get('durationHours') ? parseFloat(formData.get('durationHours')) : 2;
 
     if (!title || !description || !date || !location) {
@@ -736,7 +735,6 @@ export async function createEvent(formData) {
       registrationLink: '',
       capacity: capacity ? parseInt(capacity) : null,
       durationHours,
-      beneficiariesImpacted: beneficiariesImpacted ? parseInt(beneficiariesImpacted) : 0,
       imageUrl: imageUrl || '',
       createdBy: user._id,
       createdByRole: user.role,
@@ -1711,9 +1709,8 @@ export async function getOrgStats(orgName, targetYear) {
     // Unique NGOs engaged (via events)
     const eventIds = stats.totalEvents || [];
     const eventsData = await Event.find({ _id: { $in: eventIds } })
-      .select('title date location organizationName createdBy beneficiariesImpacted').populate('createdBy', 'ngoId').lean();
+      .select('title date location organizationName createdBy').populate('createdBy', 'ngoId').lean();
     const ngoIds = [...new Set(eventsData.map(e => e.createdBy?.ngoId).filter(Boolean))];
-    const totalBeneficiaries = eventsData.reduce((s, e) => s + (e.beneficiariesImpacted || 0), 0);
 
     // Aggregate attendance per event for detail list
     const eventAttendanceDetails = await Attendance.aggregate([
@@ -1767,7 +1764,6 @@ export async function getOrgStats(orgName, targetYear) {
         volunteerHours:         stats.totalHours || 0,
         eventsAttended:         (stats.totalEvents || []).length,
         ngosEngaged:            ngoIds.length,
-        beneficiariesImpacted:  totalBeneficiaries,
         avgFeedback:            stats.avgFeedback ? Math.round(stats.avgFeedback * 10) / 10 : null,
         participationRate:      totalVolunteers > 0
           ? Math.round(((stats.attendanceCount || 0) / totalVolunteers) * 100)
@@ -2144,7 +2140,7 @@ export async function getMyImpact() {
     // Get only events the user has registered for (participated in)
     const registeredEventIds = (caller.eventRegistrations || []).map(r => r.eventId);
     const allEvents = await Event.find({ _id: { $in: registeredEventIds } })
-      .select('title date location description beneficiariesImpacted status durationHours organizationName')
+      .select('title date location description status durationHours organizationName')
       .sort({ date: -1 })
       .lean();
 
@@ -2173,7 +2169,6 @@ export async function getMyImpact() {
         location: ev.location,
         description: ev.description,
         durationHours: ev.durationHours || 2,
-        beneficiariesImpacted: ev.beneficiariesImpacted || 0,
         status: ev.status,
         lifecycle,
         isPast: lifecycle === 'ended',
@@ -2748,16 +2743,14 @@ export async function getAdminImpactStats(targetYear) {
     const year = targetYear ? parseInt(targetYear, 10) : new Date().getFullYear();
 
     // 1. Total KPI counters
-    const [totalHoursResult, totalBeneficiariesResult, totalEvents, totalNGOs, totalOrgs] = await Promise.all([
+    const [totalHoursResult, totalEvents, totalNGOs, totalOrgs] = await Promise.all([
       Attendance.aggregate([{ $match: { attended: true } }, { $group: { _id: null, total: { $sum: '$hoursContributed' } } }]),
-      Event.aggregate([{ $match: { status: 'completed' } }, { $group: { _id: null, total: { $sum: '$beneficiariesImpacted' } } }]),
       Event.countDocuments({ status: 'completed' }),
       NGOPartner.countDocuments(),
       User.distinct('organizationName', { organizationName: { $ne: null } }),
     ]);
 
     const totalHours = totalHoursResult[0]?.total || 0;
-    const totalBeneficiaries = totalBeneficiariesResult[0]?.total || 0;
 
     // 2. Events completed by year and quarters
     const startOfYear = new Date(year, 0, 1);
@@ -2818,7 +2811,6 @@ export async function getAdminImpactStats(targetYear) {
       success: true,
       stats: {
         totalHours,
-        totalBeneficiaries,
         totalEvents,
         totalNGOs,
         totalOrgs: totalOrgs.length,
@@ -3030,7 +3022,6 @@ export async function getAdminEventDetails(eventId) {
         location: event.location,
         durationHours: event.durationHours || 0,
         capacity: event.capacity,
-        beneficiariesImpacted: event.beneficiariesImpacted,
         status: event.status,
         organizationName: event.organizationName,
         createdBy: event.createdBy ? {
