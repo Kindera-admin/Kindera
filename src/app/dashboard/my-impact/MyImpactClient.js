@@ -422,9 +422,9 @@ export default function MyImpactClient({ events, stats }) {
               <div className="absolute top-10 left-12 flex items-center gap-3 text-left">
                 {stats.organizationLogo ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={stats.organizationLogo} alt={stats.organizationName} className="h-12 object-contain" />
+                  <img src={stats.organizationLogo} alt={stats.organizationName} className="h-24 object-contain" />
                 ) : (
-                  <span className="text-xl font-bold text-[#0A1A3B] border-l-4 border-[#76A854] pl-3">
+                  <span className="text-2xl font-bold text-[#0A1A3B] border-l-4 border-[#76A854] pl-3">
                     {stats.organizationName || 'Corporate Partner'}
                   </span>
                 )}
@@ -500,14 +500,10 @@ export default function MyImpactClient({ events, stats }) {
                 
                 {/* Powered By */}
                 <div className="text-center pb-2">
-                  <p className="text-[8px] font-bold tracking-widest text-gray-500 uppercase mb-1">POWERED BY</p>
-                  <div className="flex items-center justify-center gap-1.5">
-                    {/* Kindera Icon */}
-                    <div className="w-6 h-6 flex">
-                      <div className="w-3 bg-[#a5d6a7] rounded-l-md"></div>
-                      <div className="w-3 bg-[#76A854] rounded-r-md rounded-tl-md translate-y-1"></div>
-                    </div>
-                    <span className="font-bold text-[#0A1A3B] text-lg tracking-wide">KINDERA</span>
+                  <p className="text-[8px] font-bold tracking-widest text-gray-500 uppercase mb-2">POWERED BY</p>
+                  <div className="flex justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/kindera-logo.png" alt="Kindera" className="h-10 object-contain mix-blend-multiply" />
                   </div>
                 </div>
                 
@@ -531,35 +527,22 @@ export default function MyImpactClient({ events, stats }) {
             </div>
           </div>
           
-          {/* Print helper style to hide everything else during print */}
-          <style jsx global>{`
-            @media print {
-              body * {
-                visibility: hidden;
-              }
-              #certificate-print-area, #certificate-print-area * {
-                visibility: visible;
-              }
-              #certificate-print-area {
-                position: fixed;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%);
-                width: 100%;
-                max-width: 90%;
-                border: 16px double #0d3b26 !important;
-                box-shadow: none !important;
-                margin: 0;
-                padding: 3rem;
-                background: #fffdf9 !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-              .print\\:hidden {
-                display: none !important;
-              }
-            }
-          `}</style>
+          {/* Control buttons inside modal, hidden when printing */}
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex justify-center gap-3 print:hidden z-[100] w-full max-w-sm">
+            <Button
+              onClick={() => window.print()}
+              className="bg-[#0A1A3B] hover:bg-[#1a2d59] text-white shadow-xl px-8"
+            >
+              Print / Save PDF
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setActiveCertificate(null)}
+              className="shadow-xl bg-white text-gray-800 hover:bg-gray-100 border border-gray-200"
+            >
+              Close
+            </Button>
+          </div>
         </div>
       )}
     </div>
