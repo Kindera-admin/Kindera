@@ -18,7 +18,8 @@ import {
   Trash2,
   ExternalLink,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { deleteEvent } from '@/app/actions';

@@ -19,20 +19,43 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Eye,
+  Trash2,
+  CalendarDays
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EventDetailsModal from '../../admin/events-history/EventDetailsModal';
+import ConfirmModal from '@/components/ConfirmModal';
+import { deleteEvent } from '@/app/actions';
+import { toast } from 'sonner';
 
-export default function CorporateEventsHistoryClient({ history: initialHistory, userRole }) {
+export default function CorporateEventsHistoryClient({ history: initialHistory, userRole, currentUserId }) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // all, upcoming, ended
   const [expandedRows, setExpandedRows] = useState({});
   const [viewDetailsId, setViewDetailsId] = useState(null);
+  const [events, setEvents] = useState(initialHistory);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteConfirm = async () => {
+    if (!confirmDelete) return;
+    setIsDeleting(true);
+    const result = await deleteEvent(confirmDelete.id);
+    if (result.success) {
+      setEvents(prev => prev.filter(e => e._id !== confirmDelete.id));
+      toast.success('Event deleted');
+    } else {
+      toast.error(result.message || 'Failed to delete event');
+    }
+    setIsDeleting(false);
+    setConfirmDelete(null);
+  };
 
   // Filter logic
-  const filtered = initialHistory.filter(item => {
+  const filtered = events.filter(item => {
     const matchesSearch = 
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
       (item.createdBy?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,7 +106,9 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
                 </div>
               </div>
               <p className="text-2xl font-bold text-gray-900">{card.value}</p>
-        </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
