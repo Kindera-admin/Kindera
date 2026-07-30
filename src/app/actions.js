@@ -1909,13 +1909,13 @@ export async function exportDetailedAttendanceData() {
 
     const attendanceRecords = await Attendance.find({ attended: true })
       .populate('eventId', 'title date location')
-      .populate('volunteerId', 'name username')
+      .populate('userId', 'name username')
       .lean();
 
     const detailedData = attendanceRecords.map(record => ({
       organizationName: record.organizationName || 'Individual',
-      volunteerName: record.volunteerId?.name || 'Unknown',
-      volunteerEmail: record.volunteerId?.username || 'Unknown',
+      volunteerName: record.userId?.name || 'Unknown',
+      volunteerEmail: record.userId?.username || 'Unknown',
       eventTitle: record.eventId?.title || 'Unknown Event',
       eventDate: record.eventId?.date ? new Date(record.eventId.date).toISOString() : '',
       eventLocation: record.eventId?.location || '',
