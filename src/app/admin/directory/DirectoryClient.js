@@ -40,7 +40,7 @@ export default function DirectoryClient({ spocs, ngos }) {
       }
       
       let csvContent = "data:text/csv;charset=utf-8,";
-      csvContent += "Organization,Volunteer Name,Volunteer Email,Event Title,Event Date,Event Location,Hours Contributed,Feedback Score,Feedback Text,Marked At\n";
+      csvContent += "Organization,Volunteer Name,Volunteer Username,Event Title,Event Date,Event Location,Hours Contributed,Feedback Score,Feedback Text,Marked At\n";
       
       res.data.forEach(r => {
         const row = [
@@ -84,7 +84,7 @@ export default function DirectoryClient({ spocs, ngos }) {
     let csvContent = "data:text/csv;charset=utf-8,";
     
     if (activeTab === 'spocs') {
-      csvContent += "Name,Email,Mobile,Organization,Status,Total Members,Total Hours,Events Attended,Joined At\n";
+      csvContent += "Name,Username,Mobile,Organization,Status,Total Members,Total Hours,Events Attended,Joined At\n";
       filteredSpocs.forEach(s => {
         const row = [
           `"${s.name || ''}"`,
@@ -100,7 +100,7 @@ export default function DirectoryClient({ spocs, ngos }) {
         csvContent += row.join(",") + "\n";
       });
     } else {
-      csvContent += "NGO Name,Email,Mobile,NGO ID,Status,Events Created,Joined At\n";
+      csvContent += "NGO Name,Username,Mobile,NGO ID,Status,Events Created,Joined At\n";
       filteredNgos.forEach(n => {
         const row = [
           `"${n.name || ''}"`,
@@ -133,7 +133,7 @@ export default function DirectoryClient({ spocs, ngos }) {
       }
       
       let csvContent = "data:text/csv;charset=utf-8,";
-      csvContent += "Organization,Volunteer Name,Volunteer Email,Event Title,Event Date,Event Location,Hours Contributed,Feedback Score,Feedback Text,Marked At\n";
+      csvContent += "Organization,Volunteer Name,Volunteer Username,Event Title,Event Date,Event Location,Hours Contributed,Feedback Score,Feedback Text,Marked At\n";
       
       res.data.forEach(r => {
         const row = [
