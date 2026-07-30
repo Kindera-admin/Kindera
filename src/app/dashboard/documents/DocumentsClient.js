@@ -168,7 +168,7 @@ export default function DocumentsClient({ documents: initial }) {
                 <p className="font-semibold text-sm text-gray-900 truncate">{doc.label}</p>
                 <p className="text-xs text-gray-400">
                   {DOC_TYPES.find(t => t.value === doc.docType)?.label || doc.docType}
-                  {doc.uploadedAt && ` · ${new Date(doc.uploadedAt).toLocaleDateString()}`}
+                  {doc.uploadedAt && ` · ${new Date(doc.uploadedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}`}
                 </p>
                 {doc.status === 'rejected' && doc.adminNote && (
                   <p className="text-xs text-red-500 mt-0.5 italic">{doc.adminNote}</p>

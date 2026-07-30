@@ -1685,7 +1685,7 @@ export async function getOrgStats(orgName, targetYear) {
       const d = new Date(year, i, 1);
       return {
         month: `${year}-${String(monthNum).padStart(2, '0')}`,
-        label: d.toLocaleString('default', { month: 'short' }),
+        label: d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' }),
         count: mData ? mData.count : 0,
         hours: mData ? mData.hours : 0,
       };
@@ -2897,12 +2897,12 @@ export async function getAdminImpactStats(targetYear) {
     const monthlyEventsMap = {};
     for (let i = 0; i < 12; i++) {
       const d = new Date(year, i, 1);
-      const mLabel = d.toLocaleString('default', { month: 'short' });
+      const mLabel = d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' });
       monthlyEventsMap[mLabel] = 0;
     }
 
     recentEvents.forEach(e => {
-      const mLabel = new Date(e.date).toLocaleString('default', { month: 'short' });
+      const mLabel = new Date(e.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' });
       if (mLabel in monthlyEventsMap) {
         monthlyEventsMap[mLabel]++;
       }

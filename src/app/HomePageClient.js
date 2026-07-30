@@ -417,7 +417,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
                     </div>
                     <div className="p-8">
                       <p className="text-emerald-600 text-sm font-semibold mb-3">
-                        {new Date(ev.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                        {new Date(ev.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'long', day: 'numeric', year: 'numeric' })}
                       </p>
                       <h3 className="text-2xl font-bold text-gray-900 mb-3 line-clamp-2">{ev.title}</h3>
                       <p className="text-gray-500 mb-8 line-clamp-3 leading-relaxed">{ev.description}</p>

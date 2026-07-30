@@ -55,7 +55,7 @@ function EventCard({ event, userName, onShowCertificate }) {
     });
   };
 
-  const dateStr = new Date(event.date).toLocaleDateString('en-US', {
+  const dateStr = new Date(event.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata',
     weekday: 'short', month: 'long', day: 'numeric', year: 'numeric',
   });
 
@@ -65,7 +65,7 @@ function EventCard({ event, userName, onShowCertificate }) {
         {/* Date badge */}
         <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center text-center ${event.isPast ? 'bg-gray-100' : 'bg-emerald-50'}`}>
           <span className={`text-[10px] font-semibold uppercase tracking-wide ${event.isPast ? 'text-gray-400' : 'text-emerald-600'}`}>
-            {new Date(event.date).toLocaleString('default', { month: 'short' })}
+            {new Date(event.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' })}
           </span>
           <span className={`text-lg font-bold leading-none ${event.isPast ? 'text-gray-600' : 'text-emerald-700'}`}>
             {new Date(event.date).getDate()}
@@ -333,7 +333,7 @@ export default function MyImpactClient({ events, stats }) {
                   <h3 className="font-semibold text-gray-900 text-sm mb-1">{ev.title}</h3>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[10px] text-gray-400 font-medium">
-                      {new Date(ev.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {new Date(ev.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
                     <span className="text-gray-300 text-[10px]">•</span>
                     {ev.organizationName ? (
@@ -471,7 +471,7 @@ export default function MyImpactClient({ events, stats }) {
                     <CalendarDays className="w-5 h-5" />
                   </div>
                   <p className="text-xs font-bold text-gray-800">Date</p>
-                  <p className="text-xs text-gray-500">{new Date(activeCertificate.event.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className="text-xs text-gray-500">{new Date(activeCertificate.event.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
                 
                 <div className="text-center border-l border-r border-gray-200 px-12">

@@ -40,7 +40,7 @@ export default function EventsClient({ events: initialEvents, userRole, currentU
   
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata',
       weekday: 'short',
       year: 'numeric', 
       month: 'long', 

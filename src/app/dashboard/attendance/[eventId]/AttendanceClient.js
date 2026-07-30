@@ -93,7 +93,7 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
           <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">Mark Attendance</p>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">{event.title}</h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-            <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {new Date(event.date).toLocaleDateString()}</span>
+            <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {new Date(event.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</span>
             <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> {event.location}</span>
           </div>
         </div>

@@ -140,7 +140,7 @@ export default function ImpactPhotosClient({ initialPhotos }) {
               </div>
             </div>
             <CardContent className="p-3 text-xs text-gray-500">
-              Uploaded on {new Date(photo.createdAt).toLocaleDateString()}
+              Uploaded on {new Date(photo.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
             </CardContent>
           </Card>
         ))}

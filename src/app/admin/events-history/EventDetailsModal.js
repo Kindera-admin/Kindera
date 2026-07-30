@@ -83,7 +83,7 @@ export default function EventDetailsModal({ eventId, onClose }) {
                 <div className="bg-gray-50 rounded-xl p-5 space-y-4">
                   <div className="flex items-center gap-3 text-sm text-gray-700">
                     <Calendar className="w-5 h-5 text-emerald-600" />
-                    <span className="font-medium">{new Date(data.event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    <span className="font-medium">{new Date(data.event.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-gray-700">
                     <Clock className="w-5 h-5 text-blue-600" />

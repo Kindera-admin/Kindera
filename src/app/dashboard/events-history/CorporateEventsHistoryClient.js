@@ -183,7 +183,7 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
                                   {item.status.toUpperCase()}
                                 </span>
                                 <span>·</span>
-                                <span>{new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                <span>{new Date(item.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}</span>
                               </div>
                             </div>
                           </div>

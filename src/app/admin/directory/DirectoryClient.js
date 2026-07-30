@@ -95,7 +95,7 @@ export default function DirectoryClient({ spocs, ngos }) {
           s.memberCount || 0,
           s.volunteerHours || 0,
           s.eventsAttended || 0,
-          `"${s.joinedAt ? new Date(s.joinedAt).toLocaleDateString() : ''}"`
+          `"${s.joinedAt ? new Date(s.joinedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''}"`
         ];
         csvContent += row.join(",") + "\n";
       });
@@ -109,7 +109,7 @@ export default function DirectoryClient({ spocs, ngos }) {
           `"${n.ngoId || ''}"`,
           `"${n.status || ''}"`,
           n.eventsCreated || 0,
-          `"${n.joinedAt ? new Date(n.joinedAt).toLocaleDateString() : ''}"`
+          `"${n.joinedAt ? new Date(n.joinedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''}"`
         ];
         csvContent += row.join(",") + "\n";
       });

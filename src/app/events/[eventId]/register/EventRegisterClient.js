@@ -96,7 +96,7 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
   const formatDate = (isoString) => {
     if (!isoString) return '';
     const date = new Date(isoString);
-    return date.toLocaleString('en-US', {
+    return date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata',
       weekday: 'short', month: 'short', day: 'numeric',
       hour: 'numeric', minute: '2-digit'
     });

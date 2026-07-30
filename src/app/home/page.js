@@ -37,7 +37,7 @@ export default async function UserHome() {
                 <CardHeader>
                   <CardTitle className="text-lg">{event.title}</CardTitle>
                   <CardDescription>
-                    {new Date(event.date).toLocaleDateString('en-US', { 
+                    {new Date(event.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', 
                       weekday: 'short',
                       year: 'numeric', 
                       month: 'long', 

@@ -264,7 +264,7 @@ export default function CorporateOverviewClient({ orgs }) {
                             </span>
                           </div>
                           <span className="text-[10px] text-gray-400 block mt-1">
-                            {new Date(ev.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {new Date(ev.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
                             {ev.location ? ` · ${ev.location}` : ''}
                           </span>
                         </div>

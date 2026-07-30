@@ -37,8 +37,8 @@ function formatTime(iso) {
   const diffDays = Math.floor((now - d) / 86400000);
   if (diffDays === 0) return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return d.toLocaleDateString('en-IN', { weekday: 'short' });
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  if (diffDays < 7) return d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short' });
+  return d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' });
 }
 
 function Avatar({ name, role, size = 'md' }) {
@@ -393,7 +393,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
                         <div className="flex items-center gap-3 my-4">
                           <div className="flex-1 h-px bg-gray-100" />
                           <span className="text-[11px] text-gray-400 font-medium">
-                            {new Date(msg.createdAt).toLocaleDateString('en-IN', {
+                            {new Date(msg.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata',
                               weekday: 'long', day: 'numeric', month: 'long',
                             })}
                           </span>

@@ -39,7 +39,7 @@ export default function AttendanceIndexClient({ events }) {
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
                   <span className="text-xs text-gray-500 flex items-center gap-1">
                     <CalendarDays className="w-3 h-3" />
-                    {new Date(event.date).toLocaleDateString('en-IN', {
+                    {new Date(event.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata',
                       weekday: 'short', day: 'numeric', month: 'long', year: 'numeric'
                     })}
                   </span>
