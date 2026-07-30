@@ -18,6 +18,7 @@ export default function DirectoryClient({ spocs, ngos }) {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
       return d.toLocaleString('en-US', { 
+        timeZone: 'Asia/Kolkata',
         year: 'numeric', month: 'short', day: 'numeric', 
         hour: '2-digit', minute: '2-digit' 
       });
