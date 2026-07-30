@@ -238,8 +238,9 @@ export default function MyImpactClient({ events, stats }) {
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      {/* Header */}
+    <div className="w-full max-w-3xl mx-auto print:max-w-none print:w-full print:m-0">
+      <div className="print:hidden">
+        {/* Header */}
       <div className="mb-8">
         <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">My Dashboard</p>
         <h1 className="text-3xl font-bold text-gray-900 mb-1">My Volunteer Impact</h1>
@@ -382,6 +383,7 @@ export default function MyImpactClient({ events, stats }) {
           </div>
         )}
       </div>
+      </div>
 
       {/* Certificate Modal */}
       {activeCertificate && (
@@ -390,11 +392,11 @@ export default function MyImpactClient({ events, stats }) {
             @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
             @media print {
               @page { size: landscape; margin: 0; }
-              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
             }
           `}} />
           
-          <div className="bg-white max-w-4xl w-full relative overflow-hidden shadow-2xl print:shadow-none min-h-[600px] flex flex-col justify-center" id="certificate-print-area">
+          <div className="bg-white max-w-4xl w-full relative overflow-hidden shadow-2xl print:shadow-none min-h-[600px] print:min-h-0 print:h-[100vh] print:w-[100vw] print:max-w-none flex flex-col justify-center" id="certificate-print-area">
             
             {/* Top Right Dark Blue curved shape & "Where Kindness Takes Action" */}
             <div className="absolute top-0 right-0 w-80 h-32 bg-[#0A1A3B] rounded-bl-full z-0 flex items-center justify-center pl-8 pt-4">
