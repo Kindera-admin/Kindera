@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { Download, Search, Building2, User, Mail, Phone, CalendarDays, Clock, FileText } from 'lucide-react';
+import { useState, useTransition } from 'react';
+import { Download, Search, Building2, User, Mail, Phone, CalendarDays, Clock, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { exportDetailedAttendanceData } from '@/app/actions';
 
 export default function DirectoryClient({ spocs, ngos }) {
   const [activeTab, setActiveTab] = useState('spocs');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isExporting, startTransition] = useTransition();
 
   const filteredSpocs = spocs.filter(s => 
     (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -65,6 +67,43 @@ export default function DirectoryClient({ spocs, ngos }) {
     document.body.removeChild(link);
   };
 
+  const handleExportDetailedCSV = () => {
+    startTransition(async () => {
+      const res = await exportDetailedAttendanceData();
+      if (!res.success) {
+        alert('Failed to export data: ' + res.message);
+        return;
+      }
+      
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "Organization,Volunteer Name,Volunteer Email,Event Title,Event Date,Event Location,Hours Contributed,Feedback Score,Feedback Text,Marked At\n";
+      
+      res.data.forEach(r => {
+        const row = [
+          `"${r.organizationName}"`,
+          `"${r.volunteerName}"`,
+          `"${r.volunteerEmail}"`,
+          `"${r.eventTitle.replace(/"/g, '""')}"`,
+          `"${r.eventDate}"`,
+          `"${r.eventLocation.replace(/"/g, '""')}"`,
+          r.hoursContributed,
+          r.feedbackScore,
+          `"${r.feedbackText.replace(/"/g, '""')}"`,
+          `"${r.markedAt}"`
+        ];
+        csvContent += row.join(",") + "\n";
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `detailed_attendance_data_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  };
+
   return (
     <div className="pb-16 font-sans text-gray-900">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -73,10 +112,20 @@ export default function DirectoryClient({ spocs, ngos }) {
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Detailed Directory & Reports</h1>
           <p className="text-gray-500 text-sm">Comprehensive listing of all Corporate SPOCs and NGO Partners.</p>
         </div>
-        <Button onClick={handleExportCSV} className="bg-[#0d3b26] hover:bg-[#1a5c3a] text-white flex items-center gap-2">
-          <Download className="w-4 h-4" />
-          Export CSV
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={handleExportDetailedCSV} 
+            disabled={isExporting}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+          >
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+            Master Attendance CSV
+          </Button>
+          <Button onClick={handleExportCSV} className="bg-[#0d3b26] hover:bg-[#1a5c3a] text-white flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Export Current Tab
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}

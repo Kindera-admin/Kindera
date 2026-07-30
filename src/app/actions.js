@@ -1894,6 +1894,45 @@ export async function getDetailedDirectoryStats() {
   }
 }
 
+/**
+ * Get detailed master attendance data for all corporate volunteers
+ */
+export async function exportDetailedAttendanceData() {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'admin' && caller.role !== 'employee') return { success: false, message: 'Admin/Employee only' };
+
+    await connectDB();
+
+    const attendanceRecords = await Attendance.find({ attended: true })
+      .populate('eventId', 'title date location')
+      .populate('volunteerId', 'name username')
+      .lean();
+
+    const detailedData = attendanceRecords.map(record => ({
+      organizationName: record.organizationName || 'Individual',
+      volunteerName: record.volunteerId?.name || 'Unknown',
+      volunteerEmail: record.volunteerId?.username || 'Unknown',
+      eventTitle: record.eventId?.title || 'Unknown Event',
+      eventDate: record.eventId?.date ? new Date(record.eventId.date).toISOString() : '',
+      eventLocation: record.eventId?.location || '',
+      hoursContributed: record.hoursContributed || 0,
+      feedbackScore: record.feedbackScore || '',
+      feedbackText: record.feedbackText || '',
+      markedAt: record.markedAt ? new Date(record.markedAt).toISOString() : ''
+    }));
+
+    return { success: true, data: detailedData };
+  } catch (error) {
+    console.error('Error exporting detailed attendance data:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+
 // ─────────────────────────────────────────────────────────────
 // NGO DOCUMENT VAULT
 // ─────────────────────────────────────────────────────────────
