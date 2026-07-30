@@ -95,6 +95,15 @@ const cards = [
     gradient: 'from-[#e11d48] to-[#fb7185]',
     lightBg: '#fff1f2',
   },
+  {
+    title: 'Directory & Reports',
+    description: 'Detailed reporting and contact information for all NGOs and Corporate SPOCs.',
+    icon: Users,
+    href: '/admin/directory',
+    accent: '#0d3b26',
+    gradient: 'from-[#0d3b26] to-[#1a5c3a]',
+    lightBg: '#f0f7f3',
+  },
 ];
 
 export default function DashboardClient({ userRole }) {

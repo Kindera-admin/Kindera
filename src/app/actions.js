@@ -1824,6 +1824,76 @@ export async function getAllCorporateStats() {
   }
 }
 
+/**
+ * Get comprehensive directory stats for all NGOs and SPOCs (used in Admin Directory page)
+ */
+export async function getDetailedDirectoryStats() {
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, message: 'Not authenticated' };
+
+    const caller = await getCurrentUser();
+    if (caller.role !== 'admin' && caller.role !== 'employee') return { success: false, message: 'Admin/Employee only' };
+
+    await connectDB();
+
+    // 1. Get all SPOCs and calculate their stats
+    const spocs = await User.find({ role: 'org_spoc' })
+      .select('name username organizationName status createdAt mobile').lean();
+
+    const spocsWithStats = await Promise.all(spocs.map(async spoc => {
+      const memberCount = await User.countDocuments({
+        organizationName: spoc.organizationName,
+        role: 'org_member',
+      });
+      const agg = await Attendance.aggregate([
+        { $match: { organizationName: spoc.organizationName, attended: true } },
+        { $group: { _id: null, hours: { $sum: '$hoursContributed' }, events: { $addToSet: '$eventId' } } }
+      ]);
+      const a = agg[0] || {};
+      return {
+        _id:             spoc._id.toString(),
+        name:            spoc.name,
+        email:           spoc.username,
+        mobile:          spoc.mobile || '-',
+        organizationName: spoc.organizationName,
+        status:          spoc.status,
+        memberCount,
+        volunteerHours:  a.hours || 0,
+        eventsAttended:  (a.events || []).length,
+        joinedAt:        spoc.createdAt ? spoc.createdAt.toISOString() : null,
+      };
+    }));
+
+    // 2. Get all NGOs and calculate their stats
+    const ngos = await User.find({ role: 'ngo' })
+      .select('name username ngoId status createdAt mobile').lean();
+
+    const ngosWithStats = await Promise.all(ngos.map(async ngo => {
+      const eventsCreated = await Event.countDocuments({ createdBy: ngo._id });
+      return {
+        _id:          ngo._id.toString(),
+        name:         ngo.name,
+        email:        ngo.username,
+        mobile:       ngo.mobile || '-',
+        ngoId:        ngo.ngoId || '-',
+        status:       ngo.status,
+        eventsCreated,
+        joinedAt:     ngo.createdAt ? ngo.createdAt.toISOString() : null,
+      };
+    }));
+
+    return { 
+      success: true, 
+      spocs: spocsWithStats,
+      ngos: ngosWithStats 
+    };
+  } catch (error) {
+    console.error('Error getting detailed directory stats:', error);
+    return { success: false, message: error.message };
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // NGO DOCUMENT VAULT
 // ─────────────────────────────────────────────────────────────
