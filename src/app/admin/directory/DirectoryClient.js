@@ -12,6 +12,20 @@ export default function DirectoryClient({ spocs, ngos }) {
   const [isExporting, startTransition] = useTransition();
   const [expandedRows, setExpandedRows] = useState({});
 
+  const formatDateStr = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString('en-US', { 
+        year: 'numeric', month: 'short', day: 'numeric', 
+        hour: '2-digit', minute: '2-digit' 
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
   const toggleRow = (id) => {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -33,12 +47,12 @@ export default function DirectoryClient({ spocs, ngos }) {
           `"${r.volunteerName}"`,
           `"${r.volunteerEmail}"`,
           `"${r.eventTitle.replace(/"/g, '""')}"`,
-          `"${r.eventDate}"`,
+          `"${formatDateStr(r.eventDate)}"`,
           `"${r.eventLocation.replace(/"/g, '""')}"`,
           r.hoursContributed,
           r.feedbackScore,
           `"${r.feedbackText.replace(/"/g, '""')}"`,
-          `"${r.markedAt}"`
+          `"${formatDateStr(r.markedAt)}"`
         ];
         csvContent += row.join(",") + "\n";
       });
@@ -126,12 +140,12 @@ export default function DirectoryClient({ spocs, ngos }) {
           `"${r.volunteerName}"`,
           `"${r.volunteerEmail}"`,
           `"${r.eventTitle.replace(/"/g, '""')}"`,
-          `"${r.eventDate}"`,
+          `"${formatDateStr(r.eventDate)}"`,
           `"${r.eventLocation.replace(/"/g, '""')}"`,
           r.hoursContributed,
           r.feedbackScore,
           `"${r.feedbackText.replace(/"/g, '""')}"`,
-          `"${r.markedAt}"`
+          `"${formatDateStr(r.markedAt)}"`
         ];
         csvContent += row.join(",") + "\n";
       });
