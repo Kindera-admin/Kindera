@@ -1842,13 +1842,33 @@ export async function getDetailedDirectoryStats() {
       .select('name username organizationName status createdAt mobile').lean();
 
     const spocsWithStats = await Promise.all(spocs.map(async spoc => {
-      const memberCount = await User.countDocuments({
+      const members = await User.find({
         organizationName: spoc.organizationName,
         role: 'org_member',
-      });
+      }).select('name username').lean();
+      
+      const memberCount = members.length;
+      const memberNames = members.map(m => m.name);
+
       const agg = await Attendance.aggregate([
         { $match: { organizationName: spoc.organizationName, attended: true } },
-        { $group: { _id: null, hours: { $sum: '$hoursContributed' }, events: { $addToSet: '$eventId' } } }
+        {
+          $lookup: {
+            from: 'events',
+            localField: 'eventId',
+            foreignField: '_id',
+            as: 'eventDetails'
+          }
+        },
+        { $unwind: { path: '$eventDetails', preserveNullAndEmptyArrays: true } },
+        { 
+          $group: { 
+            _id: null, 
+            hours: { $sum: '$hoursContributed' }, 
+            events: { $addToSet: '$eventId' },
+            eventNames: { $addToSet: '$eventDetails.title' }
+          } 
+        }
       ]);
       const a = agg[0] || {};
       return {
@@ -1859,8 +1879,10 @@ export async function getDetailedDirectoryStats() {
         organizationName: spoc.organizationName,
         status:          spoc.status,
         memberCount,
+        memberNames,
         volunteerHours:  a.hours || 0,
         eventsAttended:  (a.events || []).length,
+        eventNames:      (a.eventNames || []).filter(Boolean),
         joinedAt:        spoc.createdAt ? spoc.createdAt.toISOString() : null,
       };
     }));
@@ -1897,7 +1919,7 @@ export async function getDetailedDirectoryStats() {
 /**
  * Get detailed master attendance data for all corporate volunteers
  */
-export async function exportDetailedAttendanceData() {
+export async function exportDetailedAttendanceData(orgName = null) {
   try {
     const session = await getSession();
     if (!session) return { success: false, message: 'Not authenticated' };
@@ -1907,7 +1929,12 @@ export async function exportDetailedAttendanceData() {
 
     await connectDB();
 
-    const attendanceRecords = await Attendance.find({ attended: true })
+    const query = { attended: true };
+    if (orgName) {
+      query.organizationName = orgName;
+    }
+
+    const attendanceRecords = await Attendance.find(query)
       .populate('eventId', 'title date location')
       .populate('userId', 'name username')
       .lean();

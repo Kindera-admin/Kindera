@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { Download, Search, Building2, User, Mail, Phone, CalendarDays, Clock, FileText, Loader2 } from 'lucide-react';
+import { useState, useTransition, Fragment } from 'react';
+import { Download, Search, Building2, User, Mail, Phone, CalendarDays, Clock, FileText, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { exportDetailedAttendanceData } from '@/app/actions';
@@ -10,6 +10,48 @@ export default function DirectoryClient({ spocs, ngos }) {
   const [activeTab, setActiveTab] = useState('spocs');
   const [searchTerm, setSearchTerm] = useState('');
   const [isExporting, startTransition] = useTransition();
+  const [expandedRows, setExpandedRows] = useState({});
+
+  const toggleRow = (id) => {
+    setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleExportIndividualCSV = (orgName) => {
+    startTransition(async () => {
+      const res = await exportDetailedAttendanceData(orgName);
+      if (!res.success) {
+        alert('Failed to export data: ' + res.message);
+        return;
+      }
+      
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "Organization,Volunteer Name,Volunteer Email,Event Title,Event Date,Event Location,Hours Contributed,Feedback Score,Feedback Text,Marked At\n";
+      
+      res.data.forEach(r => {
+        const row = [
+          `"${r.organizationName}"`,
+          `"${r.volunteerName}"`,
+          `"${r.volunteerEmail}"`,
+          `"${r.eventTitle.replace(/"/g, '""')}"`,
+          `"${r.eventDate}"`,
+          `"${r.eventLocation.replace(/"/g, '""')}"`,
+          r.hoursContributed,
+          r.feedbackScore,
+          `"${r.feedbackText.replace(/"/g, '""')}"`,
+          `"${r.markedAt}"`
+        ];
+        csvContent += row.join(",") + "\n";
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `${orgName.replace(/\s+/g, '_')}_attendance_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  };
 
   const filteredSpocs = spocs.filter(s => 
     (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -170,12 +212,14 @@ export default function DirectoryClient({ spocs, ngos }) {
             <thead className="bg-gray-50/50 text-gray-500 font-semibold uppercase tracking-wider text-[11px]">
               {activeTab === 'spocs' ? (
                 <tr>
-                  <th className="px-6 py-4 rounded-tl-lg">Organization</th>
+                  <th className="px-4 py-4 rounded-tl-lg w-10"></th>
+                  <th className="px-6 py-4">Organization</th>
                   <th className="px-6 py-4">SPOC Info</th>
                   <th className="px-6 py-4 text-center">Members</th>
                   <th className="px-6 py-4 text-center">Hours</th>
                   <th className="px-6 py-4 text-center">Events</th>
-                  <th className="px-6 py-4 rounded-tr-lg">Status</th>
+                  <th className="px-6 py-4 text-center">Status</th>
+                  <th className="px-6 py-4 rounded-tr-lg text-right">Actions</th>
                 </tr>
               ) : (
                 <tr>
@@ -189,46 +233,102 @@ export default function DirectoryClient({ spocs, ngos }) {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {activeTab === 'spocs' && filteredSpocs.map(spoc => (
-                <tr key={spoc._id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#0d3b26] flex items-center justify-center text-white font-bold text-xs">
-                        {(spoc.organizationName || 'C').charAt(0).toUpperCase()}
+                <Fragment key={spoc._id}>
+                  <tr className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-4 py-4">
+                      <button 
+                        onClick={() => toggleRow(spoc._id)}
+                        className="p-1 rounded hover:bg-gray-200 text-gray-500 transition-colors"
+                      >
+                        {expandedRows[spoc._id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-[#0d3b26] flex items-center justify-center text-white font-bold text-xs">
+                          {(spoc.organizationName || 'C').charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-semibold text-gray-900">{spoc.organizationName || '-'}</span>
                       </div>
-                      <span className="font-semibold text-gray-900">{spoc.organizationName || '-'}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="font-medium text-gray-900 flex items-center gap-1"><User className="w-3 h-3 text-gray-400"/> {spoc.name}</p>
-                    <p className="text-gray-500 text-xs flex items-center gap-1 mt-1"><Mail className="w-3 h-3"/> {spoc.email}</p>
-                    {spoc.mobile && spoc.mobile !== '-' && (
-                      <p className="text-gray-500 text-xs flex items-center gap-1 mt-1"><Phone className="w-3 h-3"/> {spoc.mobile}</p>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center justify-center bg-blue-50 text-blue-700 rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                      {spoc.memberCount}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center justify-center bg-emerald-50 text-emerald-700 rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                      {spoc.volunteerHours.toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center justify-center bg-purple-50 text-purple-700 rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                      {spoc.eventsAttended}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
-                      spoc.status === 'approved' ? 'bg-green-100 text-green-700' :
-                      spoc.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {spoc.status || 'Pending'}
-                    </span>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-medium text-gray-900 flex items-center gap-1"><User className="w-3 h-3 text-gray-400"/> {spoc.name}</p>
+                      <p className="text-gray-500 text-xs flex items-center gap-1 mt-1"><Mail className="w-3 h-3"/> {spoc.email}</p>
+                      {spoc.mobile && spoc.mobile !== '-' && (
+                        <p className="text-gray-500 text-xs flex items-center gap-1 mt-1"><Phone className="w-3 h-3"/> {spoc.mobile}</p>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-flex items-center justify-center bg-blue-50 text-blue-700 rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                        {spoc.memberCount}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-flex items-center justify-center bg-emerald-50 text-emerald-700 rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                        {spoc.volunteerHours.toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-flex items-center justify-center bg-purple-50 text-purple-700 rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                        {spoc.eventsAttended}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        spoc.status === 'approved' ? 'bg-green-100 text-green-700' :
+                        spoc.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {spoc.status || 'Pending'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        title="Download Attendance Data"
+                        onClick={() => handleExportIndividualCSV(spoc.organizationName)}
+                        className="p-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors inline-flex"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                  
+                  {expandedRows[spoc._id] && (
+                    <tr className="bg-gray-50/30">
+                      <td colSpan={8} className="px-6 py-6 border-b border-gray-100">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div>
+                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Members ({spoc.memberCount})</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {spoc.memberNames && spoc.memberNames.length > 0 ? (
+                                spoc.memberNames.map((m, idx) => (
+                                  <span key={idx} className="bg-white border border-gray-200 text-gray-700 text-xs px-2.5 py-1 rounded-md shadow-sm">
+                                    {m}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-gray-400 text-xs italic">No members found</span>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Events Participated</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {spoc.eventNames && spoc.eventNames.length > 0 ? (
+                                spoc.eventNames.map((eName, idx) => (
+                                  <span key={idx} className="bg-blue-50 border border-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded-md">
+                                    {eName}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-gray-400 text-xs italic">No events attended yet</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
 
               {activeTab === 'ngos' && filteredNgos.map(ngo => (
