@@ -221,7 +221,8 @@ export default function DirectoryClient({ spocs, ngos }) {
                 </tr>
               ) : (
                 <tr>
-                  <th className="px-6 py-4 rounded-tl-lg">NGO Name</th>
+                  <th className="px-4 py-4 rounded-tl-lg w-10"></th>
+                  <th className="px-6 py-4">NGO Name</th>
                   <th className="px-6 py-4">Contact Info</th>
                   <th className="px-6 py-4">NGO ID</th>
                   <th className="px-6 py-4 text-center">Events</th>
@@ -330,40 +331,71 @@ export default function DirectoryClient({ spocs, ngos }) {
               ))}
 
               {activeTab === 'ngos' && filteredNgos.map(ngo => (
-                <tr key={ngo._id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xs">
-                        {(ngo.name || 'N').charAt(0).toUpperCase()}
+                <Fragment key={ngo._id}>
+                  <tr className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-4 py-4">
+                      <button 
+                        onClick={() => toggleRow(ngo._id)}
+                        className="p-1 rounded hover:bg-gray-200 text-gray-500 transition-colors"
+                      >
+                        {expandedRows[ngo._id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-xs">
+                          {(ngo.name || 'N').charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-semibold text-gray-900">{ngo.name || '-'}</span>
                       </div>
-                      <span className="font-semibold text-gray-900">{ngo.name || '-'}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-gray-900 text-sm flex items-center gap-1 mb-1"><Mail className="w-3 h-3 text-gray-400"/> {ngo.email}</p>
-                    {ngo.mobile && ngo.mobile !== '-' && (
-                      <p className="text-gray-500 text-xs flex items-center gap-1"><Phone className="w-3 h-3 text-gray-400"/> {ngo.mobile}</p>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                      {ngo.ngoId || '-'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center justify-center bg-purple-50 text-purple-700 rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                      {ngo.eventsCreated}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
-                      ngo.status === 'approved' ? 'bg-green-100 text-green-700' :
-                      ngo.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {ngo.status || 'Pending'}
-                    </span>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-gray-900 text-sm flex items-center gap-1 mb-1"><Mail className="w-3 h-3 text-gray-400"/> {ngo.email}</p>
+                      {ngo.mobile && ngo.mobile !== '-' && (
+                        <p className="text-gray-500 text-xs flex items-center gap-1"><Phone className="w-3 h-3 text-gray-400"/> {ngo.mobile}</p>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded border border-gray-200">
+                        {ngo.ngoId || '-'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className="inline-flex items-center justify-center bg-purple-50 text-purple-700 rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                        {ngo.eventsCreated}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        ngo.status === 'approved' ? 'bg-green-100 text-green-700' :
+                        ngo.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {ngo.status || 'Pending'}
+                      </span>
+                    </td>
+                  </tr>
+                  
+                  {expandedRows[ngo._id] && (
+                    <tr className="bg-gray-50/30">
+                      <td colSpan={6} className="px-6 py-6 border-b border-gray-100">
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Events Created ({ngo.eventsCreated})</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {ngo.eventNames && ngo.eventNames.length > 0 ? (
+                              ngo.eventNames.map((eName, idx) => (
+                                <span key={idx} className="bg-blue-50 border border-blue-100 text-blue-800 text-xs px-2.5 py-1 rounded-md">
+                                  {eName}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-gray-400 text-xs italic">No events created yet</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
               
               {((activeTab === 'spocs' && filteredSpocs.length === 0) || 

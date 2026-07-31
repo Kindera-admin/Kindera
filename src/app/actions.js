@@ -1892,7 +1892,8 @@ export async function getDetailedDirectoryStats() {
       .select('name username ngoId status createdAt mobile').lean();
 
     const ngosWithStats = await Promise.all(ngos.map(async ngo => {
-      const eventsCreated = await Event.countDocuments({ createdBy: ngo._id });
+      const events = await Event.find({ createdBy: ngo._id }).select('title').lean();
+      const eventNames = events.map(e => e.title);
       return {
         _id:          ngo._id.toString(),
         name:         ngo.name,
@@ -1900,7 +1901,8 @@ export async function getDetailedDirectoryStats() {
         mobile:       ngo.mobile || '-',
         ngoId:        ngo.ngoId || '-',
         status:       ngo.status,
-        eventsCreated,
+        eventsCreated: events.length,
+        eventNames,
         joinedAt:     ngo.createdAt ? ngo.createdAt.toISOString() : null,
       };
     }));
