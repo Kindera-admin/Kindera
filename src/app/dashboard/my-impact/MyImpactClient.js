@@ -387,16 +387,16 @@ export default function MyImpactClient({ events, stats }) {
 
       {/* Certificate Modal */}
       {activeCertificate && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 print:p-0 print:static print:bg-white overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4 print:p-0 print:fixed print:inset-0 print:bg-white overflow-y-auto print:overflow-hidden">
           <style dangerouslySetInnerHTML={{ __html: `
             @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
             @media print {
-              @page { size: landscape; margin: 0; }
-              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
+              @page { size: A4 landscape; margin: 0; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; overflow: hidden !important; }
             }
           `}} />
           
-          <div className="bg-white max-w-4xl w-full relative overflow-hidden shadow-2xl print:shadow-none min-h-[600px] print:min-h-0 print:h-[100vh] print:w-[100vw] print:max-w-none flex flex-col justify-center" id="certificate-print-area">
+          <div className="bg-white max-w-4xl w-full relative overflow-hidden shadow-2xl print:shadow-none min-h-[600px] print:min-h-0 print:h-full print:w-full print:max-w-none flex flex-col justify-center" id="certificate-print-area">
             
             {/* Top Right Dark Blue curved shape & "Where Kindness Takes Action" */}
             <div className="absolute top-0 right-0 w-80 h-32 bg-[#0A1A3B] rounded-bl-full z-0 flex items-center justify-center pl-8 pt-4">
