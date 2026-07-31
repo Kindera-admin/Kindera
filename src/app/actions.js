@@ -1919,7 +1919,7 @@ export async function getDetailedDirectoryStats() {
 /**
  * Get detailed master attendance data for all corporate volunteers
  */
-export async function exportDetailedAttendanceData(orgName = null) {
+export async function exportDetailedAttendanceData(orgName = null, year = null, quarter = null) {
   try {
     const session = await getSession();
     if (!session) return { success: false, message: 'Not authenticated' };
@@ -1934,10 +1934,28 @@ export async function exportDetailedAttendanceData(orgName = null) {
       query.organizationName = orgName;
     }
 
-    const attendanceRecords = await Attendance.find(query)
+    let attendanceRecords = await Attendance.find(query)
       .populate('eventId', 'title date location')
       .populate('userId', 'name username')
       .lean();
+
+    if (year) {
+      attendanceRecords = attendanceRecords.filter(record => {
+        if (!record.eventId || !record.eventId.date) return false;
+        const d = new Date(record.eventId.date);
+        if (isNaN(d.getTime())) return false;
+        if (d.getFullYear() !== parseInt(year)) return false;
+        
+        if (quarter && quarter !== 'All Year') {
+          const m = d.getMonth() + 1; // 1-12
+          if (quarter === 'Q1' && (m < 1 || m > 3)) return false;
+          if (quarter === 'Q2' && (m < 4 || m > 6)) return false;
+          if (quarter === 'Q3' && (m < 7 || m > 9)) return false;
+          if (quarter === 'Q4' && (m < 10 || m > 12)) return false;
+        }
+        return true;
+      });
+    }
 
     const detailedData = attendanceRecords.map(record => ({
       organizationName: record.organizationName || 'Individual',

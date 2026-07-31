@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, Fragment } from 'react';
-import { Download, Search, Building2, User, Mail, Phone, CalendarDays, Clock, FileText, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Download, Search, Building2, User, Mail, Phone, CalendarDays, Clock, FileText, Loader2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { exportDetailedAttendanceData } from '@/app/actions';
@@ -12,6 +12,10 @@ export default function DirectoryClient({ spocs, ngos }) {
   const [isExporting, startTransition] = useTransition();
   const [expandedRows, setExpandedRows] = useState({});
 
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportTarget, setExportTarget] = useState(null);
+  const [exportYear, setExportYear] = useState(new Date().getFullYear().toString());
+  const [exportQuarter, setExportQuarter] = useState('All Year');
   const formatDateStr = (dateStr) => {
     if (!dateStr) return '';
     try {
@@ -32,40 +36,8 @@ export default function DirectoryClient({ spocs, ngos }) {
   };
 
   const handleExportIndividualCSV = (orgName) => {
-    startTransition(async () => {
-      const res = await exportDetailedAttendanceData(orgName);
-      if (!res.success) {
-        alert('Failed to export data: ' + res.message);
-        return;
-      }
-      
-      let csvContent = "data:text/csv;charset=utf-8,";
-      csvContent += "Organization,Volunteer Name,Volunteer Username,Event Title,Event Date,Event Location,Hours Contributed,Feedback Score,Feedback Text,Marked At\n";
-      
-      res.data.forEach(r => {
-        const row = [
-          `"${r.organizationName}"`,
-          `"${r.volunteerName}"`,
-          `"${r.volunteerEmail}"`,
-          `"${r.eventTitle.replace(/"/g, '""')}"`,
-          `"${formatDateStr(r.eventDate)}"`,
-          `"${r.eventLocation.replace(/"/g, '""')}"`,
-          r.hoursContributed,
-          r.feedbackScore,
-          `"${r.feedbackText.replace(/"/g, '""')}"`,
-          `"${formatDateStr(r.markedAt)}"`
-        ];
-        csvContent += row.join(",") + "\n";
-      });
-
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `${orgName.replace(/\s+/g, '_')}_attendance_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
+    setExportTarget(orgName);
+    setShowExportModal(true);
   };
 
   const filteredSpocs = spocs.filter(s => 
@@ -125,8 +97,14 @@ export default function DirectoryClient({ spocs, ngos }) {
   };
 
   const handleExportDetailedCSV = () => {
+    setExportTarget('all');
+    setShowExportModal(true);
+  };
+
+  const executeDetailedExport = () => {
     startTransition(async () => {
-      const res = await exportDetailedAttendanceData();
+      const orgName = exportTarget === 'all' ? null : exportTarget;
+      const res = await exportDetailedAttendanceData(orgName, exportYear, exportQuarter);
       if (!res.success) {
         alert('Failed to export data: ' + res.message);
         return;
@@ -154,10 +132,15 @@ export default function DirectoryClient({ spocs, ngos }) {
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `detailed_attendance_data_${new Date().toISOString().split('T')[0]}.csv`);
+      let filename = orgName ? `${orgName.replace(/\s+/g, '_')}_attendance` : 'detailed_attendance_data';
+      filename += `_${exportYear}`;
+      if (exportQuarter !== 'All Year') filename += `_${exportQuarter}`;
+      filename += `_${new Date().toISOString().split('T')[0]}.csv`;
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      setShowExportModal(false);
     });
   };
 
@@ -396,6 +379,54 @@ export default function DirectoryClient({ spocs, ngos }) {
           </table>
         </div>
       </div>
+      
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-lg font-bold text-gray-900">Export Filters</h2>
+              <button onClick={() => setShowExportModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Year</label>
+                <select 
+                  className="w-full text-sm border-gray-200 rounded-xl focus:ring-emerald-500 focus:border-emerald-500"
+                  value={exportYear}
+                  onChange={(e) => setExportYear(e.target.value)}
+                >
+                  <option value="2026">2026</option>
+                  <option value="2025">2025</option>
+                  <option value="2024">2024</option>
+                  <option value="2023">2023</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Period</label>
+                <select 
+                  className="w-full text-sm border-gray-200 rounded-xl focus:ring-emerald-500 focus:border-emerald-500"
+                  value={exportQuarter}
+                  onChange={(e) => setExportQuarter(e.target.value)}
+                >
+                  <option value="All Year">All Year</option>
+                  <option value="Q1">Q1 (Jan - Mar)</option>
+                  <option value="Q2">Q2 (Apr - Jun)</option>
+                  <option value="Q3">Q3 (Jul - Sep)</option>
+                  <option value="Q4">Q4 (Oct - Dec)</option>
+                </select>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+              <Button variant="outline" onClick={() => setShowExportModal(false)}>Cancel</Button>
+              <Button onClick={executeDetailedExport} disabled={isExporting} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Download className="w-4 h-4 mr-2" />}
+                Download CSV
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
