@@ -79,13 +79,20 @@ Pages use the same pattern throughout. `page.js` is a server component that fetc
 
 ## Deployment
 
-| Environment | URL | Database |
-|-------------|-----|----------|
-| Production | https://kindera.co (Vercel) | Production MongoDB cluster |
-| Staging | https://kindera-staging.vercel.app (the Vercel project this folder is linked to) | Set in that project's Vercel env vars |
-| Local | http://localhost:3000 | Point `.env.local` at the **test** cluster, never production |
+Two long-lived branches in `Kindera-admin/Kindera`:
 
-The repo has two remotes, `origin` (the staging fork) and `upstream` (`Kindera-admin/Kindera`). Run `npm run build` before you push.
+| Branch | Deploys to | Database |
+|--------|-----------|----------|
+| `main` | **https://kindera.co** (live, Vercel project `kindera-ngo`) | Production MongoDB cluster |
+| `test` | **Staging** (test site) | Test cluster |
+
+Workflow:
+
+1. Do all work on `test` (or a feature branch merged into `test`) and check it on staging.
+2. When staging looks right, merge `test` into `main` to release to kindera.co.
+3. Never push straight to `main`.
+
+Local `.env.local` should always point at the **test** cluster, never production. Run `npm run build` before you push.
 
 ## More docs
 
