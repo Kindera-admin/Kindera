@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "node scripts/seed.js",
+    "create-admin": "node scripts/create-admin.mjs",
     "fix-index": "node scripts/fix-index.js",
-    "seed-events": "node scripts/seed-events.js"
+    "seed-events": "node scripts/seed-events.js",
+    "check-data": "node scripts/check-data.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

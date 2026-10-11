@@ -1,5 +1,6 @@
-// One-time script: create a second admin user
-// Run with: node scripts/create-admin.mjs
+// Create an admin user from ADMIN_USERNAME / ADMIN_PASSWORD / ADMIN_NAME
+// in .env.local. Skips if that username already exists.
+// Run with: npm run create-admin
 
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
@@ -8,9 +9,12 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 const MONGODB_URI = process.env.MONGODB_URI;
+const USERNAME    = process.env.ADMIN_USERNAME;
+const PASSWORD    = process.env.ADMIN_PASSWORD;
+const NAME        = process.env.ADMIN_NAME || 'Administrator';
 
-if (!MONGODB_URI) {
-  console.error('❌ MONGODB_URI is not set in .env.local');
+if (!MONGODB_URI || !USERNAME || !PASSWORD) {
+  console.error('❌ MONGODB_URI, ADMIN_USERNAME and ADMIN_PASSWORD must be set in .env.local');
   process.exit(1);
 }
 
@@ -34,20 +38,20 @@ const User = mongoose.models.User || mongoose.model('User', userSchema);
 await mongoose.connect(MONGODB_URI);
 console.log('✅ Connected to MongoDB');
 
-const existing = await User.findOne({ username: 'rajput' });
+const existing = await User.findOne({ username: USERNAME });
 if (existing) {
-  console.log('⚠️  User "rajput" already exists. Skipping.');
+  console.log(`⚠️  User "${USERNAME}" already exists. Skipping.`);
   await mongoose.disconnect();
   process.exit(0);
 }
 
 const admin = new User({
-  username: 'rajput',
-  password: 'rajput',
+  username: USERNAME,
+  password: PASSWORD,
   role:     'admin',
-  name:     'Rajput',
+  name:     NAME,
   status:   'approved',
 });
 await admin.save();
-console.log('✅ Admin user "rajput" created successfully.');
+console.log(`✅ Admin user "${USERNAME}" created successfully.`);
 await mongoose.disconnect();

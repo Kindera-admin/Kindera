@@ -1,4 +1,4 @@
-# Walkthrough of New Features
+# Features
 
 We have implemented and successfully deployed 4 significant features to make Kindera production-ready, data-driven, and engaging for volunteers and corporate partners, followed by an Admin Impact Dashboard, Security updates, and Corporate analytics details.
 
