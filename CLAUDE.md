@@ -5,7 +5,7 @@ Start with `README.md` for setup, roles and structure. This file covers what isn
 ## Architecture notes
 
 - **JavaScript, not TypeScript.** shadcn/ui primitives in `src/components/ui/` are `.jsx`. Use the `@/` import alias for anything under `src/`.
-- **Server logic lives in `src/app/actions.js`.** It is one file of about 3.4k lines of `"use server"` actions. Add new data operations there, next to related actions, rather than adding API routes. API routes exist only for uploads, setup/seeding and cron. Login, signup and logout are server actions.
+- **Server logic lives in `src/app/actions.js`.** It is one file of about 3.4k lines of `"use server"` actions. Add new data operations there, next to related actions, rather than adding API routes. The only API route is `/api/upload`. Do not add setup, seeding, reset or cron routes: admin bootstrap and data maintenance live in `scripts/` and run locally against `.env.local`.
 - **Auth is a custom JWT cookie** (`auth-token`, HS256 via `jose`, 30-day expiry). It is signed in `src/app/actions.js` (`login`) and read with `getCurrentUser()` from `src/lib/auth.js`. `next-auth` is still in `package.json` but unused.
 - **`src/middleware.js` only protects page routes** (`/dashboard`, `/admin`, `/reports`, …). Its matcher excludes `/api/*`, so every API route and server action has to check auth and role itself through `getCurrentUser()`. For anything scoped to a company, use `resolveOrgAccess()` in `actions.js` so corporate users can only read their own organisation.
 - **Roles:** `admin`, `employee`, `ngo`, `org_spoc`, `org_member`, `volunteer`. Approval status (`pending`/`approved`/`rejected`) is checked separately from role. An `org_member` links to its SPOC via `User.spocId`.
