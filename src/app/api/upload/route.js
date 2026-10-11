@@ -1,15 +1,32 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { NextResponse } from 'next/server';
+import { getCurrentUser } from '@/lib/auth';
 
 cloudinary.config({
-  cloud_name: 'dkoyy7pjb',
-  api_key: '683996671655454',
-  api_secret: 'ILdJRgPiX3Ll0w9EeqLTHMVeWIo',
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'image/heic', 'image/heif'];
 const ALLOWED_DOC_TYPES   = ['application/pdf', 'application/msword',
                               'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+// Every folder the app uploads into. Anything else is rejected.
+const ALLOWED_FOLDERS = [
+  'kindera/events',
+  'kindera/chat',
+  'kindera/documents',
+  'kindera/impact-photos',
+  'kindera/ngo-certificates',
+  'kindera/ngo-partners',
+  'kindera/organization-logos',
+  'kindera/volunteers',
+];
+// Uploads made before the user has an account: NGO certificates on the
+// signup form and the guest volunteer photo on public event registration.
+const PUBLIC_FOLDERS = ['kindera/ngo-certificates', 'kindera/volunteers'];
 
 export async function POST(request) {
   try {
@@ -17,10 +34,22 @@ export async function POST(request) {
     const file     = formData.get('file');
     const folder   = formData.get('folder') || 'kindera/events'; // pass 'kindera/documents' for NGO docs
 
-    if (!file) {
+    if (!file || typeof file === 'string') {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
-    const isDoc = file.type === 'application/pdf' || file.type.includes('wordprocessingml') || file.type === 'application/msword';
+    if (!ALLOWED_FOLDERS.includes(folder)) {
+      return NextResponse.json({ error: 'Invalid upload folder' }, { status: 400 });
+    }
+    if (!PUBLIC_FOLDERS.includes(folder) && !(await getCurrentUser())) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    if (![...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES].includes(file.type)) {
+      return NextResponse.json({ error: 'Unsupported file type. Upload an image, PDF or Word document.' }, { status: 415 });
+    }
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json({ error: 'File is too large. The limit is 10 MB.' }, { status: 413 });
+    }
+    const isDoc = ALLOWED_DOC_TYPES.includes(file.type);
 
     const bytes  = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -30,7 +59,6 @@ export async function POST(request) {
         {
           folder,
           resource_type: isDoc ? 'raw' : 'image', // PDFs need 'raw' resource type
-          format: isDoc ? undefined : undefined,
         },
         (error, result) => {
           if (error) reject(error);
@@ -42,9 +70,6 @@ export async function POST(request) {
     return NextResponse.json({ url: result.secure_url });
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Upload failed' }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 }

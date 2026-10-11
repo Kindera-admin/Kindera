@@ -6,10 +6,14 @@ import User from '@/models/User';
 import Announcement from '@/models/Announcement';
 
 export async function GET(request) {
-  try {
-    // Note: In a real app, you would verify an Authorization header (e.g. from Vercel Cron)
-    // For now, this endpoint can be triggered manually or via basic cron ping.
+  // Vercel Cron sends `Authorization: Bearer $CRON_SECRET`. Without the
+  // secret configured, the endpoint stays closed.
+  const secret = process.env.CRON_SECRET;
+  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
+    return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  }
 
+  try {
     await connectDB();
     const now = new Date();
     

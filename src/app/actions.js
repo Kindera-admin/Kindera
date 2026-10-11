@@ -45,6 +45,20 @@ async function getSession() {
   }
 }
 
+// Admins and Kindera staff may read any organisation's data; corporate
+// users (SPOCs and members) only their own. Returns the organisation name
+// the caller is allowed to query, or an error.
+async function resolveOrgAccess(orgName) {
+  const caller = await getCurrentUser();
+  if (!caller) return { error: 'Not authenticated' };
+  if (caller.role === 'admin' || caller.role === 'employee') return { caller, orgName };
+  if ((caller.role === 'org_spoc' || caller.role === 'org_member') && caller.organizationName) {
+    if (orgName && orgName !== caller.organizationName) return { error: 'Not authorized for this organisation' };
+    return { caller, orgName: caller.organizationName };
+  }
+  return { error: 'Not authorized' };
+}
+
 export async function login(formData) {
   try {
     const username = formData.get('username');
@@ -220,38 +234,6 @@ export async function registerUser(formData) {
 }
 
 // Report actions
-export async function createAdminUser() {
-  try {
-    await connectDB();
-
-    const adminExists = await User.findOne({ role: 'admin' });
-
-    if (adminExists) {
-      return { success: false, message: 'Admin user already exists' };
-    }
-
-    const username = process.env.ADMIN_USERNAME;
-    const password = process.env.ADMIN_PASSWORD;
-    const name = process.env.ADMIN_NAME || 'Administrator';
-
-    if (!username || !password) {
-      return { success: false, message: 'ADMIN_USERNAME and ADMIN_PASSWORD must be set in environment variables' };
-    }
-
-    await User.create({
-      username,
-      password,
-      role: 'admin',
-      name,
-      status: 'approved'
-    });
-
-    return { success: true, message: `Admin user '${username}' created successfully` };
-  } catch (error) {
-    console.error('Error creating admin user:', error);
-    return { success: false, message: error.message };
-  }
-}
 
 export async function getReports(month = '', ngoId = '') {
   try {
@@ -1482,12 +1464,12 @@ export async function bulkCreateFromExcel(rows, orgName, spocId = null) {
 /**
  * Get all org_member users for an organization.
  */
-export async function getOrgMembers(orgName) {
+export async function getOrgMembers(requestedOrg) {
   try {
-    const session = await getSession();
-    if (!session) return { success: false, message: 'Not authenticated' };
-
     await connectDB();
+    const access = await resolveOrgAccess(requestedOrg);
+    if (access.error) return { success: false, message: access.error };
+    const orgName = access.orgName;
 
     const members = await User.find({ organizationName: orgName, role: 'org_member' })
       .select('-password').lean();
@@ -1532,6 +1514,17 @@ export async function markAttendance(eventId, attendanceList) {
     
     // Fetch existing records first to correctly calculate hours diff
     const userIds = attendanceList.map(a => a.userId);
+
+    // SPOCs may only mark attendance for members of their own organisation
+    if (caller.role === 'org_spoc') {
+      const ownMembers = await User.countDocuments({
+        _id: { $in: userIds },
+        organizationName: caller.organizationName,
+      });
+      if (ownMembers !== new Set(userIds.map(String)).size) {
+        return { success: false, message: 'You can only mark attendance for your own organisation' };
+      }
+    }
     const existingRecords = await Attendance.find({ eventId, userId: { $in: userIds } }).lean();
     const existingMap = {};
     existingRecords.forEach(r => existingMap[r.userId.toString()] = r);
@@ -1592,12 +1585,12 @@ export async function markAttendance(eventId, attendanceList) {
 /**
  * Get attendance list for a specific event + org.
  */
-export async function getEventAttendance(eventId, orgName) {
+export async function getEventAttendance(eventId, requestedOrg) {
   try {
-    const session = await getSession();
-    if (!session) return { success: false, message: 'Not authenticated' };
-
     await connectDB();
+    const access = await resolveOrgAccess(requestedOrg);
+    if (access.error) return { success: false, message: access.error };
+    const orgName = access.orgName;
 
     const filter = { eventId };
     if (orgName) filter.organizationName = orgName;
@@ -1631,12 +1624,13 @@ export async function getEventAttendance(eventId, orgName) {
 /**
  * Get full KPI stats for a corporate org (used by SPOC dashboard and Admin drill-down).
  */
-export async function getOrgStats(orgName, targetYear) {
+export async function getOrgStats(requestedOrg, targetYear) {
   try {
-    const session = await getSession();
-    if (!session) return { success: false, message: 'Not authenticated' };
-
     await connectDB();
+    const access = await resolveOrgAccess(requestedOrg);
+    if (access.error) return { success: false, message: access.error };
+    const orgName = access.orgName;
+    if (!orgName) return { success: false, message: 'Organisation is required' };
 
     const year = targetYear ? parseInt(targetYear, 10) : new Date().getFullYear();
 
@@ -3195,12 +3189,13 @@ export async function getAdminEventDetails(eventId) {
   }
 }
 
-export async function getOrgEventsHistory(orgName) {
+export async function getOrgEventsHistory(requestedOrg) {
   try {
-    const session = await getSession();
-    if (!session) return { success: false, message: 'Not authenticated' };
-
     await connectDB();
+    const access = await resolveOrgAccess(requestedOrg);
+    if (access.error) return { success: false, message: access.error };
+    const orgName = access.orgName;
+    if (!orgName) return { success: false, message: 'Organisation is required' };
 
     // 1. Get all users from this org that have approved event registrations
     const orgUsers = await User.find({

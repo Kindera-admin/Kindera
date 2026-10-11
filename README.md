@@ -36,9 +36,9 @@ Each variable is described in [`.env.example`](.env.example). Locally they go in
 |----------|---------|
 | `MONGODB_URI` | `src/lib/db.js`, all scripts |
 | `JWT_SECRET` | Signs and verifies the `auth-token` cookie (`src/lib/auth.js`, `src/middleware.js`) |
-| `NEXTAUTH_SECRET`, `NEXTAUTH_URL` | The next-auth route at `/api/auth/[...nextauth]` |
 | `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_NAME` | `/api/setup`, `npm run create-admin` |
 | `SETUP_SECRET` | The `?secret=` query param on `/api/setup` and `/api/seed-ngo-partners` |
+| `CRON_SECRET` | Bearer token required by `/api/cron/wrap-up` (Vercel Cron sends it automatically) |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Cloudinary uploads |
 
 ## Scripts
@@ -66,7 +66,7 @@ src/
 │   ├── reports/            # NGO monthly reports
 │   ├── messages/           # direct messaging
 │   ├── partners/           # public NGO partners page
-│   └── api/                # auth, upload, setup, seeding and cron routes
+│   └── api/                # upload, setup, seeding and cron routes
 ├── components/             # shared components; shadcn/ui primitives in components/ui
 ├── lib/                    # db connection, auth helpers, utils
 ├── models/                 # Mongoose models (User, Event, Attendance, Report, …)
