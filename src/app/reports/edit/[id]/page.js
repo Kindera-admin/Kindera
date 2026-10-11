@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import Report from '@/models/Report';
+import { isValidObjectId } from 'mongoose';
 import EditForm from './EditForm';
 
 export default async function ViewReportPage({ params }) {
@@ -13,6 +14,10 @@ export default async function ViewReportPage({ params }) {
     redirect('/login');
   }
   
+  if (!isValidObjectId(id)) {
+    notFound();
+  }
+
   await connectDB();
   
   const report = await Report.findById(id);

@@ -1,18 +1,27 @@
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Compass } from 'lucide-react';
+import StatusPage from '@/components/StatusPage';
+import { getCurrentUser } from '@/lib/auth';
 
-export default function NotFound() {
+export const metadata = { title: 'Page not found · Kindera' };
+
+export default async function NotFound() {
+  const user = await getCurrentUser();
+  const actions = [
+    { label: 'Go to home', href: '/' },
+    { label: 'Browse events', href: '/events' },
+  ];
+  if (user) {
+    const isStaff = user.role === 'admin' || user.role === 'employee';
+    actions.splice(1, 0, { label: 'Open dashboard', href: isStaff ? '/admin' : '/dashboard' });
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-      <h1 className="text-4xl font-bold mb-4">404 - Page Not Found</h1>
-      <p className="text-gray-600 mb-6">
-        The page you are looking for doesn&apos;t exist or has been moved.
-      </p>
-      <Button asChild>
-        <Link href="/">
-          Return to Home
-        </Link>
-      </Button>
-    </div>
+    <StatusPage
+      icon={Compass}
+      title="This path isn't on the map."
+      message="The page you're looking for doesn't exist or has moved."
+      actions={actions}
+      code="Error 404"
+    />
   );
 }

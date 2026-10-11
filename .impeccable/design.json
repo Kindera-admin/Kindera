@@ -277,7 +277,7 @@
       },
       {
         "name": "The Serif-Is-For-Visitors Rule",
-        "body": "DM Serif Display appears on public marketing surfaces and the certificate only.",
+        "body": "DM Serif Display appears on public marketing surfaces, the certificate, and the status pages (404 and error pages, via src/components/StatusPage.js) only.",
         "section": "typography"
       },
       {

@@ -194,7 +194,7 @@ A restrained palette: a single deep forest green, its two supporting greens, and
 ### Named Rules
 **The 12px Floor Rule.** No text is set below 12px (`text-xs`). Arbitrary 9–11px sizes are not allowed, even for chart axes or badges. The one exception is the printed certificate, whose seal lettering and "Powered by" microtype are part of a print emblem rather than screen text.
 
-**The Serif-Is-For-Visitors Rule.** DM Serif Display appears on public marketing surfaces and the certificate only.
+**The Serif-Is-For-Visitors Rule.** DM Serif Display appears on public marketing surfaces, the certificate, and the status pages (404 and error pages, via `src/components/StatusPage.js`) only.
 
 ## Layout
 
