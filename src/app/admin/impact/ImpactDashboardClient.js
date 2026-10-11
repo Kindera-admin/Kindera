@@ -34,7 +34,7 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
   const maxHours = Math.max(...topOrgs.map(o => o.hours), 1);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] pb-24 font-sans text-gray-900">
+    <div className="min-h-screen bg-paper pb-24 font-sans text-gray-900">
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">

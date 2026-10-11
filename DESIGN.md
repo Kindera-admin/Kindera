@@ -13,7 +13,9 @@ colors:
   ink-muted: "#6b7280"
   hairline: "#e5e7eb"
   signal-red: "#dc2626"
-  certificate-navy: "#0A1A3B"
+  navy: "#0A1A3B"
+  navy-strong: "#1a2d59"
+  certificate-lime: "#76A854"
   data-blue: "#3d5a99"
   data-indigo: "#6366f1"
   alert-rose: "#e11d48"
@@ -146,9 +148,13 @@ A restrained palette: a single deep forest green, its two supporting greens, and
 - **Fern**: secondary emphasis on light surfaces: links, small uppercase section labels, focus rings (`--brand-accent`, shadcn `--ring`), the scrollbar thumb on hover.
 
 ### Tertiary
-- **Certificate Navy**: reserved for the printable Certificate of Appreciation (the home carousel caption bars use a navy close to it). It is the only non-green brand surface and must not spread into the product UI.
+- **Navy** (`bg-navy`, hover `bg-navy-strong`): the printable Certificate of Appreciation and the home carousel caption bars. It is the only non-green brand surface and must not spread into the product UI.
+- **Certificate Lime** (`certificate-lime`): rules, seal and accent marks on the certificate only.
 
 - **Data Blue, Data Indigo and Alert Rose**: categorical colours for KPI icon tiles and charts (alongside Fern), and the Messages card accent on the dashboard home. They label categories; they never fill banners or buttons.
+
+### Named Rules
+**The Category Strip Rule.** Dashboard shortcut cards carry a 4px gradient strip along their top edge, one hue per card category. The set lives in `src/lib/categoryStrips.js` (`CATEGORY_STRIPS`). Add a category there rather than writing a new gradient inline, and never widen a strip into a banner.
 
 ### Neutral
 - **Header Ink / Header Ink Strong**: link and icon colour in the marketing header once it turns solid on scroll.
@@ -252,7 +258,8 @@ A print-first A4 landscape document in Certificate Navy with a Great Vibes signa
 ## Do's and Don'ts
 
 ### Do:
-- **Do** use `bg-brand` / `text-brand` / `var(--brand)` for Evergreen and the shadcn `default` Button for primary actions.
+- **Do** use `bg-brand` / `text-brand` / `var(--brand)` for Evergreen and the shadcn `default` Button for primary actions, and `bg-paper`, `bg-navy`, `text-data-blue` for the other named colours.
+- **Do** pass Cloudinary images through `cldImage(url, width)` (`src/lib/cloudinary.js`) so they're served at display size.
 - **Do** keep text at `gray-500` or darker on white and paper, and at 12px or larger.
 - **Do** give every icon-only control an `aria-label`, and every modal the shared dialog hook.
 - **Do** keep motion to state feedback in the product (150–200ms), and provide a reduced-motion path for anything that moves on its own.

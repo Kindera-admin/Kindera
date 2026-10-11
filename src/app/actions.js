@@ -1096,7 +1096,9 @@ export async function signup(formData) {
       return { success: false, message: 'Organization name is required' };
     }
 
-    if (!['volunteer', 'org_member', 'org_spoc', 'ngo', 'employee'].includes(role)) {
+    // Self-signup is limited to the roles the signup form offers. Kindera staff
+    // (employee) and team members (org_member) are created by admins and SPOCs.
+    if (!['volunteer', 'org_spoc', 'ngo'].includes(role)) {
       return { success: false, message: 'Invalid role selected' };
     }
 

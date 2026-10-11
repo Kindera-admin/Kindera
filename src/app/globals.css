@@ -9,6 +9,11 @@
   --color-brand-strong: var(--brand-strong);
   --color-brand-accent: var(--brand-accent);
   --color-brand-tint: var(--brand-tint);
+  --color-paper: var(--paper);
+  --color-navy: var(--navy);
+  --color-navy-strong: var(--navy-strong);
+  --color-certificate-lime: var(--certificate-lime);
+  --color-data-blue: var(--data-blue);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-dm-serif), Georgia, serif;
@@ -54,6 +59,11 @@
   --brand-strong: #1a5c3a; /* Pine: hover/pressed state of Evergreen */
   --brand-accent: #2e7d52; /* Fern: secondary emphasis, links, focus */
   --brand-tint: #f0f7f3;   /* Morning Mist: tinted section backgrounds */
+  --paper: #fafafa;        /* Paper: page background */
+  --navy: #0A1A3B;         /* Navy: certificate and home carousel captions */
+  --navy-strong: #1a2d59;  /* Navy hover */
+  --certificate-lime: #76A854; /* Certificate accent rules and seal */
+  --data-blue: #3d5a99;    /* Data Blue: categorical KPI colour */
 
   --radius: 0.625rem;
   --background: oklch(1 0 0);

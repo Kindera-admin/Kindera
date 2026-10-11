@@ -1,5 +1,6 @@
 'use client';
 
+import { cldImage } from '@/lib/cloudinary';
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getMessages, sendMessage, markAnnouncementRead } from '@/app/actions';
@@ -58,7 +59,7 @@ function FilePreview({ fileUrl, fileName, fileType }) {
   if (isImage) {
     return (
       <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block mt-2 max-w-[220px]">
-        <img src={fileUrl} loading="lazy" decoding="async" alt={fileName || 'Image'} className="rounded-xl max-h-44 object-cover border border-white/20" />
+        <img src={cldImage(fileUrl, 600)} loading="lazy" decoding="async" alt={fileName || 'Image'} className="rounded-xl max-h-44 object-cover border border-white/20" />
       </a>
     );
   }

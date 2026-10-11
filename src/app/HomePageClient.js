@@ -1,5 +1,6 @@
 'use client';
 
+import { cldImage } from '@/lib/cloudinary';
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -98,12 +99,12 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
           <motion.div 
             animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }} 
             transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-emerald-500/20 rounded-full blur-[100px]"
+            className="absolute top-1/4 right-1/4 w-[600px] h-[600px] -translate-x-[100px] -translate-y-[100px] rounded-full bg-[radial-gradient(circle,rgb(16_185_129/0.2)_0%,transparent_65%)]"
           />
           <motion.div 
             animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }} 
             transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] bg-yellow-500/10 rounded-full blur-[80px]"
+            className="absolute bottom-1/4 left-1/4 w-[460px] h-[460px] -translate-x-[80px] translate-y-[80px] rounded-full bg-[radial-gradient(circle,rgb(234_179_8/0.1)_0%,transparent_65%)]"
           />
         </motion.div>
 
@@ -165,7 +166,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
       </div>
 
       {/* About Section */}
-      <section id="about" className="py-24 md:py-32 bg-[#fafafa]">
+      <section id="about" className="py-24 md:py-32 bg-paper">
         <div className="px-5 max-w-7xl mx-auto">
         <motion.div 
           initial="hidden"
@@ -223,7 +224,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
       </section>
 
       {/* Curated Volunteering Opportunities - Public */}
-      <section id="opportunities" className="py-24 bg-[#fafafa] border-t border-black/5 overflow-hidden">
+      <section id="opportunities" className="py-24 bg-paper border-t border-black/5 overflow-hidden">
 
         {/* Section Header */}
         <motion.div
@@ -280,7 +281,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <Image src={card.img} alt={card.label} fill sizes="(min-width: 768px) 320px, 288px" className="object-cover transition-transform duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100" />
                 </div>
-                <div className="bg-[#0d1f3c] px-5 py-4 flex items-center justify-between">
+                <div className="bg-navy px-5 py-4 flex items-center justify-between">
                   <h3 className="text-white font-bold text-sm uppercase tracking-wide leading-tight">{card.label}</h3>
                   <span className="text-white/60 group-hover:text-white transition-all text-lg ml-3 flex-shrink-0">→</span>
                 </div>
@@ -314,7 +315,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <Image src={card.img} alt={card.label} fill sizes="(min-width: 768px) 320px, 288px" className="object-cover transition-transform duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100" />
                 </div>
-                <div className="bg-[#0d1f3c] px-5 py-4 flex items-center justify-between">
+                <div className="bg-navy px-5 py-4 flex items-center justify-between">
                   <h3 className="text-white font-bold text-sm uppercase tracking-wide leading-tight">{card.label}</h3>
                   <span className="text-white/60 group-hover:text-white transition-all text-lg ml-3 flex-shrink-0">→</span>
                 </div>
@@ -352,7 +353,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
 
 
       {/* Impact Gallery */}
-      <section id="gallery" className="py-24 bg-[#fafafa]">
+      <section id="gallery" className="py-24 bg-paper">
         <div className="px-5 max-w-7xl mx-auto">
         <div className="mb-12">
           <h2 className="text-4xl md:text-5xl font-serif text-brand">Impact in Action</h2>
@@ -368,7 +369,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
                 transition={{ delay: i * 0.1 }}
                 className="relative rounded-2xl overflow-hidden group bg-gray-200 aspect-[4/3]"
               >
-                <img src={photo.url} alt="Volunteers at a Kindera event" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <img src={cldImage(photo.url, 800)} alt="Volunteers at a Kindera event" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
                   <span className="text-white font-medium">Making a difference</span>
                 </div>
@@ -423,7 +424,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
                   >
                     <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                       {ev.imageUrl ? (
-                        <img src={ev.imageUrl} alt={ev.title} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100" />
+                        <img src={cldImage(ev.imageUrl, 800)} alt={ev.title} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100" />
                       ) : (
                         <div className="w-full h-full bg-emerald-900/10 flex items-center justify-center text-emerald-800 font-serif text-2xl">Kindera</div>
                       )}

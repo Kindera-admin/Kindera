@@ -87,7 +87,7 @@ export default function TeamClient({ members, stats, orgName }) {
                   <tr key={member._id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#e8f5e9] text-brand-accent flex items-center justify-center font-bold text-xs shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-brand-tint text-brand-accent flex items-center justify-center font-bold text-xs shrink-0">
                           {member.name.charAt(0)}
                         </div>
                         <div className="flex flex-col min-w-0">

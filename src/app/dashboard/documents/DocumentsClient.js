@@ -153,7 +153,7 @@ export default function DocumentsClient({ documents: initial }) {
           <div className="border border-dashed border-gray-200 rounded-xl py-12 text-center">
             <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500 text-sm">No documents uploaded yet.</p>
-            <p className="text-gray-300 text-xs mt-1">Upload your 12A, 80G, or FCRA certificates above.</p>
+            <p className="text-gray-500 text-xs mt-1">Upload your 12A, 80G, or FCRA certificates above.</p>
           </div>
         )}
         {documents.map(doc => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { cldImage } from '@/lib/cloudinary';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -199,7 +200,7 @@ export default function SettingsClient({ user }) {
           <Card className="shadow-sm mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Building2 className="w-5 h-5 text-[#3d5a99]" /> Corporate Branding
+                <Building2 className="w-5 h-5 text-data-blue" /> Corporate Branding
               </CardTitle>
               <CardDescription>Upload your organization logo to display on volunteer certificates.</CardDescription>
             </CardHeader>
@@ -208,7 +209,7 @@ export default function SettingsClient({ user }) {
                 {logo ? (
                   <div className="relative inline-block border rounded-lg p-2 bg-gray-50">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={logo} alt="Organization Logo" className="h-24 object-contain" />
+                    <img src={cldImage(logo, 400)} alt="Organization Logo" className="h-24 object-contain" />
                     <button
                       onClick={handleRemoveLogo}
                       disabled={isUploadingLogo}

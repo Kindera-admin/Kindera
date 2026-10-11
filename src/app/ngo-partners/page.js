@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { cldImage } from '@/lib/cloudinary';
 import { getCurrentUser } from '@/lib/auth';
 import { getAllNGOPartners } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,7 +31,7 @@ export default async function NGOPartnersPage() {
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 flex flex-col md:flex-row items-center md:items-start gap-6 border-b">
                 {ngo.logoUrl && (
                   <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center p-2">
-                    <img src={ngo.logoUrl} loading="lazy" decoding="async" alt={`${ngo.name} logo`} className="w-full h-full object-contain" />
+                    <img src={cldImage(ngo.logoUrl, 240)} loading="lazy" decoding="async" alt={`${ngo.name} logo`} className="w-full h-full object-contain" />
                   </div>
                 )}
                 <div className="flex-1 text-center md:text-left">

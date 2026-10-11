@@ -59,11 +59,6 @@
           "#f9fafb"
         ]
       },
-      "certificate-navy": {
-        "role": "tertiary",
-        "displayName": "Certificate Navy",
-        "canonical": "#0A1A3B"
-      },
       "data-blue": {
         "role": "tertiary",
         "displayName": "Data Blue",
@@ -88,6 +83,21 @@
         "role": "neutral",
         "displayName": "Header Ink Strong",
         "canonical": "#1a1a1a"
+      },
+      "navy": {
+        "role": "tertiary",
+        "displayName": "Navy",
+        "canonical": "#0A1A3B"
+      },
+      "navy-strong": {
+        "role": "tertiary",
+        "displayName": "Navy Strong",
+        "canonical": "#1a2d59"
+      },
+      "certificate-lime": {
+        "role": "tertiary",
+        "displayName": "Certificate Lime",
+        "canonical": "#76A854"
       }
     },
     "typographyMeta": {
@@ -274,10 +284,16 @@
         "name": "The Flat-Brand Rule",
         "body": "Evergreen surfaces never carry a drop shadow. Shadows belong to white surfaces on paper.",
         "section": "elevation"
+      },
+      {
+        "name": "The Category Strip Rule",
+        "body": "Dashboard shortcut cards carry a 4px gradient strip along their top edge, one hue per card category. The set lives in src/lib/categoryStrips.js (CATEGORY_STRIPS). Add a category there rather than writing a new gradient inline, and never widen a strip into a banner.",
+        "section": "colors"
       }
     ],
     "dos": [
-      "Do use bg-brand / text-brand / var(--brand) for Evergreen and the shadcn default Button for primary actions.",
+      "Do use bg-brand / text-brand / var(--brand) for Evergreen and the shadcn default Button for primary actions, and bg-paper, bg-navy, text-data-blue for the other named colours.",
+      "Do pass Cloudinary images through cldImage(url, width) (src/lib/cloudinary.js) so they're served at display size.",
       "Do keep text at gray-500 or darker on white and paper, and at 12px or larger.",
       "Do give every icon-only control an aria-label, and every modal the shared dialog hook.",
       "Do keep motion to state feedback in the product (150–200ms), and provide a reduced-motion path for anything that moves on its own.",

@@ -1,5 +1,6 @@
 'use client';
 
+import { cldImage } from '@/lib/cloudinary';
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -142,7 +143,7 @@ export default function EventsClient({ events: initialEvents, userRole, currentU
                 {event.imageUrl && (
                   <div className="mt-4">
                     <img 
-                      src={event.imageUrl} 
+                      src={cldImage(event.imageUrl, 800)} 
                       loading="lazy"
                       decoding="async"
                       alt={event.title}

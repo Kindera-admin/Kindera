@@ -1,5 +1,6 @@
 'use client';
 
+import { cldImage } from '@/lib/cloudinary';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Trash2, Plus, X, Building2, Edit2, Search } from 'lucide-react';
@@ -231,7 +232,7 @@ export default function NGOPartnersClient({ initialPartners }) {
             <div key={partner._id} className="border rounded-xl p-5 bg-white flex justify-between items-start gap-4">
               {partner.logoUrl && (
                 <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center">
-                  <img src={partner.logoUrl} loading="lazy" decoding="async" alt={`${partner.name} logo`} className="w-full h-full object-contain" />
+                  <img src={cldImage(partner.logoUrl, 160)} loading="lazy" decoding="async" alt={`${partner.name} logo`} className="w-full h-full object-contain" />
                 </div>
               )}
               <div className="flex-1 min-w-0">

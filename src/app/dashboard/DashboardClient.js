@@ -1,5 +1,6 @@
 'use client';
 
+import { CATEGORY_STRIPS } from '@/lib/categoryStrips';
 import { useRouter } from 'next/navigation';
 import { useTransition, useState } from 'react';
 import { Users, CalendarDays, UserPlus, Building2, ArrowRight, Loader2, FileText, BarChart3 } from 'lucide-react';
@@ -20,7 +21,7 @@ const cards = [
     icon: FileText,
     href: '/admin/events-history',
     accent: '#0f766e',
-    gradient: 'from-[#0f766e] to-[#0d9488]',
+    gradient: CATEGORY_STRIPS.teal,
     lightBg: '#f0fdfa',
   },
   {
@@ -29,7 +30,7 @@ const cards = [
     icon: BarChart3,
     href: '/admin/impact',
     accent: '#3b82f6',
-    gradient: 'from-[#3b82f6] to-[#60a5fa]',
+    gradient: CATEGORY_STRIPS.blue,
     lightBg: '#eff6ff',
   },
   {
@@ -47,7 +48,7 @@ const cards = [
     icon: FileText,
     href: '/admin/ngo-documents',
     accent: '#2e7d52',
-    gradient: 'from-brand-accent to-[#3a9e68]',
+    gradient: CATEGORY_STRIPS.brand,
     lightBg: '#f0f7f3',
   },
   {
@@ -56,7 +57,7 @@ const cards = [
     icon: Users,
     href: '/admin/users',
     accent: '#3d5a99',
-    gradient: 'from-[#3d5a99] to-[#4a6fbf]',
+    gradient: CATEGORY_STRIPS.dataBlue,
     lightBg: '#f0f5ff',
   },
   {
@@ -65,7 +66,7 @@ const cards = [
     icon: UserPlus,
     href: '/admin/register',
     accent: '#10b981',
-    gradient: 'from-[#10b981] to-[#34d399]',
+    gradient: CATEGORY_STRIPS.emerald,
     lightBg: '#ecfdf5',
   },
   {
@@ -74,7 +75,7 @@ const cards = [
     icon: Building2,
     href: '/admin/ngo-partners',
     accent: '#8b5cf6',
-    gradient: 'from-[#8b5cf6] to-[#a78bfa]',
+    gradient: CATEGORY_STRIPS.cyan,
     lightBg: '#faf5ff',
   },
   {
@@ -83,7 +84,7 @@ const cards = [
     icon: CalendarDays,
     href: '/admin/impact-photos',
     accent: '#f59e0b',
-    gradient: 'from-[#f59e0b] to-[#fbbf24]',
+    gradient: CATEGORY_STRIPS.amber,
     lightBg: '#fffbeb',
   },
   {
@@ -92,7 +93,7 @@ const cards = [
     icon: FileText,
     href: '/messages',
     accent: '#e11d48',
-    gradient: 'from-[#e11d48] to-[#fb7185]',
+    gradient: CATEGORY_STRIPS.rose,
     lightBg: '#fff1f2',
   },
   {

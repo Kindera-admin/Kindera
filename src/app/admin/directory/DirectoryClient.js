@@ -154,7 +154,7 @@ export default function DirectoryClient({ spocs, ngos }) {
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Detailed Directory & Reports</h1>
           <p className="text-gray-500 text-sm">Comprehensive listing of all Corporate SPOCs and NGO Partners.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button 
             onClick={handleExportDetailedCSV} 
             disabled={isExporting}

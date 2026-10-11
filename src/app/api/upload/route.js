@@ -26,7 +26,13 @@ const ALLOWED_FOLDERS = [
 ];
 // Uploads made before the user has an account: NGO certificates on the
 // signup form and the guest volunteer photo on public event registration.
-const PUBLIC_FOLDERS = ['kindera/ngo-certificates', 'kindera/volunteers'];
+// Without a login these folders accept only what those forms need, and
+// never SVG (which can carry scripts).
+const PUBLIC_FOLDERS = {
+  'kindera/ngo-certificates': ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+  'kindera/volunteers': ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'],
+};
+const PUBLIC_MAX_BYTES = 5 * 1024 * 1024; // 5 MB without a login
 
 export async function POST(request) {
   try {
@@ -40,14 +46,18 @@ export async function POST(request) {
     if (!ALLOWED_FOLDERS.includes(folder)) {
       return NextResponse.json({ error: 'Invalid upload folder' }, { status: 400 });
     }
-    if (!PUBLIC_FOLDERS.includes(folder) && !(await getCurrentUser())) {
+    const user = await getCurrentUser();
+    const anonymous = !user;
+    if (anonymous && !PUBLIC_FOLDERS[folder]) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
-    if (![...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES].includes(file.type)) {
+    const allowedTypes = anonymous ? PUBLIC_FOLDERS[folder] : [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES];
+    if (!allowedTypes.includes(file.type)) {
       return NextResponse.json({ error: 'Unsupported file type. Upload an image, PDF or Word document.' }, { status: 415 });
     }
-    if (file.size > MAX_BYTES) {
-      return NextResponse.json({ error: 'File is too large. The limit is 10 MB.' }, { status: 413 });
+    const limit = anonymous ? PUBLIC_MAX_BYTES : MAX_BYTES;
+    if (file.size > limit) {
+      return NextResponse.json({ error: `File is too large. The limit is ${limit / (1024 * 1024)} MB.` }, { status: 413 });
     }
     const isDoc = ALLOWED_DOC_TYPES.includes(file.type);
 

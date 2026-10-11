@@ -1,5 +1,6 @@
 'use client';
 
+import { CATEGORY_STRIPS } from '@/lib/categoryStrips';
 import { useTransition, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -39,7 +40,7 @@ const actionCards = [
     icon: CalendarDays,
     href: '/events',
     accent: '#2e7d52',
-    gradient: 'from-brand-accent to-[#3a9e68]',
+    gradient: CATEGORY_STRIPS.brand,
   },
   {
     title: 'Event History',
@@ -47,7 +48,7 @@ const actionCards = [
     icon: FileText,
     href: '/dashboard/events-history',
     accent: '#3d5a99',
-    gradient: 'from-[#3d5a99] to-[#4a6fbf]',
+    gradient: CATEGORY_STRIPS.dataBlue,
   },
   {
     title: 'Mark Attendance',
@@ -55,7 +56,7 @@ const actionCards = [
     icon: ClipboardCheck,
     href: '/dashboard/attendance',
     accent: '#0d7490',
-    gradient: 'from-[#0d7490] to-[#0891b2]',
+    gradient: CATEGORY_STRIPS.cyan,
   },
   {
     title: 'Create Event',
@@ -63,7 +64,7 @@ const actionCards = [
     icon: PlusCircle,
     href: '/events/create',
     accent: '#6366f1',
-    gradient: 'from-[#6366f1] to-[#818cf8]',
+    gradient: CATEGORY_STRIPS.orange,
   },
   {
     title: 'Messages',
@@ -71,7 +72,7 @@ const actionCards = [
     icon: MessageSquare,
     href: '/messages',
     accent: '#e11d48',
-    gradient: 'from-[#e11d48] to-[#fb7185]',
+    gradient: CATEGORY_STRIPS.rose,
   },
   {
     title: 'Settings & Branding',
@@ -79,7 +80,7 @@ const actionCards = [
     icon: Settings,
     href: '/settings',
     accent: '#4b5563',
-    gradient: 'from-[#4b5563] to-[#6b7280]',
+    gradient: CATEGORY_STRIPS.slate,
   }
 ];
 

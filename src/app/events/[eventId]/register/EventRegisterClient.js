@@ -1,5 +1,6 @@
 'use client';
 
+import { cldImage } from '@/lib/cloudinary';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -117,7 +118,7 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
         <Card className="border-emerald-100 shadow-sm bg-emerald-50/30 overflow-hidden">
           {event.imageUrl && (
             <div className="w-full h-40">
-              <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
+              <img src={cldImage(event.imageUrl, 1200)} alt={event.title} className="w-full h-full object-cover" />
             </div>
           )}
           <CardHeader>

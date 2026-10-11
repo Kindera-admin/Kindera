@@ -1,5 +1,6 @@
 'use client';
 
+import { cldImage } from '@/lib/cloudinary';
 import { useState } from 'react';
 import { Search, MapPin, Globe, ExternalLink, Tag, BookOpen, Award, Sparkles, Heart } from 'lucide-react';
 import Link from 'next/link';
@@ -30,7 +31,7 @@ export default function PartnersClient({ partners }) {
   });
 
   return (
-    <div className="bg-[#fafafa] min-h-screen font-sans">
+    <div className="bg-paper min-h-screen font-sans">
       <HomePageHeader />
 
       {/* Decorative Top Hero Header */}
@@ -104,7 +105,7 @@ export default function PartnersClient({ partners }) {
                   <div className="flex items-start gap-4 mb-4">
                     {ngo.logoUrl ? (
                       <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm shrink-0 overflow-hidden border border-gray-100">
-                        <img src={ngo.logoUrl} loading="lazy" decoding="async" alt={`${ngo.name} logo`} className="w-full h-full object-contain p-1" />
+                        <img src={cldImage(ngo.logoUrl, 160)} loading="lazy" decoding="async" alt={`${ngo.name} logo`} className="w-full h-full object-contain p-1" />
                       </div>
                     ) : (
                       <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center text-white text-lg font-bold shadow-md shrink-0">

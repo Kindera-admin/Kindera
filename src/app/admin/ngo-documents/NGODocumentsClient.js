@@ -292,7 +292,7 @@ export default function NGODocumentsClient({ ngos: initial }) {
                               {cfg.label}
                             </span>
                             {doc.uploadedAt && (
-                              <span className="text-xs text-gray-300">
+                              <span className="text-xs text-gray-500">
                                 {new Date(doc.uploadedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
                               </span>
                             )}

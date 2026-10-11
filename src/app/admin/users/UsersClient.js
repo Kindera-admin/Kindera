@@ -317,8 +317,14 @@ export default function UsersClient({ initialUsers = [], currentUserId }) {
                   {filteredUsers.map((user) => (
                     <Fragment key={user._id}>
                       <TableRow
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer hover:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-accent"
                         onClick={() => setSelectedUser(user)}
+                        tabIndex={0}
+                        aria-label={`View details for ${user.name}`}
+                        onKeyDown={(e) => {
+                          if (e.target !== e.currentTarget) return;
+                          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedUser(user); }
+                        }}
                       >
                         <TableCell>
                           <div className="font-medium">{user.name}</div>
