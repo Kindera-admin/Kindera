@@ -80,7 +80,7 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="outline" size="icon" onClick={() => router.back()} className="shrink-0 text-gray-500 hover:text-gray-900">
+        <Button variant="outline" size="icon" aria-label="Go back" onClick={() => router.back()} className="shrink-0 text-gray-500 hover:text-gray-900">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
@@ -100,7 +100,7 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
           return (
             <div key={idx} className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{card.label}</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{card.label}</span>
                 <div className={`p-2 rounded-xl ${card.color} shrink-0`}>
                   <Icon className="w-4 h-4" />
                 </div>
@@ -114,7 +114,7 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
       <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input 
               type="text" 
               placeholder="Search by event or location..." 
@@ -168,7 +168,7 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
                         <td className="px-6 py-4">
                           <div className="flex items-start gap-3">
                             {item.volunteers?.length > 0 ? (
-                              <div className="mt-0.5 text-gray-400">
+                              <div className="mt-0.5 text-gray-500">
                                 {expandedRows[item._id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                               </div>
                             ) : (
@@ -176,7 +176,7 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
                             )}
                             <div>
                               <span className="font-semibold text-gray-900 block leading-tight mb-1">{item.title}</span>
-                              <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
                                 <span className={`px-1.5 py-0.5 rounded-full font-bold ${
                                   item.status === 'upcoming' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
                                 }`}>
@@ -233,7 +233,7 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
                             {canDelete && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); setConfirmDelete({ id: item._id, title: item.title }); }}
-                                className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                                className="p-1.5 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors"
                                 title="Delete Event"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -247,17 +247,17 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
                         <tr className="bg-gray-50/50">
                           <td colSpan="6" className="px-14 py-4">
                             <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Volunteers from your organization</h4>
+                              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Volunteers from your organization</h4>
                               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                 {item.volunteers.map(vol => (
                                   <div key={vol.id} className="flex items-center justify-between p-2 rounded-lg border border-gray-50 bg-gray-50">
                                     <span className="text-sm font-medium text-gray-700 truncate mr-2" title={vol.name}>{vol.name}</span>
                                     {vol.attended ? (
-                                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full shrink-0">
+                                      <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full shrink-0">
                                         <CheckCircle2 className="w-3 h-3" /> Attended
                                       </span>
                                     ) : (
-                                      <span className="flex items-center gap-1 text-[10px] font-bold text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded-full shrink-0">
+                                      <span className="flex items-center gap-1 text-xs font-bold text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded-full shrink-0">
                                         <XCircle className="w-3 h-3" /> No Show
                                       </span>
                                     )}

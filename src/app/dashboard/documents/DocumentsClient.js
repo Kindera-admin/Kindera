@@ -92,7 +92,7 @@ export default function DocumentsClient({ documents: initial }) {
   return (
     <div>
       <div className="mb-8">
-        <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">NGO Profile</p>
+        <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">NGO Profile</p>
         <h1 className="text-3xl font-bold text-gray-900 mb-1">Document Vault</h1>
         <p className="text-gray-500 text-sm">
           Upload your legal certificates. Admin will review and verify them.
@@ -102,7 +102,7 @@ export default function DocumentsClient({ documents: initial }) {
       {/* Upload Form */}
       <div className="border border-gray-100 rounded-2xl p-6 bg-white shadow-sm mb-6">
         <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Upload className="w-4 h-4 text-[#2e7d52]" />
+          <Upload className="w-4 h-4 text-brand-accent" />
           Upload New Document
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
@@ -111,7 +111,7 @@ export default function DocumentsClient({ documents: initial }) {
             <select
               value={form.docType}
               onChange={e => setForm(f => ({ ...f, docType: e.target.value }))}
-              className="w-full h-9 border border-gray-200 rounded-md px-3 text-sm focus:outline-none focus:border-[#0d3b26] bg-white"
+              className="w-full h-9 border border-gray-200 rounded-md px-3 text-sm focus:outline-none focus:border-brand bg-white"
             >
               {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
@@ -123,7 +123,7 @@ export default function DocumentsClient({ documents: initial }) {
               placeholder="e.g. 12A Certificate 2024"
               value={form.label}
               onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
-              className="w-full h-9 border border-gray-200 rounded-md px-3 text-sm focus:outline-none focus:border-[#0d3b26]"
+              className="w-full h-9 border border-gray-200 rounded-md px-3 text-sm focus:outline-none focus:border-brand"
             />
           </div>
         </div>
@@ -133,14 +133,14 @@ export default function DocumentsClient({ documents: initial }) {
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
             onChange={e => setFile(e.target.files?.[0] || null)}
-            className="w-full text-sm text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0d3b26] file:text-white hover:file:bg-[#1a5c3a] cursor-pointer"
+            className="w-full text-sm text-gray-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand file:text-white hover:file:bg-brand-strong cursor-pointer"
           />
-          {file && <p className="text-xs text-gray-400 mt-1">{file.name}</p>}
+          {file && <p className="text-xs text-gray-500 mt-1">{file.name}</p>}
         </div>
         <Button
           onClick={handleUpload}
           disabled={uploading || !file || !form.label.trim()}
-          className="bg-[#0d3b26] hover:bg-[#1a5c3a] text-white gap-2"
+          className="bg-brand hover:bg-brand-strong text-white gap-2"
         >
           {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
           {uploading ? 'Uploading…' : 'Upload Document'}
@@ -152,7 +152,7 @@ export default function DocumentsClient({ documents: initial }) {
         {documents.length === 0 && (
           <div className="border border-dashed border-gray-200 rounded-xl py-12 text-center">
             <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">No documents uploaded yet.</p>
+            <p className="text-gray-500 text-sm">No documents uploaded yet.</p>
             <p className="text-gray-300 text-xs mt-1">Upload your 12A, 80G, or FCRA certificates above.</p>
           </div>
         )}
@@ -162,11 +162,11 @@ export default function DocumentsClient({ documents: initial }) {
           return (
             <div key={doc._id} className="border border-gray-100 rounded-xl p-4 bg-white shadow-sm flex items-center gap-4">
               <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 text-gray-400" />
+                <FileText className="w-5 h-5 text-gray-500" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm text-gray-900 truncate">{doc.label}</p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-500">
                   {DOC_TYPES.find(t => t.value === doc.docType)?.label || doc.docType}
                   {doc.uploadedAt && ` · ${new Date(doc.uploadedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}`}
                 </p>
@@ -183,14 +183,16 @@ export default function DocumentsClient({ documents: initial }) {
                   href={doc.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+                  aria-label={`Open ${doc.label} in a new tab`}
+                  className="hit-target p-1.5 rounded-md hover:bg-gray-100 transition-colors"
                 >
-                  <ExternalLink className="w-4 h-4 text-gray-400" />
+                  <ExternalLink className="w-4 h-4 text-gray-500" />
                 </a>
                 <button
                   onClick={() => setConfirmDeleteId(doc._id)}
+                    aria-label="Delete document"
                   disabled={isPending}
-                  className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                  className="hit-target p-1.5 rounded-md hover:bg-red-50 text-gray-500 hover:text-red-500 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

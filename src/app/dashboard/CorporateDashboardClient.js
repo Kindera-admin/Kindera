@@ -23,7 +23,7 @@ const actionCards = [
     icon: Plus,
     href: '/dashboard/team/generate',
     accent: '#0d3b26',
-    gradient: 'from-[#0d3b26] to-[#1a5c3a]',
+    gradient: 'from-brand to-brand-strong',
   },
   {
     title: 'View Team',
@@ -31,7 +31,7 @@ const actionCards = [
     icon: UsersRound,
     href: '/dashboard/team',
     accent: '#1a5c3a',
-    gradient: 'from-[#1a5c3a] to-[#2e7d52]',
+    gradient: 'from-brand-strong to-brand-accent',
   },
   {
     title: 'Upcoming Events',
@@ -39,7 +39,7 @@ const actionCards = [
     icon: CalendarDays,
     href: '/events',
     accent: '#2e7d52',
-    gradient: 'from-[#2e7d52] to-[#3a9e68]',
+    gradient: 'from-brand-accent to-[#3a9e68]',
   },
   {
     title: 'Event History',
@@ -108,7 +108,7 @@ export default function CorporateDashboardClient({ stats, monthly, quarterly, se
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">SPOC Dashboard</p>
+          <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">SPOC Dashboard</p>
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Team Overview</h1>
           <p className="text-gray-500 text-sm">Live KPIs for your corporate volunteer programme.</p>
         </div>
@@ -138,7 +138,7 @@ export default function CorporateDashboardClient({ stats, monthly, quarterly, se
           return (
             <div key={k.label} className="border border-gray-100 rounded-xl p-5 bg-white shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{k.label}</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{k.label}</p>
                 {Icon && <Icon className="w-4 h-4 text-gray-300" />}
               </div>
               <p className="text-3xl font-bold" style={{ color: k.color }}>{k.value}</p>
@@ -163,7 +163,7 @@ export default function CorporateDashboardClient({ stats, monthly, quarterly, se
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No quarterly data yet for {selectedYear || currentYear}.</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">No quarterly data yet for {selectedYear || currentYear}.</div>
             )}
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function CorporateDashboardClient({ stats, monthly, quarterly, se
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No monthly data yet for {selectedYear || currentYear}.</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">No monthly data yet for {selectedYear || currentYear}.</div>
             )}
           </div>
         </div>
@@ -191,7 +191,7 @@ export default function CorporateDashboardClient({ stats, monthly, quarterly, se
 
       {/* Quick Actions */}
       <div className="mb-4">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">Quick Actions</h2>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {actionCards.map((card) => {
             const Icon = card.icon;
@@ -204,7 +204,7 @@ export default function CorporateDashboardClient({ stats, monthly, quarterly, se
                 disabled={isPending}
                 className="group relative text-left border border-gray-100 rounded-2xl p-6 bg-white shadow-sm
                            hover:shadow-xl hover:-translate-y-1 transition-all duration-200
-                           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d3b26]
+                           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand
                            disabled:cursor-not-allowed overflow-hidden"
               >
                 {/* Top accent bar */}

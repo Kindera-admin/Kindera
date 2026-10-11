@@ -143,6 +143,8 @@ export default function EventsClient({ events: initialEvents, userRole, currentU
                   <div className="mt-4">
                     <img 
                       src={event.imageUrl} 
+                      loading="lazy"
+                      decoding="async"
                       alt={event.title}
                       className="w-full h-48 object-cover rounded-md"
                     />
@@ -183,7 +185,7 @@ export default function EventsClient({ events: initialEvents, userRole, currentU
                     ) : (
                       <Button
                         onClick={() => window.location.href = `/events/${event._id}/register`}
-                        className="flex-1 bg-[#0d3b26] hover:bg-[#1a5c3a] text-white"
+                        className="flex-1 bg-brand hover:bg-brand-strong text-white"
                       >
                         <ExternalLink className="w-4 h-4 mr-2" />
                         Register

@@ -29,24 +29,24 @@ function CertUpload({ certKey, label, desc, onFileSelect, file, onRemove }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${file ? 'bg-emerald-500' : 'bg-gray-100'}`}>
-            {file ? <CheckCircle2 className="w-4 h-4 text-white" /> : <FileText className="w-4 h-4 text-gray-400" />}
+            {file ? <CheckCircle2 className="w-4 h-4 text-white" /> : <FileText className="w-4 h-4 text-gray-500" />}
           </div>
           <div>
             <p className="text-sm font-medium text-gray-800">{label}</p>
-            <p className="text-xs text-gray-400">{desc}</p>
+            <p className="text-xs text-gray-500">{desc}</p>
             {file && <p className="text-xs text-emerald-600 font-medium mt-0.5 truncate max-w-[180px]">{file.name}</p>}
           </div>
         </div>
         <div className="flex gap-2 flex-shrink-0">
           {file && (
-            <button type="button" onClick={onRemove} className="p-1 rounded-lg hover:bg-red-100 transition-colors">
-              <X className="w-4 h-4 text-red-400" />
+            <button type="button" onClick={onRemove} aria-label="Remove file" className="inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-red-100 transition-colors">
+              <X className="w-4 h-4 text-red-500" aria-hidden="true" />
             </button>
           )}
           <button
             type="button"
             onClick={() => ref.current?.click()}
-            className="text-xs font-medium text-[#0d3b26] hover:text-emerald-600 flex items-center gap-1 transition-colors"
+            className="text-xs font-medium text-brand hover:text-emerald-600 flex items-center gap-1 transition-colors"
           >
             <Upload className="w-3.5 h-3.5" />
             {file ? 'Replace' : 'Upload'}
@@ -268,7 +268,7 @@ function SignupForm() {
           <div className="pt-2">
             <div className="flex items-center gap-2 mb-3">
               <div className="h-[1px] flex-1 bg-gray-100" />
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">NGO Certificates</span>
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">NGO Certificates</span>
               <div className="h-[1px] flex-1 bg-gray-100" />
             </div>
             <p className="text-xs text-gray-500 mb-3">
@@ -318,7 +318,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md mb-4">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#0d3b26] transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-brand transition-colors"
         >
           <Home className="w-4 h-4" />
           Back to Home
@@ -326,7 +326,7 @@ export default function SignupPage() {
       </div>
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center pb-2 pt-6">
-          <CardTitle className="text-xl sm:text-2xl">Create Account</CardTitle>
+          <CardTitle as="h1" className="text-xl sm:text-2xl">Create Account</CardTitle>
           <CardDescription>Sign up to join Kindera</CardDescription>
         </CardHeader>
         <Suspense fallback={<div className="p-6 text-center">Loading form...</div>}>

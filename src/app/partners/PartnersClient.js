@@ -34,7 +34,7 @@ export default function PartnersClient({ partners }) {
       <HomePageHeader />
 
       {/* Decorative Top Hero Header */}
-      <div className="bg-[#0d3b26] text-white pt-36 pb-20 relative overflow-hidden">
+      <div className="bg-brand text-white pt-36 pb-20 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
         <div className="max-w-6xl mx-auto px-5 relative z-10 text-center">
           <span className="px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-semibold tracking-wider uppercase mb-4 inline-block">
@@ -53,7 +53,7 @@ export default function PartnersClient({ partners }) {
         {/* Search & Filter Toolbar */}
         <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4 mb-10">
           <div className="relative w-full md:max-w-sm shrink-0">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input
               type="text"
               placeholder="Search by NGO name, keywords..."
@@ -87,7 +87,7 @@ export default function PartnersClient({ partners }) {
             <p className="text-gray-500 text-base font-medium">No partners matching the criteria found.</p>
             <button 
               onClick={() => { setSearchTerm(''); setSelectedFocus('All'); }}
-              className="text-[#0d3b26] font-semibold text-sm hover:underline mt-2"
+              className="text-brand font-semibold text-sm hover:underline mt-2"
             >
               Clear filters
             </button>
@@ -104,18 +104,18 @@ export default function PartnersClient({ partners }) {
                   <div className="flex items-start gap-4 mb-4">
                     {ngo.logoUrl ? (
                       <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm shrink-0 overflow-hidden border border-gray-100">
-                        <img src={ngo.logoUrl} alt={`${ngo.name} logo`} className="w-full h-full object-contain p-1" />
+                        <img src={ngo.logoUrl} loading="lazy" decoding="async" alt={`${ngo.name} logo`} className="w-full h-full object-contain p-1" />
                       </div>
                     ) : (
-                      <div className="w-12 h-12 rounded-2xl bg-[#0d3b26] flex items-center justify-center text-white text-lg font-bold shadow-md shrink-0">
+                      <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center text-white text-lg font-bold shadow-md shrink-0">
                         {ngo.name.charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div>
                       <h2 className="text-xl font-bold text-gray-900 leading-snug">{ngo.name}</h2>
                       {(ngo.registeredOffice || ngo.location) && (
-                        <span className="inline-flex items-center gap-1 text-xs text-gray-400 mt-1">
-                          <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="inline-flex items-center gap-1 text-xs text-gray-500 mt-1">
+                          <MapPin className="w-3.5 h-3.5 text-gray-500" />
                           {ngo.registeredOffice || ngo.location}
                         </span>
                       )}
@@ -128,7 +128,7 @@ export default function PartnersClient({ partners }) {
                       {ngo.focusAreas.split(',').map((f, i) => (
                         <span 
                           key={i}
-                          className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-100"
+                          className="inline-flex items-center gap-1 text-xs font-semibold bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-100"
                         >
                           <Tag className="w-2.5 h-2.5" />
                           {f.trim()}
@@ -145,7 +145,7 @@ export default function PartnersClient({ partners }) {
                   {ngo.programs && ngo.programs.length > 0 && (
                     <div className="mb-6">
                       <h3 className="text-xs font-bold text-gray-800 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                        <BookOpen className="w-3.5 h-3.5 text-[#0d3b26]" /> Key Programs
+                        <BookOpen className="w-3.5 h-3.5 text-brand" /> Key Programs
                       </h3>
                       <ul className="space-y-1.5 pl-1.5">
                         {ngo.programs.map((prog, idx) => (
@@ -160,8 +160,8 @@ export default function PartnersClient({ partners }) {
 
                   {/* Impact statement banner */}
                   {ngo.impact && (
-                    <div className="bg-[#f0f7f3]/50 border border-emerald-100/50 rounded-2xl p-4 mb-6">
-                      <h3 className="text-xs font-bold text-[#0d3b26] uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                    <div className="bg-brand-tint/50 border border-emerald-100/50 rounded-2xl p-4 mb-6">
+                      <h3 className="text-xs font-bold text-brand uppercase tracking-widest mb-1 flex items-center gap-1.5">
                         <Award className="w-3.5 h-3.5" /> Direct Impact
                       </h3>
                       <p className="text-xs text-emerald-950 font-medium leading-relaxed">
@@ -178,7 +178,7 @@ export default function PartnersClient({ partners }) {
                       href={ngo.website.startsWith('http') ? ngo.website : `https://${ngo.website}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0d3b26] hover:text-[#1a5c3a] transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-brand hover:text-brand-strong transition-colors"
                     >
                       <Globe className="w-3.5 h-3.5" /> Visit Website
                       <ExternalLink className="w-3 h-3" />
@@ -191,7 +191,7 @@ export default function PartnersClient({ partners }) {
         )}
 
         {/* Sticky registration bottom card */}
-        <div className="mt-16 bg-[#0d3b26] rounded-3xl p-8 md:p-12 text-center text-white relative overflow-hidden shadow-xl">
+        <div className="mt-16 bg-brand rounded-3xl p-8 md:p-12 text-center text-white relative overflow-hidden shadow-xl">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
           <div className="relative z-10 max-w-xl mx-auto">
             <Sparkles className="w-8 h-8 text-emerald-400 mx-auto mb-4" />
@@ -203,7 +203,7 @@ export default function PartnersClient({ partners }) {
               href="https://forms.gle/T1ACRMV27pDQqvWz8"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center bg-white text-[#0d3b26] px-8 py-3.5 rounded-full font-bold hover:bg-emerald-50 transition-colors text-sm shadow-md"
+              className="inline-flex items-center justify-center bg-white text-brand px-8 py-3.5 rounded-full font-bold hover:bg-emerald-50 transition-colors text-sm shadow-md"
             >
               Apply for Partnership
             </a>

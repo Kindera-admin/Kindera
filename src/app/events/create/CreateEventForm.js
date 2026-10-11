@@ -232,9 +232,9 @@ export default function CreateEventForm() {
                   className="w-full border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                  <Upload className="w-8 h-8 mx-auto mb-2 text-gray-500" />
                   <p className="text-sm text-gray-500">Click to upload image</p>
-                  <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP, GIF supported</p>
+                  <p className="text-xs text-gray-500 mt-1">JPG, PNG, WEBP, GIF supported</p>
                 </div>
               ) : (
                 <div className="relative border rounded-lg overflow-hidden">
@@ -246,6 +246,7 @@ export default function CreateEventForm() {
                   <button
                     type="button"
                     onClick={clearImage}
+                    aria-label="Remove image"
                     className="absolute top-2 right-2 bg-black bg-opacity-60 text-white rounded-full p-1 hover:bg-opacity-80"
                   >
                     <X className="w-4 h-4" />

@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, useScroll, useTransform, useInView } from 'framer-motion';
+import { motion, MotionConfig, useReducedMotion, useScroll, useTransform, useInView } from 'framer-motion';
+import { Pause, Play } from 'lucide-react';
 import HomePageHeader from '@/components/HomePageHeader';
 
 // Animation Variants
@@ -29,13 +30,13 @@ function Counter({ value, label }) {
     <motion.div 
       ref={ref}
       variants={fadeUp}
-      className="border border-black/5 rounded-2xl p-8 text-center bg-white shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-500"
+      className="border border-black/5 rounded-2xl p-8 text-center bg-white shadow-sm hover:shadow-xl hover:-translate-y-2 motion-reduce:hover:translate-y-0 transition-all duration-500"
     >
       <motion.div 
         initial={{ scale: 0.5, opacity: 0 }}
         animate={isInView ? { scale: 1, opacity: 1 } : { scale: 0.5, opacity: 0 }}
         transition={{ type: "spring", stiffness: 100, delay: 0.2 }}
-        className="text-5xl md:text-6xl font-bold text-[#0d3b26] font-serif mb-2"
+        className="text-5xl md:text-6xl font-bold text-brand font-serif mb-2"
       >
         {value}
       </motion.div>
@@ -53,6 +54,11 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
   const { scrollYProgress } = useScroll();
   const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
+  const reduceMotion = useReducedMotion();
+  const carouselRef = useRef(null);
+  const carouselOnScreen = useInView(carouselRef, { margin: '100px' });
+  const [carouselPaused, setCarouselPaused] = useState(false);
+  const trackState = carouselPaused || !carouselOnScreen ? ' is-paused' : '';
 
   const steps = [
     { num: "01", title: "Client Outreach", desc: "Corporate partners reach out with focus areas for volunteering." },
@@ -63,13 +69,9 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
   ];
 
   return (
-    <div className="bg-[#0d3b26] min-h-screen selection:bg-emerald-100 selection:text-[#0d3b26]">
+    <MotionConfig reducedMotion="user">
+    <div className="bg-brand min-h-screen selection:bg-emerald-100 selection:text-brand">
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
-        
-        .font-serif { font-family: 'DM Serif Display', serif; }
-        .font-sans { font-family: 'Inter', sans-serif; }
-        
         .grain::before {
           content: '';
           position: fixed; inset: 0;
@@ -83,13 +85,13 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
       <HomePageHeader />
 
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden bg-[#0d3b26]">
+      <section className="relative h-screen flex items-center justify-center overflow-hidden bg-brand">
         {/* Parallax Background Elements */}
         <motion.div 
-          style={{ y: heroY, opacity: heroOpacity }}
+          style={reduceMotion ? undefined : { y: heroY, opacity: heroOpacity }}
           className="absolute inset-0 z-0"
         >
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-900/40 via-[#0d3b26] to-[#0d3b26]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-900/40 via-brand to-brand" />
           <div className="absolute inset-0" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
           
           {/* Decorative Orbs */}
@@ -133,7 +135,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
           </motion.p>
           
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="/signup" className="px-8 py-4 rounded-full bg-emerald-500 text-[#0d3b26] font-semibold text-lg hover:bg-emerald-400 hover:scale-105 transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)]">
+            <a href="/signup" className="px-8 py-4 rounded-full bg-emerald-500 text-brand font-semibold text-lg hover:bg-emerald-400 hover:scale-105 transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)]">
               Join as Partner
             </a>
             <a href="https://forms.gle/T1ACRMV27pDQqvWz8" target="_blank" rel="noopener noreferrer" className="px-8 py-4 rounded-full bg-transparent border border-white/30 text-white font-semibold text-lg hover:bg-white/10 transition-all">
@@ -153,7 +155,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
           {[...Array(4)].map((_, i) => (
             <div key={i} className="flex items-center">
               {["Corporate Volunteering", "Community Impact", "Digital Literacy", "Health Camps", "Environmental Drive", "Team Building"].map(t => (
-                <span key={t} className="text-sm font-medium text-gray-400 uppercase tracking-widest mx-8">
+                <span key={t} className="text-sm font-medium text-gray-500 uppercase tracking-widest mx-8">
                   ✦ &nbsp;&nbsp;{t}
                 </span>
               ))}
@@ -172,7 +174,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
           variants={staggerContainer}
           className="max-w-3xl mx-auto text-center mb-20"
         >
-          <motion.h2 variants={fadeUp} className="text-4xl md:text-5xl font-serif text-[#0d3b26] mb-6 leading-tight">
+          <motion.h2 variants={fadeUp} className="text-4xl md:text-5xl font-serif text-brand mb-6 leading-tight">
             Revolutionizing the way the world <span className="italic text-emerald-600">volunteers</span>
           </motion.h2>
           <motion.p variants={fadeUp} className="text-lg text-gray-600 leading-relaxed">
@@ -189,7 +191,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
       </section>
 
       {/* How It Works (Bento Grid Style) */}
-      <section id="how-it-works" className="py-24 bg-[#f0f7f3]">
+      <section id="how-it-works" className="py-24 bg-brand-tint">
         <div className="max-w-7xl mx-auto px-5">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -197,7 +199,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
             viewport={{ once: true }}
             className="mb-16 text-center"
           >
-            <h2 className="text-4xl md:text-5xl font-serif text-[#0d3b26] mb-4">Our Streamlined Process</h2>
+            <h2 className="text-4xl md:text-5xl font-serif text-brand mb-4">Our Streamlined Process</h2>
             <p className="text-gray-600">How we turn corporate intent into community impact.</p>
           </motion.div>
 
@@ -209,10 +211,10 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className={`bg-white rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-[#0d3b26]/5 ${i === 0 || i === 3 ? 'md:col-span-2 lg:col-span-1' : ''}`}
+                className={`bg-white rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300 border border-brand/5 ${i === 0 || i === 3 ? 'md:col-span-2 lg:col-span-1' : ''}`}
               >
                 <div className="text-4xl font-bold text-emerald-100 mb-4">{step.num}</div>
-                <h3 className="text-xl font-bold text-[#0d3b26] mb-3">{step.title}</h3>
+                <h3 className="text-xl font-bold text-brand mb-3">{step.title}</h3>
                 <p className="text-gray-500 leading-relaxed">{step.desc}</p>
               </motion.div>
             ))}
@@ -231,10 +233,10 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
           viewport={{ once: true, margin: "-80px" }}
           className="mb-14 text-center px-5"
         >
-          <motion.p variants={fadeUp} className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-3">
+          <motion.p variants={fadeUp} className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-3">
             Volunteer With Purpose
           </motion.p>
-          <motion.h2 variants={fadeUp} className="text-4xl md:text-5xl font-serif text-[#0d3b26] mb-4">
+          <motion.h2 variants={fadeUp} className="text-4xl md:text-5xl font-serif text-brand mb-4">
             Curated Volunteering Opportunities
           </motion.h2>
           <motion.p variants={fadeUp} className="text-gray-500 max-w-xl mx-auto text-base">
@@ -242,9 +244,21 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
           </motion.p>
         </motion.div>
 
+        <div ref={carouselRef} className="max-w-7xl mx-auto px-6 mb-4 flex justify-end motion-reduce:hidden">
+          <button
+            type="button"
+            onClick={() => setCarouselPaused(p => !p)}
+            aria-pressed={carouselPaused}
+            className="inline-flex items-center gap-2 h-11 px-4 rounded-full border border-black/10 bg-white text-sm font-medium text-gray-700 hover:border-brand/40 hover:text-brand"
+          >
+            {carouselPaused ? <Play className="w-4 h-4" aria-hidden="true" /> : <Pause className="w-4 h-4" aria-hidden="true" />}
+            {carouselPaused ? 'Play carousel' : 'Pause carousel'}
+          </button>
+        </div>
+
         {/* Infinite Auto-Scroll Carousel — Row 1 (left) */}
-        <div className="relative mb-5">
-          <div className="flex gap-5 carousel-track-left">
+        <div className="relative mb-5 carousel-viewport">
+          <div className={`flex gap-5 carousel-track-left${trackState}`}>
             {[
               { label: 'Retreats and Offsite',             img: '/occasions/retreats-offsite.jpg'  },
               { label: 'Conference',                        img: '/occasions/conference.jpg'         },
@@ -260,24 +274,25 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
             ].map((card, i) => (
               <div
                 key={i}
-                className="group relative flex-shrink-0 w-72 md:w-80 overflow-hidden rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 cursor-grab active:cursor-grabbing"
+                aria-hidden={i >= 5 || undefined}
+                className={`group relative flex-shrink-0 w-72 md:w-80 overflow-hidden rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500${i >= 5 ? ' carousel-dup' : ''}`}
               >
-                <div className="aspect-[4/3] overflow-hidden">
-                  <img src={card.img} alt={card.label} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  <Image src={card.img} alt={card.label} fill sizes="(min-width: 768px) 320px, 288px" className="object-cover transition-transform duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100" />
                 </div>
                 <div className="bg-[#0d1f3c] px-5 py-4 flex items-center justify-between">
                   <h3 className="text-white font-bold text-sm uppercase tracking-wide leading-tight">{card.label}</h3>
                   <span className="text-white/60 group-hover:text-white transition-all text-lg ml-3 flex-shrink-0">→</span>
                 </div>
-                <div className="absolute inset-0 bg-[#0d3b26]/0 group-hover:bg-[#0d3b26]/20 transition-all duration-500 pointer-events-none" />
+                <div className="absolute inset-0 bg-brand/0 group-hover:bg-brand/20 transition-all duration-500 pointer-events-none" />
               </div>
             ))}
           </div>
         </div>
 
         {/* Infinite Auto-Scroll Carousel — Row 2 (right, reverse) */}
-        <div className="relative">
-          <div className="flex gap-5 carousel-track-right">
+        <div className="relative carousel-viewport">
+          <div className={`flex gap-5 carousel-track-right${trackState}`}>
             {[
               { label: 'Welcome Back to Office', img: '/occasions/welcome-back.jpg'       },
               { label: 'Month of Service',        img: '/occasions/month-of-service.jpg'   },
@@ -293,16 +308,17 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
             ].map((card, i) => (
               <div
                 key={i}
-                className="group relative flex-shrink-0 w-72 md:w-80 overflow-hidden rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500 cursor-grab active:cursor-grabbing"
+                aria-hidden={i >= 5 || undefined}
+                className={`group relative flex-shrink-0 w-72 md:w-80 overflow-hidden rounded-2xl shadow-md hover:shadow-2xl transition-all duration-500${i >= 5 ? ' carousel-dup' : ''}`}
               >
-                <div className="aspect-[4/3] overflow-hidden">
-                  <img src={card.img} alt={card.label} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  <Image src={card.img} alt={card.label} fill sizes="(min-width: 768px) 320px, 288px" className="object-cover transition-transform duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100" />
                 </div>
                 <div className="bg-[#0d1f3c] px-5 py-4 flex items-center justify-between">
                   <h3 className="text-white font-bold text-sm uppercase tracking-wide leading-tight">{card.label}</h3>
                   <span className="text-white/60 group-hover:text-white transition-all text-lg ml-3 flex-shrink-0">→</span>
                 </div>
-                <div className="absolute inset-0 bg-[#0d3b26]/0 group-hover:bg-[#0d3b26]/20 transition-all duration-500 pointer-events-none" />
+                <div className="absolute inset-0 bg-brand/0 group-hover:bg-brand/20 transition-all duration-500 pointer-events-none" />
               </div>
             ))}
           </div>
@@ -315,7 +331,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.7 }}
-            className="mt-12 bg-[#0d3b26] rounded-3xl px-8 py-10 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg"
+            className="mt-12 bg-brand rounded-3xl px-8 py-10 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg"
           >
             <div>
               <p className="text-emerald-300 text-xs font-semibold tracking-widest uppercase mb-1">Don&apos;t see your occasion?</p>
@@ -324,7 +340,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
             </div>
             <a
               href="mailto:volunteering@kindera.co?cc=contactkindera@gmail.com"
-              className="flex-shrink-0 bg-white text-[#0d3b26] font-bold px-7 py-3.5 rounded-full hover:bg-emerald-50 transition-colors text-sm tracking-wide"
+              className="flex-shrink-0 bg-white text-brand font-bold px-7 py-3.5 rounded-full hover:bg-emerald-50 transition-colors text-sm tracking-wide"
             >
               Get Started →
             </a>
@@ -339,7 +355,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
       <section id="gallery" className="py-24 bg-[#fafafa]">
         <div className="px-5 max-w-7xl mx-auto">
         <div className="mb-12">
-          <h2 className="text-4xl md:text-5xl font-serif text-[#0d3b26]">Impact in Action</h2>
+          <h2 className="text-4xl md:text-5xl font-serif text-brand">Impact in Action</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {impactPhotos.length > 0 ? (
@@ -352,7 +368,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
                 transition={{ delay: i * 0.1 }}
                 className="relative rounded-2xl overflow-hidden group bg-gray-200 aspect-[4/3]"
               >
-                <img src={photo.url} alt="Impact" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <img src={photo.url} alt="Volunteers at a Kindera event" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
                   <span className="text-white font-medium">Making a difference</span>
                 </div>
@@ -368,7 +384,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
                 transition={{ delay: i * 0.1 }}
                 className="relative rounded-2xl overflow-hidden group bg-gray-200 aspect-[4/3]"
               >
-                <img src={`/gallery/impact-${n}.jpg`} alt="Impact" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <Image src={`/gallery/impact-${n}.jpg`} alt="Volunteers at a Kindera event" fill sizes="(min-width: 1024px) 25vw, (min-width: 768px) 50vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
                   <span className="text-white font-medium">Making a difference</span>
                 </div>
@@ -385,7 +401,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
           <div className="max-w-7xl mx-auto px-5">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
               <div>
-                <h2 className="text-4xl md:text-5xl font-serif text-[#0d3b26] mb-4">Upcoming Events</h2>
+                <h2 className="text-4xl md:text-5xl font-serif text-brand mb-4">Upcoming Events</h2>
                 <p className="text-gray-500 max-w-xl">Join our upcoming volunteer initiatives and be part of the change.</p>
               </div>
             </div>
@@ -407,11 +423,11 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
                   >
                     <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                       {ev.imageUrl ? (
-                        <img src={ev.imageUrl} alt={ev.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                        <img src={ev.imageUrl} alt={ev.title} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 motion-reduce:group-hover:scale-100" />
                       ) : (
                         <div className="w-full h-full bg-emerald-900/10 flex items-center justify-center text-emerald-800 font-serif text-2xl">Kindera</div>
                       )}
-                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-4 py-1.5 rounded-full text-xs font-bold text-[#0d3b26] uppercase tracking-wide">
+                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-4 py-1.5 rounded-full text-xs font-bold text-brand uppercase tracking-wide">
                         {ev.location}
                       </div>
                     </div>
@@ -421,7 +437,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
                       </p>
                       <h3 className="text-2xl font-bold text-gray-900 mb-3 line-clamp-2">{ev.title}</h3>
                       <p className="text-gray-500 mb-8 line-clamp-3 leading-relaxed">{ev.description}</p>
-                      <Link href={`/events/${ev._id}/register`} className="inline-flex items-center text-[#0d3b26] font-semibold hover:text-emerald-600 transition-colors">
+                      <Link href={`/events/${ev._id}/register`} className="inline-flex items-center text-brand font-semibold hover:text-emerald-600 transition-colors">
                         Register 
                         <span className="ml-2 transform group-hover:translate-x-1 transition-transform">→</span>
                       </Link>
@@ -435,7 +451,7 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
       )}
 
       {/* Footer */}
-      <section className="bg-[#0d3b26] text-white pt-16 pb-12 relative overflow-hidden">
+      <section className="bg-brand text-white pt-16 pb-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
 
         {/* Footer Links */}
@@ -478,5 +494,6 @@ export default function HomePageClient({ upcomingEvents, impactPhotos = [], stat
       
       <div className="grain" />
     </div>
+    </MotionConfig>
   );
 }

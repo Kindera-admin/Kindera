@@ -63,7 +63,7 @@ export default function SubmitForm({ user }) {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Submit Monthly Report</CardTitle>
+        <CardTitle as="h1">Submit Monthly Report</CardTitle>
         <CardDescription>
           Report your NGO&apos;s impact metrics for the month
         </CardDescription>

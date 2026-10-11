@@ -98,7 +98,7 @@ export default async function DashboardPage({ searchParams }) {
     <div className="w-full max-w-4xl mx-auto">
       {/* Welcome Header */}
       <div className="mb-8">
-        <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">
+        <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">
           {ROLE_LABELS[user.role] || user.role}
         </p>
         <h1 className="text-3xl font-bold text-gray-900">
@@ -114,7 +114,7 @@ export default async function DashboardPage({ searchParams }) {
         <div className="mb-10">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <CalendarDays className="w-5 h-5 text-[#2e7d52]" />
+              <CalendarDays className="w-5 h-5 text-brand-accent" />
               Upcoming Events
             </h2>
             <HomeButtons route="/events" label="View All" />
@@ -126,7 +126,7 @@ export default async function DashboardPage({ searchParams }) {
                 className="border border-gray-100 rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition-shadow flex gap-4"
               >
                 {/* Color bar */}
-                <div className="w-1 rounded-full bg-[#2e7d52] flex-shrink-0" />
+                <div className="w-1 rounded-full bg-brand-accent flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 truncate">{event.title}</h3>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
@@ -153,8 +153,8 @@ export default async function DashboardPage({ searchParams }) {
                     href={event.registrationLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-shrink-0 self-center text-xs font-semibold text-[#0d3b26] 
-                               hover:text-[#2e7d52] flex items-center gap-1 transition-colors"
+                    className="flex-shrink-0 self-center text-xs font-semibold text-brand 
+                               hover:text-brand-accent flex items-center gap-1 transition-colors"
                   >
                     Register
                     <ArrowRight className="w-3 h-3" />
@@ -168,7 +168,7 @@ export default async function DashboardPage({ searchParams }) {
 
       {/* Action Cards */}
       <div className="mb-4">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-4">
           Quick Actions
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">

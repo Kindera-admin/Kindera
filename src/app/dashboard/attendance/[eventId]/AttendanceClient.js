@@ -90,7 +90,7 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
           <ChevronLeft className="w-5 h-5 text-gray-500" />
         </Link>
         <div className="flex-1">
-          <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">Mark Attendance</p>
+          <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">Mark Attendance</p>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">{event.title}</h1>
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
             <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {new Date(event.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</span>
@@ -100,7 +100,7 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
         <Button
           onClick={handleSave}
           disabled={isPending || loadingMembers}
-          className="bg-[#0d3b26] hover:bg-[#1a5c3a] text-white gap-2 shadow-md hidden sm:flex"
+          className="bg-brand hover:bg-brand-strong text-white gap-2 shadow-md hidden sm:flex"
         >
           {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save Attendance
@@ -110,7 +110,7 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
       <div className="grid grid-cols-2 gap-4 mb-8 max-w-sm">
         <div className="bg-green-50 border border-green-100 rounded-xl p-4">
           <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-1">Attended</p>
-          <p className="text-3xl font-bold text-[#0d3b26]">{attendedCount} <span className="text-lg text-green-600 font-medium">/ {records.length}</span></p>
+          <p className="text-3xl font-bold text-brand">{attendedCount} <span className="text-lg text-green-600 font-medium">/ {records.length}</span></p>
         </div>
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
           <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">Total Hours</p>
@@ -122,26 +122,26 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
       <div className="border border-gray-100 rounded-2xl bg-white shadow-sm overflow-hidden mb-20 sm:mb-0">
         <div className="p-4 border-b border-gray-100">
           <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input
               type="text"
               placeholder="Search team members..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#0d3b26]"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
             />
           </div>
         </div>
 
         {loadingMembers ? (
           <div className="py-16 text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-[#2e7d52] mx-auto mb-3" />
+            <Loader2 className="w-8 h-8 animate-spin text-brand-accent mx-auto mb-3" />
             <p className="text-gray-500 text-sm">Loading team members...</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center">
             <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">No members to show.</p>
+            <p className="text-gray-500 text-sm">No members to show.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -162,8 +162,11 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
                     <td className="px-6 py-4">
                       <button
                         onClick={() => handleToggleAttendance(r.userId)}
-                        className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
-                          r.attended ? 'bg-[#0d3b26] text-white' : 'bg-gray-100 border border-gray-300 hover:border-gray-400'
+                        role="checkbox"
+                        aria-checked={!!r.attended}
+                        aria-label={`Mark ${r.name} as attended`}
+                        className={`hit-target w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                          r.attended ? 'bg-brand text-white' : 'bg-gray-100 border border-gray-300 hover:border-gray-400'
                         }`}
                       >
                         {r.attended && <Check className="w-4 h-4" />}
@@ -175,7 +178,7 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
                     </td>
                     <td className="px-6 py-4 text-right">
                       {r.attended ? (
-                        <span className="font-semibold text-[#0d3b26]">{r.hoursContributed}h</span>
+                        <span className="font-semibold text-brand">{r.hoursContributed}h</span>
                       ) : (
                         <span className="text-gray-300 text-sm">-</span>
                       )}
@@ -193,7 +196,7 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
         <Button
           onClick={handleSave}
           disabled={isPending || loadingMembers}
-          className="w-full bg-[#0d3b26] hover:bg-[#1a5c3a] text-white gap-2 shadow-lg h-12 text-base"
+          className="w-full bg-brand hover:bg-brand-strong text-white gap-2 shadow-lg h-12 text-base"
         >
           {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
           Save Attendance

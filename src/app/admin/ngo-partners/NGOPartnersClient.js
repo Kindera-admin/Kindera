@@ -153,7 +153,7 @@ export default function NGOPartnersClient({ initialPartners }) {
               <Input id="registeredOffice" placeholder="City" value={form.registeredOffice} onChange={(e) => setForm((f) => ({ ...f, registeredOffice: e.target.value }))} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="location">Location <span className="text-gray-400 text-xs">(if no registered office)</span></Label>
+              <Label htmlFor="location">Location <span className="text-gray-500 text-xs">(if no registered office)</span></Label>
               <Input id="location" placeholder="City / Pan India / Various Locations" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} />
             </div>
             <div className="space-y-1">
@@ -177,11 +177,11 @@ export default function NGOPartnersClient({ initialPartners }) {
             <Input id="focusAreas" placeholder="Education, Healthcare, Environment..." value={form.focusAreas} onChange={(e) => setForm((f) => ({ ...f, focusAreas: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="logo">Logo / Picture <span className="text-gray-400 text-xs">(optional{editingId ? ', leave empty to keep current' : ''})</span></Label>
+            <Label htmlFor="logo">Logo / Picture <span className="text-gray-500 text-xs">(optional{editingId ? ', leave empty to keep current' : ''})</span></Label>
             <Input id="logo" type="file" accept="image/*" onChange={(e) => setPhotoFile(e.target.files[0])} className="file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100" />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="programs">Programs <span className="text-gray-400 text-xs">(one per line)</span></Label>
+            <Label htmlFor="programs">Programs <span className="text-gray-500 text-xs">(one per line)</span></Label>
             <textarea
               id="programs"
               className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[80px] resize-y bg-white"
@@ -210,7 +210,7 @@ export default function NGOPartnersClient({ initialPartners }) {
       {/* Partners List */}
       <div className="flex items-center gap-2 mb-4">
         <div className="relative w-full max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <Input 
             placeholder="Search partners by name..." 
             value={searchTerm} 
@@ -221,7 +221,7 @@ export default function NGOPartnersClient({ initialPartners }) {
       </div>
 
       {filteredPartners.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-gray-500">
           <Building2 className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="text-sm">{partners.length === 0 ? 'No NGO partners yet. Add one above.' : 'No partners found matching search.'}</p>
         </div>
@@ -231,7 +231,7 @@ export default function NGOPartnersClient({ initialPartners }) {
             <div key={partner._id} className="border rounded-xl p-5 bg-white flex justify-between items-start gap-4">
               {partner.logoUrl && (
                 <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center">
-                  <img src={partner.logoUrl} alt={`${partner.name} logo`} className="w-full h-full object-contain" />
+                  <img src={partner.logoUrl} loading="lazy" decoding="async" alt={`${partner.name} logo`} className="w-full h-full object-contain" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
@@ -257,6 +257,7 @@ export default function NGOPartnersClient({ initialPartners }) {
                   size="icon"
                   className="text-gray-500 hover:text-blue-700 hover:bg-blue-50"
                   onClick={() => handleEditClick(partner)}
+                  aria-label={`Edit ${partner.name}`}
                   disabled={deletingId === partner._id}
                 >
                   <Edit2 className="w-4 h-4" />
@@ -266,6 +267,7 @@ export default function NGOPartnersClient({ initialPartners }) {
                   size="icon"
                   className="text-red-500 hover:text-red-700 hover:bg-red-50"
                   onClick={() => setConfirmDeleteId(partner._id)}
+                  aria-label={`Delete ${partner.name}`}
                   disabled={deletingId === partner._id}
                 >
                   <Trash2 className="w-4 h-4" />

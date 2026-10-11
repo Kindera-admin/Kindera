@@ -123,7 +123,7 @@ export default function Login() {
       <div className="w-full max-w-md mb-4">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-[#0d3b26] transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-brand transition-colors"
         >
           <Home className="w-4 h-4" />
           Back to Home
@@ -131,7 +131,7 @@ export default function Login() {
       </div>
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center pb-2 pt-6">
-          <CardTitle className="text-xl sm:text-2xl">Kindera</CardTitle>
+          <CardTitle as="h1" className="text-xl sm:text-2xl">Kindera</CardTitle>
           <CardDescription>Log in to access the system</CardDescription>
         </CardHeader>
         <Suspense fallback={<div className="p-6 text-center">Loading form...</div>}>

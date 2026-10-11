@@ -5,6 +5,7 @@ import { Award, CalendarDays, CheckCircle2, ChevronDown, ChevronUp, Clock, Loade
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { logMyHoursAndFeedback } from '@/app/actions';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 function StarRating({ value, onChange }) {
   const [hover, setHover] = useState(null);
@@ -15,6 +16,8 @@ function StarRating({ value, onChange }) {
           key={s}
           type="button"
           onClick={() => onChange(s)}
+          aria-label={`Rate ${s} out of 5`}
+          aria-pressed={value === s}
           onMouseEnter={() => setHover(s)}
           onMouseLeave={() => setHover(null)}
           className="transition-transform hover:scale-110"
@@ -64,7 +67,7 @@ function EventCard({ event, userName, onShowCertificate }) {
       <div className="flex items-start gap-4 p-5">
         {/* Date badge */}
         <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center text-center ${event.isPast ? 'bg-gray-100' : 'bg-emerald-50'}`}>
-          <span className={`text-[10px] font-semibold uppercase tracking-wide ${event.isPast ? 'text-gray-400' : 'text-emerald-600'}`}>
+          <span className={`text-xs font-semibold uppercase tracking-wide ${event.isPast ? 'text-gray-500' : 'text-emerald-600'}`}>
             {new Date(event.date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' })}
           </span>
           <span className={`text-lg font-bold leading-none ${event.isPast ? 'text-gray-600' : 'text-emerald-700'}`}>
@@ -101,11 +104,11 @@ function EventCard({ event, userName, onShowCertificate }) {
           </div>
 
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
-            <p className="text-xs text-gray-400 flex items-center gap-1">
+            <p className="text-xs text-gray-500 flex items-center gap-1">
               <CalendarDays className="w-3 h-3" /> {dateStr}
             </p>
             {event.location && (
-              <p className="text-xs text-gray-400 flex items-center gap-1">
+              <p className="text-xs text-gray-500 flex items-center gap-1">
                 <MapPin className="w-3 h-3" /> {event.location}
               </p>
             )}
@@ -115,7 +118,7 @@ function EventCard({ event, userName, onShowCertificate }) {
           <div className="flex items-center justify-between gap-4 mt-2">
             <div className="flex gap-4">
               {saved && event.myHours > 0 && (
-                <span className="text-xs text-[#0d3b26] font-semibold flex items-center gap-1">
+                <span className="text-xs text-brand font-semibold flex items-center gap-1">
                   <Clock className="w-3 h-3" /> {hours || event.myHours}h logged
                 </span>
               )}
@@ -141,7 +144,7 @@ function EventCard({ event, userName, onShowCertificate }) {
         {event.isPast && (
           <button
             onClick={() => setExpanded(!expanded)}
-            className="flex-shrink-0 text-xs font-semibold text-[#0d3b26] hover:text-emerald-600 flex items-center gap-1 transition-colors"
+            className="flex-shrink-0 text-xs font-semibold text-brand hover:text-emerald-600 flex items-center gap-1 transition-colors"
           >
             {saved ? 'Edit' : 'Log Hours'}
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -175,7 +178,7 @@ function EventCard({ event, userName, onShowCertificate }) {
           <button
             onClick={handleSave}
             disabled={isPending}
-            className="mt-4 px-5 py-2 bg-[#0d3b26] text-white text-sm font-semibold rounded-lg hover:bg-[#1a5c3a] transition-colors disabled:opacity-60 flex items-center gap-2"
+            className="mt-4 px-5 py-2 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-strong transition-colors disabled:opacity-60 flex items-center gap-2"
           >
             {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
             Save
@@ -193,6 +196,7 @@ export default function MyImpactClient({ events, stats }) {
   const upcomingEvents = events.filter(e => !e.isPast);
   const attendedEvents = events.filter(e => e.attended);
   const [activeCertificate, setActiveCertificate] = useState(null);
+  const certificateRef = useDialogA11y(!!activeCertificate, () => setActiveCertificate(null));
 
   const handleShowCertificate = (event) => {
     setActiveCertificate({ event, userName: stats.name || 'Volunteer' });
@@ -206,7 +210,7 @@ export default function MyImpactClient({ events, stats }) {
   let prevBadgeHours = 0;
   let badgeProgress = 0;
   let badgeDescription = 'Thank you for starting your volunteering journey with Kindera!';
-  let badgeColor = 'from-amber-600 to-amber-700 text-amber-50';
+  let badgeColor = 'from-amber-700 to-amber-800 text-white';
 
   if (totalHours >= 30) {
     currentBadge = 'Impact Legend';
@@ -215,7 +219,7 @@ export default function MyImpactClient({ events, stats }) {
     prevBadgeHours = 30;
     badgeProgress = 100;
     badgeDescription = 'You are a legendary volunteer! Your commitment is inspiring.';
-    badgeColor = 'from-purple-600 to-indigo-700 text-indigo-50';
+    badgeColor = 'from-brand to-brand-accent text-white';
   } else if (totalHours >= 15) {
     currentBadge = 'Gold Champion';
     nextBadge = 'Impact Legend';
@@ -223,7 +227,7 @@ export default function MyImpactClient({ events, stats }) {
     prevBadgeHours = 15;
     badgeProgress = ((totalHours - 15) / 15) * 100;
     badgeDescription = 'Outstanding contributions! Keep up the excellent volunteering work.';
-    badgeColor = 'from-yellow-500 to-amber-600 text-yellow-50';
+    badgeColor = 'from-amber-400 to-amber-500 text-amber-950';
   } else if (totalHours >= 5) {
     currentBadge = 'Silver Hero';
     nextBadge = 'Gold Champion';
@@ -231,7 +235,7 @@ export default function MyImpactClient({ events, stats }) {
     prevBadgeHours = 5;
     badgeProgress = ((totalHours - 5) / 10) * 100;
     badgeDescription = 'Great progress! You are officially a certified Silver Hero.';
-    badgeColor = 'from-slate-400 to-slate-500 text-slate-50';
+    badgeColor = 'from-slate-500 to-slate-600 text-white';
   } else {
     // 0 to 5 hours
     badgeProgress = (totalHours / 5) * 100;
@@ -242,7 +246,7 @@ export default function MyImpactClient({ events, stats }) {
       <div className="print:hidden">
         {/* Header */}
       <div className="mb-8">
-        <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">My Dashboard</p>
+        <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">My Dashboard</p>
         <h1 className="text-3xl font-bold text-gray-900 mb-1">My Volunteer Impact</h1>
         <p className="text-gray-500 text-sm">
           {stats.organizationName && <span className="font-medium text-gray-700">{stats.organizationName} · </span>}
@@ -253,13 +257,13 @@ export default function MyImpactClient({ events, stats }) {
       {/* Personal KPI Cards */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="border border-gray-100 rounded-xl p-4 bg-white shadow-sm text-center">
-          <Clock className="w-5 h-5 text-[#0d3b26] mx-auto mb-1.5" />
-          <p className="text-2xl font-bold text-[#0d3b26]">{stats.totalHours || 0}</p>
+          <Clock className="w-5 h-5 text-brand mx-auto mb-1.5" />
+          <p className="text-2xl font-bold text-brand">{stats.totalHours || 0}</p>
           <p className="text-xs text-gray-500 mt-0.5">Hours Logged</p>
         </div>
         <div className="border border-gray-100 rounded-xl p-4 bg-white shadow-sm text-center">
-          <CalendarDays className="w-5 h-5 text-[#1a5c3a] mx-auto mb-1.5" />
-          <p className="text-2xl font-bold text-[#1a5c3a]">{stats.eventsAttended || 0}</p>
+          <CalendarDays className="w-5 h-5 text-brand-strong mx-auto mb-1.5" />
+          <p className="text-2xl font-bold text-brand-strong">{stats.eventsAttended || 0}</p>
           <p className="text-xs text-gray-500 mt-0.5">Events Attended</p>
         </div>
         <div className="border border-gray-100 rounded-xl p-4 bg-white shadow-sm text-center">
@@ -276,16 +280,16 @@ export default function MyImpactClient({ events, stats }) {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold text-gray-800 uppercase tracking-widest leading-none">Achievement Level</h3>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r ${badgeColor} shrink-0`}>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-gradient-to-r ${badgeColor} shrink-0`}>
                 {currentBadge}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mb-6">{badgeDescription}</p>
+            <p className="text-xs text-gray-500 mb-6">{badgeDescription}</p>
           </div>
           
           {nextBadge !== 'Max Level' ? (
             <div>
-              <div className="flex justify-between items-center text-[10px] font-semibold text-gray-500 mb-2 leading-none">
+              <div className="flex justify-between items-center text-xs font-semibold text-gray-500 mb-2 leading-none">
                 <span>{totalHours} hrs logged</span>
                 <span>{badgeHoursNeeded - totalHours} hrs left for {nextBadge}</span>
               </div>
@@ -297,7 +301,7 @@ export default function MyImpactClient({ events, stats }) {
               </div>
             </div>
           ) : (
-            <div className="text-center py-3 bg-purple-50 rounded-xl border border-purple-100 text-[10px] font-semibold text-purple-700">
+            <div className="text-center py-3 bg-brand-tint rounded-xl border border-brand/10 text-xs font-semibold text-brand">
               🎉 Congratulations! You have unlocked the highest volunteer badge level!
             </div>
           )}
@@ -307,7 +311,7 @@ export default function MyImpactClient({ events, stats }) {
       {/* Upcoming Events */}
       {upcomingEvents.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-3">Upcoming Events</h2>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-3">Upcoming Events</h2>
           <div className="space-y-3">
             {upcomingEvents.map(ev => <EventCard key={ev._id} event={ev} userName={stats.name} onShowCertificate={handleShowCertificate} />)}
           </div>
@@ -317,12 +321,12 @@ export default function MyImpactClient({ events, stats }) {
       {/* My Participation Panel */}
       <div className="mb-8 border border-gray-100 rounded-2xl p-6 bg-white shadow-sm">
         <h2 className="text-sm font-bold text-gray-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-          <Activity className="w-4 h-4 text-[#0d3b26]" />
+          <Activity className="w-4 h-4 text-brand" />
           My Participation History
         </h2>
         
         {attendedEvents.length === 0 ? (
-          <div className="py-8 text-center text-gray-400 text-sm">
+          <div className="py-8 text-center text-gray-500 text-sm">
             You haven&apos;t participated in any events yet. Once marked as attended, your history will populate here!
           </div>
         ) : (
@@ -332,17 +336,17 @@ export default function MyImpactClient({ events, stats }) {
                 <div>
                   <h3 className="font-semibold text-gray-900 text-sm mb-1">{ev.title}</h3>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] text-gray-400 font-medium">
+                    <span className="text-xs text-gray-500 font-medium">
                       {new Date(ev.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
-                    <span className="text-gray-300 text-[10px]">•</span>
+                    <span className="text-gray-300 text-xs">•</span>
                     {ev.organizationName ? (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1">
                         <Building2 className="w-2.5 h-2.5" />
                         Internal Event ({ev.organizationName})
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 flex items-center gap-1">
                         <Globe className="w-2.5 h-2.5" />
                         Global Event
                       </span>
@@ -352,7 +356,7 @@ export default function MyImpactClient({ events, stats }) {
 
                 <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
                   <span className="text-xs font-semibold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-[#0d3b26]" />
+                    <Clock className="w-3.5 h-3.5 text-brand" />
                     {ev.myHours || ev.durationHours} hrs logged
                   </span>
                   
@@ -371,11 +375,11 @@ export default function MyImpactClient({ events, stats }) {
 
       {/* Past Events */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-3">Past Events — Log Your Hours</h2>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-3">Past Events — Log Your Hours</h2>
         {pastEvents.length === 0 ? (
           <div className="border border-dashed border-gray-200 rounded-xl py-12 text-center">
             <Award className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-400 text-sm">No past events yet. Check back after events are completed!</p>
+            <p className="text-gray-500 text-sm">No past events yet. Check back after events are completed!</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -387,9 +391,15 @@ export default function MyImpactClient({ events, stats }) {
 
       {/* Certificate Modal */}
       {activeCertificate && (
-        <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4 print:p-0 print:fixed print:inset-0 print:bg-white overflow-y-auto print:overflow-hidden">
+        <div
+          ref={certificateRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Certificate of appreciation"
+          className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-4 print:p-0 print:fixed print:inset-0 print:bg-white overflow-y-auto print:overflow-hidden outline-none"
+        >
           <style dangerouslySetInnerHTML={{ __html: `
-            @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
             @media print {
               @page { size: A4 landscape; margin: 0; }
               body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; overflow: hidden !important; }
@@ -446,7 +456,7 @@ export default function MyImpactClient({ events, stats }) {
               {/* Volunteer Name */}
               <h2 
                 className="text-5xl md:text-6xl text-[#0A1A3B] mb-2 px-12 pb-2 inline-block border-b border-gray-300"
-                style={{ fontFamily: "'Great Vibes', cursive" }}
+                style={{ fontFamily: 'var(--font-great-vibes), cursive' }}
               >
                 {activeCertificate.userName}
               </h2>
@@ -495,9 +505,9 @@ export default function MyImpactClient({ events, stats }) {
               <div className="flex justify-between items-end px-4">
                 {/* Signature */}
                 <div className="text-left w-48">
-                  <p className="font-['Great_Vibes'] text-2xl text-[#0A1A3B] border-b border-gray-300 pb-1 mb-1" style={{ fontFamily: "'Great Vibes', cursive" }}>Kindera Team</p>
-                  <p className="text-[10px] font-bold text-[#0A1A3B]">Kindera Team</p>
-                  <p className="text-[10px] text-gray-500">On behalf of Kindera</p>
+                  <p className="font-script text-2xl text-[#0A1A3B] border-b border-gray-300 pb-1 mb-1" style={{ fontFamily: 'var(--font-great-vibes), cursive' }}>Kindera Team</p>
+                  <p className="text-xs font-bold text-[#0A1A3B]">Kindera Team</p>
+                  <p className="text-xs text-gray-500">On behalf of Kindera</p>
                 </div>
                 
                 {/* Powered By */}

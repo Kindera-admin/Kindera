@@ -10,7 +10,7 @@ export default function AttendanceIndexClient({ events }) {
     <div className="w-full max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">Dashboard</p>
+        <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">Dashboard</p>
         <h1 className="text-3xl font-bold text-gray-900 mb-1">Mark Attendance</h1>
         <p className="text-gray-500 text-sm">Select an event to mark attendance for your team members.</p>
       </div>
@@ -18,7 +18,7 @@ export default function AttendanceIndexClient({ events }) {
       {events.length === 0 ? (
         <div className="border border-gray-100 rounded-2xl bg-white shadow-sm p-16 text-center">
           <ClipboardCheck className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-400 text-sm">No events found. Create an event first.</p>
+          <p className="text-gray-500 text-sm">No events found. Create an event first.</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -68,7 +68,7 @@ export default function AttendanceIndexClient({ events }) {
                  event.lifecycle === 'ended' ? 'Ended' : 'Upcoming'}
               </span>
 
-              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#0d3b26] transition-colors flex-shrink-0" />
+              <ChevronRight className="w-4 h-4 text-gray-500 group-hover:text-brand transition-colors flex-shrink-0" />
             </button>
           ))}
         </div>

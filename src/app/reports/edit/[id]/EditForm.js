@@ -13,7 +13,7 @@ export default function EditForm({ report, user }) {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>View Report</CardTitle>
+        <CardTitle as="h1">View Report</CardTitle>
         <CardDescription>
           Report details for {report.month}
         </CardDescription>

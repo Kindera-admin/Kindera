@@ -11,7 +11,7 @@ const cards = [
     icon: CalendarDays,
     href: '/admin/events',
     accent: '#0d3b26',
-    gradient: 'from-[#0d3b26] to-[#1a5c3a]',
+    gradient: 'from-brand to-brand-strong',
     lightBg: '#f0f7f3',
   },
   {
@@ -38,7 +38,7 @@ const cards = [
     icon: Building2,
     href: '/admin/corporate',
     accent: '#1a5c3a',
-    gradient: 'from-[#1a5c3a] to-[#2e7d52]',
+    gradient: 'from-brand-strong to-brand-accent',
     lightBg: '#f0f7f3',
   },
   {
@@ -47,7 +47,7 @@ const cards = [
     icon: FileText,
     href: '/admin/ngo-documents',
     accent: '#2e7d52',
-    gradient: 'from-[#2e7d52] to-[#3a9e68]',
+    gradient: 'from-brand-accent to-[#3a9e68]',
     lightBg: '#f0f7f3',
   },
   {
@@ -101,7 +101,7 @@ const cards = [
     icon: Users,
     href: '/admin/directory',
     accent: '#0d3b26',
-    gradient: 'from-[#0d3b26] to-[#1a5c3a]',
+    gradient: 'from-brand to-brand-strong',
     lightBg: '#f0f7f3',
   },
 ];
@@ -126,7 +126,7 @@ export default function DashboardClient({ userRole }) {
     <div className="w-full max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-10">
-        <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">
+        <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">
           Control Centre
         </p>
         <h1 className="text-3xl font-bold text-gray-900 mb-1">
@@ -150,7 +150,7 @@ export default function DashboardClient({ userRole }) {
               disabled={isPending}
               className="group relative text-left border border-gray-100 rounded-2xl p-6 bg-white shadow-sm
                          hover:shadow-xl hover:-translate-y-1 transition-all duration-200
-                         focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0d3b26]
+                         focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand
                          disabled:cursor-not-allowed overflow-hidden"
             >
               {/* Top accent bar */}

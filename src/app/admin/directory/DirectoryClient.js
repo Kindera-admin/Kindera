@@ -5,6 +5,7 @@ import { Download, Search, Building2, User, Mail, Phone, CalendarDays, Clock, Fi
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { exportDetailedAttendanceData } from '@/app/actions';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 export default function DirectoryClient({ spocs, ngos }) {
   const [activeTab, setActiveTab] = useState('spocs');
@@ -13,6 +14,7 @@ export default function DirectoryClient({ spocs, ngos }) {
   const [expandedRows, setExpandedRows] = useState({});
 
   const [showExportModal, setShowExportModal] = useState(false);
+  const exportPanelRef = useDialogA11y(showExportModal, () => setShowExportModal(false));
   const [exportTarget, setExportTarget] = useState(null);
   const [exportYear, setExportYear] = useState(new Date().getFullYear().toString());
   const [exportQuarter, setExportQuarter] = useState('All Year');
@@ -148,7 +150,7 @@ export default function DirectoryClient({ spocs, ngos }) {
     <div className="pb-16 font-sans text-gray-900">
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">Admin</p>
+          <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">Admin</p>
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Detailed Directory & Reports</h1>
           <p className="text-gray-500 text-sm">Comprehensive listing of all Corporate SPOCs and NGO Partners.</p>
         </div>
@@ -161,7 +163,7 @@ export default function DirectoryClient({ spocs, ngos }) {
             {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
             Master Attendance CSV
           </Button>
-          <Button onClick={handleExportCSV} className="bg-[#0d3b26] hover:bg-[#1a5c3a] text-white flex items-center gap-2">
+          <Button onClick={handleExportCSV} className="bg-brand hover:bg-brand-strong text-white flex items-center gap-2">
             <Download className="w-4 h-4" />
             Export Current Tab
           </Button>
@@ -174,7 +176,7 @@ export default function DirectoryClient({ spocs, ngos }) {
           onClick={() => setActiveTab('spocs')}
           className={`px-6 py-3 font-semibold text-sm border-b-2 transition-colors ${
             activeTab === 'spocs' 
-              ? 'border-[#0d3b26] text-[#0d3b26]' 
+              ? 'border-brand text-brand' 
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -184,7 +186,7 @@ export default function DirectoryClient({ spocs, ngos }) {
           onClick={() => setActiveTab('ngos')}
           className={`px-6 py-3 font-semibold text-sm border-b-2 transition-colors ${
             activeTab === 'ngos' 
-              ? 'border-[#0d3b26] text-[#0d3b26]' 
+              ? 'border-brand text-brand' 
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
@@ -195,7 +197,7 @@ export default function DirectoryClient({ spocs, ngos }) {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100">
           <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <Input 
               placeholder={`Search ${activeTab === 'spocs' ? 'SPOCs or organizations' : 'NGOs or IDs'}...`}
               value={searchTerm}
@@ -207,7 +209,7 @@ export default function DirectoryClient({ spocs, ngos }) {
         
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 text-gray-500 font-semibold uppercase tracking-wider text-[11px]">
+            <thead className="bg-gray-50/50 text-gray-500 font-semibold uppercase tracking-wider text-xs">
               {activeTab === 'spocs' ? (
                 <tr>
                   <th className="px-4 py-4 rounded-tl-lg w-10"></th>
@@ -237,21 +239,23 @@ export default function DirectoryClient({ spocs, ngos }) {
                     <td className="px-4 py-4">
                       <button 
                         onClick={() => toggleRow(spoc._id)}
-                        className="p-1 rounded hover:bg-gray-200 text-gray-500 transition-colors"
+                        aria-expanded={!!expandedRows[spoc._id]}
+                        aria-label={`${expandedRows[spoc._id] ? 'Hide' : 'Show'} details for ${spoc.name}`}
+                        className="hit-target p-1 rounded hover:bg-gray-200 text-gray-500 transition-colors"
                       >
                         {expandedRows[spoc._id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#0d3b26] flex items-center justify-center text-white font-bold text-xs">
+                        <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-white font-bold text-xs">
                           {(spoc.organizationName || 'C').charAt(0).toUpperCase()}
                         </div>
                         <span className="font-semibold text-gray-900">{spoc.organizationName || '-'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="font-medium text-gray-900 flex items-center gap-1"><User className="w-3 h-3 text-gray-400"/> {spoc.name}</p>
+                      <p className="font-medium text-gray-900 flex items-center gap-1"><User className="w-3 h-3 text-gray-500"/> {spoc.name}</p>
                       <p className="text-gray-500 text-xs flex items-center gap-1 mt-1"><Mail className="w-3 h-3"/> {spoc.email}</p>
                       {spoc.mobile && spoc.mobile !== '-' && (
                         <p className="text-gray-500 text-xs flex items-center gap-1 mt-1"><Phone className="w-3 h-3"/> {spoc.mobile}</p>
@@ -273,7 +277,7 @@ export default function DirectoryClient({ spocs, ngos }) {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                      <span className={`inline-flex px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${
                         spoc.status === 'approved' ? 'bg-green-100 text-green-700' :
                         spoc.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
                       }`}>
@@ -305,7 +309,7 @@ export default function DirectoryClient({ spocs, ngos }) {
                                   </span>
                                 ))
                               ) : (
-                                <span className="text-gray-400 text-xs italic">No members found</span>
+                                <span className="text-gray-500 text-xs italic">No members found</span>
                               )}
                             </div>
                           </div>
@@ -319,7 +323,7 @@ export default function DirectoryClient({ spocs, ngos }) {
                                   </span>
                                 ))
                               ) : (
-                                <span className="text-gray-400 text-xs italic">No events attended yet</span>
+                                <span className="text-gray-500 text-xs italic">No events attended yet</span>
                               )}
                             </div>
                           </div>
@@ -336,7 +340,9 @@ export default function DirectoryClient({ spocs, ngos }) {
                     <td className="px-4 py-4">
                       <button 
                         onClick={() => toggleRow(ngo._id)}
-                        className="p-1 rounded hover:bg-gray-200 text-gray-500 transition-colors"
+                        aria-expanded={!!expandedRows[ngo._id]}
+                        aria-label={`${expandedRows[ngo._id] ? 'Hide' : 'Show'} details for ${ngo.name}`}
+                        className="hit-target p-1 rounded hover:bg-gray-200 text-gray-500 transition-colors"
                       >
                         {expandedRows[ngo._id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
@@ -350,9 +356,9 @@ export default function DirectoryClient({ spocs, ngos }) {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-gray-900 text-sm flex items-center gap-1 mb-1"><Mail className="w-3 h-3 text-gray-400"/> {ngo.email}</p>
+                      <p className="text-gray-900 text-sm flex items-center gap-1 mb-1"><Mail className="w-3 h-3 text-gray-500"/> {ngo.email}</p>
                       {ngo.mobile && ngo.mobile !== '-' && (
-                        <p className="text-gray-500 text-xs flex items-center gap-1"><Phone className="w-3 h-3 text-gray-400"/> {ngo.mobile}</p>
+                        <p className="text-gray-500 text-xs flex items-center gap-1"><Phone className="w-3 h-3 text-gray-500"/> {ngo.mobile}</p>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -366,7 +372,7 @@ export default function DirectoryClient({ spocs, ngos }) {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                      <span className={`inline-flex px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${
                         ngo.status === 'approved' ? 'bg-green-100 text-green-700' :
                         ngo.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
                       }`}>
@@ -388,7 +394,7 @@ export default function DirectoryClient({ spocs, ngos }) {
                                 </span>
                               ))
                             ) : (
-                              <span className="text-gray-400 text-xs italic">No events created yet</span>
+                              <span className="text-gray-500 text-xs italic">No events created yet</span>
                             )}
                           </div>
                         </div>
@@ -414,11 +420,19 @@ export default function DirectoryClient({ spocs, ngos }) {
       
       {/* Export Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setShowExportModal(false)}>
+          <div
+            ref={exportPanelRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="export-filters-title"
+            onClick={e => e.stopPropagation()}
+            className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl outline-none"
+          >
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-lg font-bold text-gray-900">Export Filters</h2>
-              <button onClick={() => setShowExportModal(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+              <h2 id="export-filters-title" className="text-lg font-bold text-gray-900">Export Filters</h2>
+              <button onClick={() => setShowExportModal(false)} aria-label="Close export filters" className="inline-flex items-center justify-center w-11 h-11 -mr-3 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100"><X className="w-5 h-5" aria-hidden="true" /></button>
             </div>
             <div className="p-6 space-y-4">
               <div>

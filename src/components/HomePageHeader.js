@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { logout } from '@/app/actions';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 export default function HomePageHeader() {
   const { user, clearAuth, isAuthenticated } = useAuthStore();
@@ -20,6 +21,7 @@ export default function HomePageHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const menuRef = useDialogA11y(menuOpen, () => setMenuOpen(false));
 
   useEffect(() => setMounted(true), []);
 
@@ -148,8 +150,11 @@ export default function HomePageHeader() {
 
           {/* Mobile Hamburger */}
           <button
-            className="md:hidden flex flex-col gap-[5px] bg-transparent border-none cursor-pointer p-2 z-50"
+            className="md:hidden flex flex-col items-center justify-center gap-[5px] w-11 h-11 -mr-2 bg-transparent border-none cursor-pointer z-50"
             onClick={() => setMenuOpen(!menuOpen)}
+            aria-expanded={menuOpen}
+            aria-controls="home-mobile-menu"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           >
             {[0, 1, 2].map((i) => (
               <span
@@ -174,11 +179,17 @@ export default function HomePageHeader() {
       <AnimatePresence>
         {menuOpen && (
           <motion.div
+            id="home-mobile-menu"
+            ref={menuRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-8 bg-white/95 backdrop-blur-xl"
+            className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-8 bg-white/95 backdrop-blur-xl outline-none"
           >
             {navLinks.map((link, i) => (
               <motion.a
@@ -227,7 +238,7 @@ export default function HomePageHeader() {
                 <Link
                   href="/login"
                   onClick={() => setMenuOpen(false)}
-                  className="mt-4 px-10 py-4 rounded-full text-lg font-semibold bg-[#0d3b26] text-white"
+                  className="mt-4 px-10 py-4 rounded-full text-lg font-semibold bg-brand text-white"
                 >
                   Login
                 </Link>

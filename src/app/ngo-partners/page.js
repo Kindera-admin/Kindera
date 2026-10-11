@@ -20,7 +20,7 @@ export default async function NGOPartnersPage() {
       </div>
 
       {partners.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">
+        <div className="text-center py-20 text-gray-500">
           <p className="text-lg">No NGO partners have been added yet.</p>
         </div>
       ) : (
@@ -30,7 +30,7 @@ export default async function NGOPartnersPage() {
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 flex flex-col md:flex-row items-center md:items-start gap-6 border-b">
                 {ngo.logoUrl && (
                   <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center p-2">
-                    <img src={ngo.logoUrl} alt={`${ngo.name} logo`} className="w-full h-full object-contain" />
+                    <img src={ngo.logoUrl} loading="lazy" decoding="async" alt={`${ngo.name} logo`} className="w-full h-full object-contain" />
                   </div>
                 )}
                 <div className="flex-1 text-center md:text-left">

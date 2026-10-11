@@ -6,6 +6,7 @@ import { Building2, Users, Clock, CalendarDays, ArrowRight, Plus, Loader2, X, St
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getOrgStats } from '@/app/actions';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 const STAT_ICONS = {
   members: Users,
@@ -21,6 +22,7 @@ export default function CorporateOverviewClient({ orgs }) {
   const [loadingStatsOrg, setLoadingStatsOrg] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedEvents, setExpandedEvents] = useState({});
+  const statsPanelRef = useDialogA11y(!!selectedOrgStats, () => setSelectedOrgStats(null));
 
   const toggleEventExpand = (id) => {
     setExpandedEvents(prev => ({ ...prev, [id]: !prev[id] }));
@@ -57,7 +59,7 @@ export default function CorporateOverviewClient({ orgs }) {
     <div>
       {/* Header */}
       <div className="mb-8">
-        <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">Admin</p>
+        <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">Admin</p>
         <h1 className="text-3xl font-bold text-gray-900 mb-1">Corporate Overview</h1>
         <p className="text-gray-500 text-sm">All registered corporate volunteer organisations and their KPIs.</p>
       </div>
@@ -83,7 +85,7 @@ export default function CorporateOverviewClient({ orgs }) {
           <h2 className="font-semibold text-gray-800">All Organisations</h2>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <Input 
                 placeholder="Search organisations..." 
                 value={searchTerm} 
@@ -94,7 +96,7 @@ export default function CorporateOverviewClient({ orgs }) {
             <Button
               size="sm"
               onClick={() => router.push('/dashboard/team/generate')}
-              className="gap-1.5 bg-[#0d3b26] hover:bg-[#1a5c3a] text-white shrink-0"
+              className="gap-1.5 bg-brand hover:bg-brand-strong text-white shrink-0"
             >
               <Plus className="w-4 h-4" />
               Generate Logins
@@ -105,10 +107,10 @@ export default function CorporateOverviewClient({ orgs }) {
         {filteredOrgs.length === 0 ? (
           <div className="py-16 text-center">
             <Building2 className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">{orgs.length === 0 ? 'No corporate organisations yet.' : 'No organisations found matching search.'}</p>
+            <p className="text-gray-500 text-sm">{orgs.length === 0 ? 'No corporate organisations yet.' : 'No organisations found matching search.'}</p>
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto"><table className="min-w-[720px] w-full">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
                 <th className="px-6 py-3 text-left">Organisation</th>
@@ -124,7 +126,7 @@ export default function CorporateOverviewClient({ orgs }) {
                 <tr key={org.spocId} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#0d3b26] flex items-center justify-center text-white text-xs font-bold">
+                      <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-white text-xs font-bold">
                         {org.organizationName.charAt(0).toUpperCase()}
                       </div>
                       <span className="font-medium text-gray-900 text-sm">{org.organizationName}</span>
@@ -132,7 +134,7 @@ export default function CorporateOverviewClient({ orgs }) {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{org.spocName}</td>
                   <td className="px-6 py-4 text-sm text-right font-semibold text-gray-800">{org.memberCount}</td>
-                  <td className="px-6 py-4 text-sm text-right font-semibold text-[#0d3b26]">{org.volunteerHours.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-right font-semibold text-brand">{org.volunteerHours.toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm text-right text-gray-600">{org.eventsAttended}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3.5">
@@ -148,7 +150,7 @@ export default function CorporateOverviewClient({ orgs }) {
                       </button>
                       <button
                         onClick={() => handleGenerate(org.organizationName)}
-                        className="text-xs font-semibold text-[#0d3b26] hover:text-[#2e7d52] transition-colors"
+                        className="text-xs font-semibold text-brand hover:text-brand-accent transition-colors"
                       >
                         + Logins
                       </button>
@@ -157,28 +159,37 @@ export default function CorporateOverviewClient({ orgs }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
 
       {/* Selected Org Stats Modal */}
       {selectedOrgStats && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-2xl w-full relative shadow-2xl overflow-y-auto max-h-[90vh] border border-gray-100">
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setSelectedOrgStats(null)}>
+          <div
+            ref={statsPanelRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="org-stats-title"
+            onClick={e => e.stopPropagation()}
+            className="bg-white rounded-3xl p-6 md:p-8 max-w-2xl w-full relative shadow-2xl overflow-y-auto max-h-[90vh] border border-gray-100 outline-none"
+          >
             <button 
               onClick={() => setSelectedOrgStats(null)}
-              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Close analytics"
+              className="absolute top-3 right-3 inline-flex items-center justify-center w-11 h-11 hover:bg-gray-100 rounded-full transition-colors"
             >
-              <X className="w-5 h-5 text-gray-400" />
+              <X className="w-5 h-5 text-gray-500" aria-hidden="true" />
             </button>
 
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-[#0d3b26] flex items-center justify-center text-white text-base font-bold shadow-md shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center text-white text-base font-bold shadow-md shrink-0">
                 {selectedOrgStats.orgName.charAt(0).toUpperCase()}
               </div>
               <div>
-                <span className="text-[10px] font-bold text-[#2e7d52] uppercase tracking-widest block leading-none mb-1">Corporate Partner Analytics</span>
-                <h2 className="text-xl font-bold text-gray-900 leading-none">{selectedOrgStats.orgName}</h2>
+                <span className="text-xs font-bold text-brand-accent uppercase tracking-widest block leading-none mb-1">Corporate Partner Analytics</span>
+                <h2 id="org-stats-title" className="text-xl font-bold text-gray-900 leading-none">{selectedOrgStats.orgName}</h2>
               </div>
             </div>
 
@@ -195,7 +206,7 @@ export default function CorporateOverviewClient({ orgs }) {
                 return (
                   <div key={idx} className="border border-gray-100 rounded-2xl p-4 bg-white shadow-sm flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider leading-none">{m.label}</span>
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider leading-none">{m.label}</span>
                       <div className={`p-1.5 rounded-lg ${m.color} shrink-0`}>
                         <Icon className="w-3.5 h-3.5" />
                       </div>
@@ -216,25 +227,25 @@ export default function CorporateOverviewClient({ orgs }) {
                     const pct = Math.max(10, (m.hours / maxVal) * 80);
                     return (
                       <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full group">
-                        <span className="text-[10px] font-bold text-gray-800 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-xs font-bold text-gray-800 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {m.hours}h
                         </span>
                         <div 
                           style={{ height: `${pct}%` }} 
-                          className="w-full bg-[#0d3b26] hover:bg-emerald-600 rounded-t transition-all duration-300 relative"
+                          className="w-full bg-brand hover:bg-emerald-600 rounded-t transition-all duration-300 relative"
                         >
-                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap z-20">
+                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-all whitespace-nowrap z-20">
                             {m.hours} hrs ({m.count} events)
                           </div>
                         </div>
-                        <span className="text-[9px] font-medium text-gray-400 mt-1.5 truncate max-w-full">{m.label}</span>
+                        <span className="text-xs font-medium text-gray-500 mt-1.5 truncate max-w-full">{m.label}</span>
                       </div>
                     );
                   })}
                 </div>
               </div>
             ) : (
-              <div className="border border-dashed border-gray-200 rounded-2xl p-6 text-center text-gray-400 text-xs">
+              <div className="border border-dashed border-gray-200 rounded-2xl p-6 text-center text-gray-500 text-xs">
                 No monthly volunteer trend recorded yet.
               </div>
             )}
@@ -255,7 +266,7 @@ export default function CorporateOverviewClient({ orgs }) {
                         <div>
                           <div className="flex items-center gap-2">
                             <h4 className="text-sm font-bold text-gray-900 leading-snug">{ev.title}</h4>
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
                               ev.isCorporate 
                                 ? 'bg-emerald-100 text-emerald-800' 
                                 : 'bg-blue-100 text-blue-800'
@@ -263,31 +274,31 @@ export default function CorporateOverviewClient({ orgs }) {
                               {ev.isCorporate ? 'Personal/Corp' : 'Global'}
                             </span>
                           </div>
-                          <span className="text-[10px] text-gray-400 block mt-1">
+                          <span className="text-xs text-gray-500 block mt-1">
                             {new Date(ev.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}
                             {ev.location ? ` · ${ev.location}` : ''}
                           </span>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
                           <div className="text-right">
-                            <span className="text-xs font-bold text-[#0d3b26] block">{ev.hours.toLocaleString()} hrs</span>
-                            <span className="text-[9px] text-gray-400 block">{ev.attendees} Attended</span>
+                            <span className="text-xs font-bold text-brand block">{ev.hours.toLocaleString()} hrs</span>
+                            <span className="text-xs text-gray-500 block">{ev.attendees} Attended</span>
                           </div>
-                          {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                          {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
                         </div>
                       </div>
                       
                       {isExpanded && ev.attendeeDetails && ev.attendeeDetails.length > 0 && (
                         <div className="px-3 pb-3 pt-1 border-t border-gray-100/60 bg-gray-50/40">
-                          <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Attendees</h5>
+                          <h5 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Attendees</h5>
                           <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 text-xs">
                             {ev.attendeeDetails.map((att, i) => (
                               <div key={i} className="flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-gray-100 shadow-sm">
                                 <div>
                                   <span className="font-semibold text-gray-800 block">{att.name}</span>
-                                  <span className="text-[10px] text-gray-500">{att.username}</span>
+                                  <span className="text-xs text-gray-500">{att.username}</span>
                                 </div>
-                                <span className="font-bold text-[#0d3b26]">{att.hours}h</span>
+                                <span className="font-bold text-brand">{att.hours}h</span>
                               </div>
                             ))}
                           </div>
@@ -297,7 +308,7 @@ export default function CorporateOverviewClient({ orgs }) {
                   )})}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 italic">No event participation recorded yet.</p>
+                <p className="text-xs text-gray-500 italic">No event participation recorded yet.</p>
               )}
             </div>
 

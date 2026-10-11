@@ -18,7 +18,7 @@ const ROLE_LABEL = {
 };
 
 const ROLE_COLORS = {
-  admin: { bg: 'bg-[#0d3b26]', text: 'text-[#0d3b26]', light: 'bg-[#f0f7f3]' },
+  admin: { bg: 'bg-brand', text: 'text-brand', light: 'bg-brand-tint' },
   ngo: { bg: 'bg-purple-600', text: 'text-purple-600', light: 'bg-purple-50' },
   org_spoc: { bg: 'bg-blue-600', text: 'text-blue-600', light: 'bg-blue-50' },
   employee: { bg: 'bg-orange-500', text: 'text-orange-500', light: 'bg-orange-50' },
@@ -58,7 +58,7 @@ function FilePreview({ fileUrl, fileName, fileType }) {
   if (isImage) {
     return (
       <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block mt-2 max-w-[220px]">
-        <img src={fileUrl} alt={fileName || 'Image'} className="rounded-xl max-h-44 object-cover border border-white/20" />
+        <img src={fileUrl} loading="lazy" decoding="async" alt={fileName || 'Image'} className="rounded-xl max-h-44 object-cover border border-white/20" />
       </a>
     );
   }
@@ -126,7 +126,9 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
   useEffect(() => {
     if (!activeContact) return;
     loadMessages(activeContact._id);
-    pollRef.current = setInterval(() => loadMessages(activeContact._id, true), 5000);
+    pollRef.current = setInterval(() => {
+      if (document.visibilityState === 'visible') loadMessages(activeContact._id, true);
+    }, 5000);
     return () => clearInterval(pollRef.current);
   }, [activeContact, loadMessages]);
 
@@ -217,6 +219,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
 
   return (
     <div className="fixed inset-0 top-[60px] flex bg-gray-50">
+      <h1 className="sr-only">Messages</h1>
       {/* ── Sidebar ── */}
       <aside className="w-80 flex-shrink-0 bg-white border-r border-gray-100 flex flex-col h-full">
         {/* Header Tabs */}
@@ -225,12 +228,12 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
             <button
               onClick={() => setActiveTab('chats')}
               className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
-                activeTab === 'chats' ? 'bg-[#0d3b26] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                activeTab === 'chats' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
               }`}
             >
               Chats
               {totalUnread > 0 && (
-                <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${activeTab === 'chats' ? 'bg-white text-[#0d3b26]' : 'bg-red-500 text-white'}`}>
+                <span className={`px-1.5 py-0.5 rounded-full text-xs ${activeTab === 'chats' ? 'bg-white text-brand' : 'bg-red-500 text-white'}`}>
                   {totalUnread}
                 </span>
               )}
@@ -238,12 +241,12 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
             <button
               onClick={() => setActiveTab('announcements')}
               className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
-                activeTab === 'announcements' ? 'bg-[#0d3b26] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                activeTab === 'announcements' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
               }`}
             >
               Announcements
               {totalUnreadAnnouncements > 0 && (
-                <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${activeTab === 'announcements' ? 'bg-white text-[#0d3b26]' : 'bg-red-500 text-white'}`}>
+                <span className={`px-1.5 py-0.5 rounded-full text-xs ${activeTab === 'announcements' ? 'bg-white text-brand' : 'bg-red-500 text-white'}`}>
                   {totalUnreadAnnouncements}
                 </span>
               )}
@@ -251,12 +254,12 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
           </div>
           {activeTab === 'chats' && (
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search contacts..."
-                className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-[#0d3b26]/30 focus:bg-white transition-all"
+                className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-100 rounded-xl outline-none focus:border-brand/30 focus:bg-white transition-all"
               />
             </div>
           )}
@@ -270,7 +273,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
             if (!list.length) return null;
             return (
               <div key={role} className="mb-1">
-                <p className="px-5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                <p className="px-5 py-1.5 text-xs font-bold uppercase tracking-widest text-gray-500">
                   {ROLE_LABEL[role]}
                 </p>
                 {list.map((contact) => {
@@ -281,19 +284,19 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
                       key={contact._id}
                       onClick={() => setActiveContact(contact)}
                       className={`w-full flex items-center gap-3 px-4 py-3 transition-all text-left ${
-                        isActive ? 'bg-[#f0f7f3] border-r-2 border-[#0d3b26]' : 'hover:bg-gray-50'
+                        isActive ? 'bg-brand-tint border-r-2 border-brand' : 'hover:bg-gray-50'
                       }`}
                     >
                       <div className="relative">
                         <Avatar name={contact.name} role={contact.role} />
                         {contact.unread > 0 && (
-                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">
                             {contact.unread > 9 ? '9+' : contact.unread}
                           </span>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold truncate ${isActive ? 'text-[#0d3b26]' : 'text-gray-900'}`}>
+                        <p className={`text-sm font-semibold truncate ${isActive ? 'text-brand' : 'text-gray-900'}`}>
                           {contact.name}
                         </p>
                         <p className={`text-xs truncate ${colors.text} font-medium`}>
@@ -301,7 +304,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
                         </p>
                       </div>
                       {contact.unread > 0 && (
-                        <span className="flex-shrink-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                        <span className="flex-shrink-0 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
                           {contact.unread}
                         </span>
                       )}
@@ -312,7 +315,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
             );
           })}
           {filteredContacts.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+            <div className="flex flex-col items-center justify-center py-16 text-gray-500">
               <Search className="w-8 h-8 mb-2 opacity-40" />
               <p className="text-sm">No contacts found</p>
             </div>
@@ -321,7 +324,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
           ) : (
             <div className="px-3">
               {announcements.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                <div className="flex flex-col items-center justify-center py-16 text-gray-500">
                   <Bell className="w-8 h-8 mb-2 opacity-40" />
                   <p className="text-sm">No announcements</p>
                 </div>
@@ -333,17 +336,17 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
                       if (!announcement.read) handleMarkAnnouncementRead(announcement._id);
                     }}
                     className={`mb-3 p-4 rounded-xl border transition-all cursor-pointer ${
-                      !announcement.read ? 'bg-[#f0f7f3] border-[#0d3b26]/20 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200'
+                      !announcement.read ? 'bg-brand-tint border-brand/20 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200'
                     }`}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <h4 className={`text-sm font-bold ${!announcement.read ? 'text-[#0d3b26]' : 'text-gray-900'}`}>
+                      <h4 className={`text-sm font-bold ${!announcement.read ? 'text-brand' : 'text-gray-900'}`}>
                         {announcement.title}
                       </h4>
                       {!announcement.read && <span className="w-2 h-2 rounded-full bg-red-500 mt-1 flex-shrink-0" />}
                     </div>
                     <p className="text-xs text-gray-600 leading-relaxed">{announcement.content}</p>
-                    <p className="text-[10px] text-gray-400 mt-3">{formatTime(announcement.createdAt)}</p>
+                    <p className="text-xs text-gray-500 mt-3">{formatTime(announcement.createdAt)}</p>
                   </div>
                 ))
               )}
@@ -371,15 +374,15 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-6 h-6 text-[#0d3b26] animate-spin" />
+                  <Loader2 className="w-6 h-6 text-brand animate-spin" />
                 </div>
               ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
+                <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-3">
                   <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
                     <MessageSquare className="w-8 h-8 text-gray-300" />
                   </div>
                   <p className="text-sm font-medium">No messages yet</p>
-                  <p className="text-xs text-gray-400">Start the conversation below</p>
+                  <p className="text-xs text-gray-500">Start the conversation below</p>
                 </div>
               ) : (
                 messages.map((msg, idx) => {
@@ -392,7 +395,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
                       {showDate && (
                         <div className="flex items-center gap-3 my-4">
                           <div className="flex-1 h-px bg-gray-100" />
-                          <span className="text-[11px] text-gray-400 font-medium">
+                          <span className="text-xs text-gray-500 font-medium">
                             {new Date(msg.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata',
                               weekday: 'long', day: 'numeric', month: 'long',
                             })}
@@ -412,7 +415,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
                             >
                               {msg.content && <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
                               {msg.fileUrl && <FilePreview fileUrl={msg.fileUrl} fileName={msg.fileName} fileType={msg.fileType} />}
-                              <p className="text-[10px] text-white/60 mt-1 text-right">{formatTime(msg.createdAt)}</p>
+                              <p className="text-xs text-white/60 mt-1 text-right">{formatTime(msg.createdAt)}</p>
                             </div>
                           ) : (
                             <div className="px-4 py-2.5 rounded-2xl rounded-bl-sm bg-white border border-gray-100 text-gray-800 text-sm shadow-sm">
@@ -422,7 +425,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
                                   <FilePreview fileUrl={msg.fileUrl} fileName={msg.fileName} fileType={msg.fileType} />
                                 </div>
                               )}
-                              <p className="text-[10px] text-gray-400 mt-1">{formatTime(msg.createdAt)}</p>
+                              <p className="text-xs text-gray-500 mt-1">{formatTime(msg.createdAt)}</p>
                             </div>
                           )}
                         </div>
@@ -439,7 +442,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
 
             {/* Input Bar */}
             <div className="flex-shrink-0 bg-white border-t border-gray-100 px-5 py-4">
-              <div className="flex items-end gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus-within:border-[#0d3b26]/40 focus-within:bg-white transition-all shadow-sm">
+              <div className="flex items-end gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 focus-within:border-brand/40 focus-within:bg-white transition-all shadow-sm">
                 <input
                   type="file"
                   ref={fileRef}
@@ -450,8 +453,9 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
                 <button
                   onClick={() => fileRef.current?.click()}
                   disabled={uploading}
-                  className="flex-shrink-0 p-1.5 text-gray-400 hover:text-[#0d3b26] hover:bg-[#0d3b26]/10 rounded-xl transition-all"
+                  className="hit-target flex-shrink-0 p-1.5 text-gray-500 hover:text-brand hover:bg-brand/10 rounded-xl transition-all"
                   title="Attach file"
+                  aria-label="Attach file"
                 >
                   {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
                 </button>
@@ -468,28 +472,29 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
                   onKeyDown={handleKeyDown}
                   placeholder="Type a message…"
                   rows={1}
-                  className="flex-1 bg-transparent resize-none text-sm text-gray-800 outline-none placeholder-gray-400 leading-relaxed"
+                  className="flex-1 bg-transparent resize-none text-sm text-gray-800 outline-none placeholder-gray-500 leading-relaxed"
                   style={{ height: 'auto', maxHeight: '128px', overflowY: 'auto' }}
                 />
                 <button
                   onClick={handleSend}
+                  aria-label="Send message"
                   disabled={!text.trim() || isPending}
                   className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
                     text.trim() && !isPending
-                      ? 'bg-[#0d3b26] hover:bg-[#1a5c3a] text-white shadow-md shadow-[#0d3b26]/30'
+                      ? 'bg-brand hover:bg-brand-strong text-white shadow-md shadow-brand/30'
                       : 'bg-gray-100 text-gray-300 cursor-not-allowed'
                   }`}
                 >
                   {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-[10px] text-gray-400 mt-1.5 ml-1">
-                Press <kbd className="px-1 py-0.5 bg-gray-100 rounded text-[9px] font-mono">Enter</kbd> to send · <kbd className="px-1 py-0.5 bg-gray-100 rounded text-[9px] font-mono">Shift+Enter</kbd> for new line
+              <p className="text-xs text-gray-500 mt-1.5 ml-1">
+                Press <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs font-mono">Enter</kbd> to send · <kbd className="px-1 py-0.5 bg-gray-100 rounded text-xs font-mono">Shift+Enter</kbd> for new line
               </p>
             </div>
           </>
         ) : activeTab === 'announcements' ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400">
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-500">
             <div
               className="w-24 h-24 rounded-3xl flex items-center justify-center shadow-lg"
               style={{ background: 'linear-gradient(135deg, #0d3b26 0%, #2e7d52 100%)' }}
@@ -498,14 +503,14 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
             </div>
             <div className="text-center">
               <h3 className="text-xl font-bold text-gray-700 mb-1">System Announcements</h3>
-              <p className="text-sm text-gray-400 max-w-xs">
+              <p className="text-sm text-gray-500 max-w-xs">
                 Select an announcement on the left to read automated wrap-up reports and important updates.
               </p>
             </div>
           </div>
         ) : (
           /* Empty state */
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-400">
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-500">
             <div
               className="w-24 h-24 rounded-3xl flex items-center justify-center shadow-lg"
               style={{ background: 'linear-gradient(135deg, #0d3b26 0%, #2e7d52 100%)' }}
@@ -514,14 +519,14 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
             </div>
             <div className="text-center">
               <h3 className="text-xl font-bold text-gray-700 mb-1">Kindera Messages</h3>
-              <p className="text-sm text-gray-400 max-w-xs">
+              <p className="text-sm text-gray-500 max-w-xs">
                 Select a contact from the left sidebar to start a secure conversation, share documents, or exchange reports.
               </p>
             </div>
             {contactList.length > 0 && (
               <button
                 onClick={() => setActiveContact(contactList[0])}
-                className="mt-2 flex items-center gap-2 px-5 py-2.5 bg-[#0d3b26] text-white text-sm font-semibold rounded-xl hover:bg-[#1a5c3a] transition-colors"
+                className="mt-2 flex items-center gap-2 px-5 py-2.5 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-strong transition-colors"
               >
                 Start Chatting <ChevronRight className="w-4 h-4" />
               </button>

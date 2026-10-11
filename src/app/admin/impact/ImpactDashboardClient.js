@@ -42,7 +42,7 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
             <ChevronLeft className="w-5 h-5 text-gray-500" />
           </Link>
           <div>
-            <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">Corporate Social Responsibility</p>
+            <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">Corporate Social Responsibility</p>
             <h1 className="text-3xl font-bold text-gray-900">CSR Impact Analytics</h1>
           </div>
         </div>
@@ -58,7 +58,7 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
           </select>
           <button 
             onClick={() => window.print()}
-            className="bg-[#0d3b26] hover:bg-[#1a5c3a] text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-md transition-all print:hidden"
+            className="bg-brand hover:bg-brand-strong text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-md transition-all print:hidden"
           >
             <Download className="w-4 h-4" /> Export CSR Report
           </button>
@@ -76,13 +76,13 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
           return (
             <div key={i} className={`border rounded-2xl p-5 shadow-sm bg-white`}>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{k.label}</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{k.label}</span>
                 <div className={`p-2.5 rounded-xl ${k.color}`}>
                   <Icon className="w-4 h-4" />
                 </div>
               </div>
               <p className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">{k.value}</p>
-              <p className="text-[10px] text-gray-400 mt-1">{k.desc}</p>
+              <p className="text-xs text-gray-500 mt-1">{k.desc}</p>
             </div>
           );
         })}
@@ -96,7 +96,7 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
           {/* Quarterly Activity Bar Chart */}
           <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-6">
-              <BarChart3 className="w-5 h-5 text-[#0d3b26]" />
+              <BarChart3 className="w-5 h-5 text-brand" />
               <h2 className="text-lg font-bold text-gray-900">Quarterly Events ({year})</h2>
             </div>
             
@@ -110,9 +110,9 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
                     </div>
                     <div 
                       style={{ height: `${heightPct}%` }}
-                      className="w-full bg-[#1a5c3a] hover:bg-emerald-600 rounded-t-lg transition-all duration-500 shadow-sm relative group-hover:scale-x-105"
+                      className="w-full bg-brand-strong hover:bg-emerald-600 rounded-t-lg transition-all duration-500 shadow-sm relative group-hover:scale-x-105"
                     />
-                    <span className="text-xs font-medium text-gray-400 mt-2 py-1">{q.quarter}</span>
+                    <span className="text-xs font-medium text-gray-500 mt-2 py-1">{q.quarter}</span>
                   </div>
                 );
               })}
@@ -122,7 +122,7 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
           {/* Monthly Activity Bar Chart */}
           <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-6">
-              <BarChart3 className="w-5 h-5 text-[#0d3b26]" />
+              <BarChart3 className="w-5 h-5 text-brand" />
               <h2 className="text-lg font-bold text-gray-900">Monthly Events ({year})</h2>
             </div>
             
@@ -136,9 +136,9 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
                     </div>
                     <div 
                       style={{ height: `${heightPct}%` }}
-                      className="w-full bg-[#0d3b26] hover:bg-emerald-600 rounded-t-lg transition-all duration-500 shadow-sm relative group-hover:scale-x-105"
+                      className="w-full bg-brand hover:bg-emerald-600 rounded-t-lg transition-all duration-500 shadow-sm relative group-hover:scale-x-105"
                     />
-                    <span className="text-[10px] font-medium text-gray-400 mt-2 py-1 truncate">{m.month}</span>
+                    <span className="text-xs font-medium text-gray-500 mt-2 py-1 truncate">{m.month}</span>
                   </div>
                 );
               })}
@@ -151,14 +151,14 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
           <div>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <Building className="w-5 h-5 text-[#0d3b26]" />
+                <Building className="w-5 h-5 text-brand" />
                 <h2 className="text-lg font-bold text-gray-900">Top Engaged Organizations</h2>
               </div>
               <span className="text-xs text-gray-500 font-medium">({year})</span>
             </div>
 
             {topOrgs.length === 0 ? (
-              <div className="py-12 text-center text-gray-400">
+              <div className="py-12 text-center text-gray-500">
                 <p className="text-sm">No corporate attendance recorded in {year}.</p>
               </div>
             ) : (
@@ -169,12 +169,12 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
                     <div key={index} className="border border-gray-50 hover:border-gray-100 rounded-xl p-3.5 transition-all bg-gray-50/20">
                       <div className="flex justify-between items-start mb-1.5">
                         <div>
-                          <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest block">Rank #{index+1}</span>
+                          <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest block">Rank #{index+1}</span>
                           <h3 className="font-bold text-gray-900 text-sm leading-tight">{org.name}</h3>
                         </div>
                         <div className="text-right">
                           <span className="text-sm font-bold text-gray-900">{org.hours.toLocaleString()} hrs</span>
-                          <span className="text-[10px] text-gray-400 block">{org.volunteers} Volunteers</span>
+                          <span className="text-xs text-gray-500 block">{org.volunteers} Volunteers</span>
                         </div>
                       </div>
 
@@ -182,7 +182,7 @@ export default function ImpactDashboardClient({ stats, selectedYear }) {
                       <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mt-2">
                         <div 
                           style={{ width: `${widthPct}%` }}
-                          className="h-full bg-gradient-to-r from-[#0d3b26] to-emerald-600 rounded-full transition-all duration-1000"
+                          className="h-full bg-gradient-to-r from-brand to-emerald-600 rounded-full transition-all duration-1000"
                         />
                       </div>
                     </div>

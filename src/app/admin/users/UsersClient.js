@@ -8,8 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import { deleteUser, updateUserStatus } from '@/app/actions';
 import { useRouter } from 'next/navigation';
-import { Trash2 } from 'lucide-react';
+import { Trash2, X } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 function CertRow({ label, has, reg, color }) {
   return (
@@ -28,6 +29,7 @@ function CertRow({ label, has, reg, color }) {
 }
 
 function UserModal({ user, onClose, onStatusUpdate, isUpdatingStatus }) {
+  const panelRef = useDialogA11y(true, onClose);
   const getStatusBadge = (status) => {
     switch (status) {
       case 'approved': return <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Approved</span>;
@@ -51,20 +53,26 @@ function UserModal({ user, onClose, onStatusUpdate, isUpdatingStatus }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50" />
       <div
-        className="relative bg-white rounded-xl shadow-2xl w-full max-w-md"
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="user-modal-title"
+        className="relative bg-white rounded-xl shadow-2xl w-full max-w-md outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div>
-            <h2 className="text-lg font-bold">{user.name}</h2>
+            <h2 id="user-modal-title" className="text-lg font-bold">{user.name}</h2>
             <p className="text-sm text-gray-500">@{user.username}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            aria-label="Close"
+            className="inline-flex items-center justify-center w-11 h-11 -mr-3 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100"
           >
-            ×
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -340,7 +348,7 @@ export default function UsersClient({ initialUsers = [], currentUserId }) {
                             {user.has12A && <span className="px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700 font-medium">12A</span>}
                             {user.has80G && <span className="px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700 font-medium">80G</span>}
                             {user.hasFCRA && <span className="px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-700 font-medium">FCRA</span>}
-                            {!user.has12A && !user.has80G && !user.hasFCRA && <span className="text-gray-400 text-xs">—</span>}
+                            {!user.has12A && !user.has80G && !user.hasFCRA && <span className="text-gray-500 text-xs">—</span>}
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(user.status)}</TableCell>

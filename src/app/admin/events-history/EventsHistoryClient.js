@@ -99,7 +99,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">Admin Panel</p>
+            <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">Admin Panel</p>
             <h1 className="text-3xl font-bold text-gray-900 mb-1 font-serif">All Events History</h1>
             <p className="text-gray-500 text-sm">
               Complete analytics and historical overview of all global and internal corporate events.
@@ -120,7 +120,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
           return (
             <div key={idx} className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{card.label}</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{card.label}</span>
                 <div className={`p-2 rounded-xl ${card.color} shrink-0`}>
                   <Icon className="w-4 h-4" />
                 </div>
@@ -134,24 +134,24 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
       {/* Filters Bar */}
       <div className="border border-gray-100 rounded-2xl p-4 bg-white shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
             type="text"
             placeholder="Search event, creator or organisation..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#0d3b26]"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {/* Type Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-400 font-semibold uppercase">Type</span>
+            <span className="text-xs text-gray-500 font-semibold uppercase">Type</span>
             <select
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value)}
-              className="h-9 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:border-[#0d3b26]"
+              className="h-9 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:border-brand"
             >
               <option value="all">All Types</option>
               <option value="global">Global Events Only</option>
@@ -161,11 +161,11 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
 
           {/* Status Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-gray-400 font-semibold uppercase">Status</span>
+            <span className="text-xs text-gray-500 font-semibold uppercase">Status</span>
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              className="h-9 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:border-[#0d3b26]"
+              className="h-9 text-xs border border-gray-200 rounded-lg px-2 bg-white focus:outline-none focus:border-brand"
             >
               <option value="all">All Status</option>
               <option value="upcoming">Upcoming</option>
@@ -184,7 +184,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
         {filtered.length === 0 ? (
           <div className="py-16 text-center">
             <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">No historical events match the filter parameters.</p>
+            <p className="text-gray-500 text-sm">No historical events match the filter parameters.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -210,7 +210,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                     <td className="px-6 py-4">
                       <div className="flex items-start gap-3">
                         {item.corporateDetails?.length > 0 ? (
-                          <div className="mt-0.5 text-gray-400">
+                          <div className="mt-0.5 text-gray-500">
                             {expandedRows[item._id] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </div>
                         ) : (
@@ -218,7 +218,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                         )}
                         <div>
                           <span className="font-semibold text-gray-900 block leading-tight mb-1">{item.title}</span>
-                        <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
                           <span className={`px-1.5 py-0.5 rounded-full font-bold ${
                             item.status === 'upcoming' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
                           }`}>
@@ -235,13 +235,13 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                       {item.createdBy ? (
                         <div>
                           <span className="font-medium text-gray-800 block">{item.createdBy.name}</span>
-                          <span className="text-[10px] text-gray-400 capitalize block leading-none mt-0.5">
+                          <span className="text-xs text-gray-500 capitalize block leading-none mt-0.5">
                             {item.createdBy.role === 'org_spoc' ? 'SPOC' : item.createdBy.role} 
                             {item.createdBy.organizationName ? ` (${item.createdBy.organizationName})` : ''}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-gray-400 italic">Unknown</span>
+                        <span className="text-gray-500 italic">Unknown</span>
                       )}
                     </td>
 
@@ -262,7 +262,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                     <td className="px-6 py-4 text-right">
                       <div className="font-mono font-medium text-gray-900">{item.joinedCount} <span className="font-sans text-xs text-gray-500 font-normal">volunteers</span></div>
                       {(item.spocCount > 0) && (
-                        <div className="text-[10px] text-gray-500 mt-0.5 leading-tight">
+                        <div className="text-xs text-gray-500 mt-0.5 leading-tight">
                           from {item.spocCount} SPOC{item.spocCount > 1 ? 's' : ''}
                         </div>
                       )}
@@ -272,7 +272,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                       {item.attendanceCount}
                     </td>
 
-                    <td className="px-6 py-4 text-right font-mono font-bold text-[#0d3b26]">
+                    <td className="px-6 py-4 text-right font-mono font-bold text-brand">
                       {item.hoursLogged.toLocaleString()} hrs
                     </td>
 
@@ -288,7 +288,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                         {canDelete && (
                           <button
                             onClick={() => setConfirmDelete({ id: item._id, title: item.title })}
-                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors"
                             title="Delete Event"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -305,7 +305,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                             <Building2 className="w-4 h-4 text-emerald-700" />
                             Corporate Breakdown
                           </h4>
-                          <table className="w-full text-left text-sm">
+                          <div className="overflow-x-auto"><table className="min-w-[480px] w-full text-left text-sm">
                             <thead>
                               <tr className="text-gray-500 border-b border-gray-100">
                                 <th className="pb-2 font-medium">Organization Name</th>
@@ -322,7 +322,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                                 </tr>
                               ))}
                             </tbody>
-                          </table>
+                          </table></div>
                         </div>
                       </td>
                     </tr>

@@ -5,9 +5,14 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-tint: var(--brand-tint);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-dm-serif), Georgia, serif;
+  --font-script: var(--font-great-vibes), cursive;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -44,6 +49,12 @@
 }
 
 :root {
+  /* Evergreen brand palette (see DESIGN.md) */
+  --brand: #0d3b26;        /* Evergreen: primary actions, headings, brand surfaces */
+  --brand-strong: #1a5c3a; /* Pine: hover/pressed state of Evergreen */
+  --brand-accent: #2e7d52; /* Fern: secondary emphasis, links, focus */
+  --brand-tint: #f0f7f3;   /* Morning Mist: tinted section backgrounds */
+
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -51,7 +62,7 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: var(--brand);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -62,7 +73,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: var(--brand-accent);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -138,8 +149,8 @@ html {
 
 /* 2. Brand-colored text selection */
 ::selection {
-  background-color: rgba(13, 59, 38, 0.15);
-  color: #0d3b26;
+  background-color: color-mix(in oklab, var(--brand) 15%, transparent);
+  color: var(--brand);
 }
 
 /* 3. Custom scrollbar — thin, refined, brand-tinted */
@@ -155,7 +166,7 @@ html {
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2e7d52;
+  background: var(--brand-accent);
 }
 
 /* 4. Global interaction transitions
@@ -192,15 +203,15 @@ button:not(:disabled):active,
 /* 7. Premium input focus state — brand ring */
 [data-slot="input"]:focus-visible,
 [data-slot="input"]:focus {
-  border-color: #0d3b26 !important;
-  box-shadow: 0 0 0 3px rgba(13, 59, 38, 0.12) !important;
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 12%, transparent) !important;
   outline: none;
 }
 
 /* 8. Premium select focus state */
 [data-slot="select-trigger"]:focus-visible {
-  border-color: #0d3b26 !important;
-  box-shadow: 0 0 0 3px rgba(13, 59, 38, 0.12) !important;
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 12%, transparent) !important;
 }
 
 /* 9. Subtle link underline animation (non-nav links) */
@@ -220,7 +231,7 @@ h4, h5, h6 {
 /* 11. Premium table row hover */
 [data-slot="table-row"]:hover,
 tbody tr:hover {
-  background-color: rgba(13, 59, 38, 0.025);
+  background-color: color-mix(in oklab, var(--brand) 2.5%, transparent);
   transition: background-color 120ms ease;
 }
 
@@ -277,6 +288,71 @@ body {
 }
 
 .carousel-track-left:hover,
-.carousel-track-right:hover {
+.carousel-track-right:hover,
+.carousel-track-left:focus-within,
+.carousel-track-right:focus-within,
+.carousel-track-left.is-paused,
+.carousel-track-right.is-paused {
   animation-play-state: paused;
+}
+
+/* 17. Reduced motion: keep state feedback (color, opacity), drop movement.
+       The carousels stop and become a manually scrollable row. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  button:not(:disabled):active,
+  [role="button"]:not(:disabled):active {
+    transform: none;
+  }
+  .animate-fade-in {
+    animation-name: fadeInStill;
+  }
+  .carousel-track-left,
+  .carousel-track-right {
+    animation: none;
+    transform: none;
+  }
+  .carousel-viewport {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-inline: 1.5rem;
+    padding-bottom: 0.5rem;
+  }
+  .carousel-viewport > div > * {
+    scroll-snap-align: start;
+  }
+  .carousel-dup {
+    display: none;
+  }
+}
+
+@keyframes fadeInStill {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 18. Touch hit area: grows a small icon control's tappable area to 44px
+       without changing how it looks. */
+.hit-target:where(:not(.absolute, .fixed)) {
+  position: relative;
+}
+.hit-target::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* 19. Phones: form text at 16px so iOS Safari doesn't zoom into focused fields. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

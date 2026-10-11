@@ -121,7 +121,7 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
             </div>
           )}
           <CardHeader>
-            <CardTitle className="text-xl text-[#0d3b26]">{event.title}</CardTitle>
+            <CardTitle as="h1" className="text-xl text-brand">{event.title}</CardTitle>
             <CardDescription className="text-sm">
               {isGlobalEvent ? 'Open / Global Event' : 'Corporate Event'}
             </CardDescription>
@@ -212,7 +212,7 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
           <Card className="shadow-lg border-0 ring-1 ring-gray-100 h-full flex items-center justify-center p-8 text-center">
             <div>
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-8 h-8 text-gray-400" />
+                <Calendar className="w-8 h-8 text-gray-500" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">Registration Closed</h3>
               <p className="text-gray-500">This event has already ended.</p>
@@ -233,7 +233,7 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
               </p>
               <Button
                 onClick={() => router.push('/messages')}
-                className="bg-[#0d3b26] hover:bg-[#1a5c3a] text-white"
+                className="bg-brand hover:bg-brand-strong text-white"
               >
                 Message Your SPOC
               </Button>
@@ -404,7 +404,7 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
                           {photoFile ? (
                             <img src={URL.createObjectURL(photoFile)} alt="Preview" className="h-full w-full object-cover" />
                           ) : (
-                            <Upload className="w-5 h-5 text-gray-400" />
+                            <Upload className="w-5 h-5 text-gray-500" />
                           )}
                         </div>
                         <Input
@@ -423,7 +423,7 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
                 <Button
                   type="submit"
                   disabled={isSubmitting || isFull}
-                  className={`w-full text-white py-6 text-lg ${isFull ? 'bg-gray-300 hover:bg-gray-300 cursor-not-allowed text-gray-500' : 'bg-[#0d3b26] hover:bg-[#1a5c3a]'}`}
+                  className={`w-full text-white py-6 text-lg ${isFull ? 'bg-gray-300 hover:bg-gray-300 cursor-not-allowed text-gray-500' : 'bg-brand hover:bg-brand-strong'}`}
                 >
                   {isSubmitting ? (
                     <span className="flex items-center gap-2"><Loader2 className="w-5 h-5 animate-spin" /> Submitting...</span>
@@ -435,7 +435,7 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
                 </Button>
                 {!currentUser && (
                   <p className="text-center text-sm text-gray-500">
-                    Already have an account? <Link href="/login" className="text-[#0d3b26] font-medium hover:underline">Log in</Link>
+                    Already have an account? <Link href="/login" className="text-brand font-medium hover:underline">Log in</Link>
                   </p>
                 )}
               </CardFooter>

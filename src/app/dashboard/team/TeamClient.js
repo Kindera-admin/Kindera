@@ -19,13 +19,13 @@ export default function TeamClient({ members, stats, orgName }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">Corporate Team</p>
+          <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">Corporate Team</p>
           <h1 className="text-3xl font-bold text-gray-900 mb-1">{orgName} Volunteers</h1>
           <p className="text-gray-500 text-sm">Manage your team members and track their volunteering hours.</p>
         </div>
         <Button
           onClick={() => router.push('/dashboard/team/generate')}
-          className="gap-2 bg-[#0d3b26] hover:bg-[#1a5c3a] text-white"
+          className="gap-2 bg-brand hover:bg-brand-strong text-white"
         >
           <Plus className="w-4 h-4" />
           Generate Logins
@@ -51,13 +51,13 @@ export default function TeamClient({ members, stats, orgName }) {
       <div className="border border-gray-100 rounded-2xl bg-white shadow-sm overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-4">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
             <input
               type="text"
               placeholder="Search members..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#0d3b26]"
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
             />
           </div>
           <Button variant="outline" size="sm" className="gap-2 hidden sm:flex">
@@ -69,7 +69,7 @@ export default function TeamClient({ members, stats, orgName }) {
         {filtered.length === 0 ? (
           <div className="py-16 text-center">
             <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400 text-sm">No members found.</p>
+            <p className="text-gray-500 text-sm">No members found.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -87,7 +87,7 @@ export default function TeamClient({ members, stats, orgName }) {
                   <tr key={member._id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#e8f5e9] text-[#2e7d52] flex items-center justify-center font-bold text-xs shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-[#e8f5e9] text-brand-accent flex items-center justify-center font-bold text-xs shrink-0">
                           {member.name.charAt(0)}
                         </div>
                         <div className="flex flex-col min-w-0">
@@ -101,7 +101,7 @@ export default function TeamClient({ members, stats, orgName }) {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 font-mono">{member.username}</td>
-                    <td className="px-6 py-4 text-sm text-right font-semibold text-[#0d3b26]">
+                    <td className="px-6 py-4 text-sm text-right font-semibold text-brand">
                       {member.totalVolunteerHours}
                     </td>
                     <td className="px-6 py-4 text-right">

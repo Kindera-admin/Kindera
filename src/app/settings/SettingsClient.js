@@ -130,7 +130,7 @@ export default function SettingsClient({ user }) {
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <User className="w-5 h-5 text-[#2e7d52]" /> Profile
+              <User className="w-5 h-5 text-brand-accent" /> Profile
             </CardTitle>
             <CardDescription>Update your display name.</CardDescription>
           </CardHeader>
@@ -145,7 +145,7 @@ export default function SettingsClient({ user }) {
                   placeholder="Enter your name"
                 />
               </div>
-              <Button type="submit" disabled={isUpdatingName} className="w-full bg-[#0d3b26] hover:bg-[#1a5c3a]">
+              <Button type="submit" disabled={isUpdatingName} className="w-full bg-brand hover:bg-brand-strong">
                 {isUpdatingName && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Update Name
               </Button>
@@ -212,15 +212,16 @@ export default function SettingsClient({ user }) {
                     <button
                       onClick={handleRemoveLogo}
                       disabled={isUploadingLogo}
-                      className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 hover:bg-red-200 transition-colors"
+                      className="hit-target absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 hover:bg-red-200 transition-colors"
                       title="Remove logo"
+                      aria-label="Remove logo"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 ) : (
                   <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center bg-gray-50">
-                    <ImagePlus className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <ImagePlus className="w-8 h-8 text-gray-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-500 mb-4">No logo uploaded yet</p>
                   </div>
                 )}
@@ -234,9 +235,9 @@ export default function SettingsClient({ user }) {
                     className="max-w-xs cursor-pointer"
                     id="logo-upload"
                   />
-                  {isUploadingLogo && <Loader2 className="w-5 h-5 animate-spin text-gray-400" />}
+                  {isUploadingLogo && <Loader2 className="w-5 h-5 animate-spin text-gray-500" />}
                 </div>
-                <p className="text-xs text-gray-400">Recommended size: 400x150px. Max 2MB.</p>
+                <p className="text-xs text-gray-500">Recommended size: 400x150px. Max 2MB.</p>
               </div>
             </CardContent>
           </Card>

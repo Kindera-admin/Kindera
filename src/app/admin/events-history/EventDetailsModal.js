@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { X, Calendar, Clock, MapPin, Users, Building2, User, Loader2, Star, Target } from 'lucide-react';
 import { getAdminEventDetails } from '@/app/actions';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 export default function EventDetailsModal({ eventId, onClose }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const panelRef = useDialogA11y(!!eventId, onClose);
 
   useEffect(() => {
     if (!eventId) return;
@@ -32,24 +34,33 @@ export default function EventDetailsModal({ eventId, onClose }) {
   if (!eventId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="event-details-title"
+        className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden outline-none"
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-          <h2 className="text-xl font-bold text-gray-900">Event Details</h2>
+          <h2 id="event-details-title" className="text-xl font-bold text-gray-900">Event Details</h2>
           <button 
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-200 text-gray-500 transition-colors"
+            aria-label="Close event details"
+            className="inline-flex items-center justify-center w-11 h-11 -mr-2 rounded-full hover:bg-gray-200 text-gray-500 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-              <Loader2 className="w-8 h-8 animate-spin mb-4 text-[#0d3b26]" />
+            <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+              <Loader2 className="w-8 h-8 animate-spin mb-4 text-brand" />
               <p>Loading event details...</p>
             </div>
           ) : error ? (
@@ -102,7 +113,7 @@ export default function EventDetailsModal({ eventId, onClose }) {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-gray-900 leading-tight">{data.event.createdBy.name}</p>
-                          <p className="text-[11px] text-gray-500 capitalize">{data.event.createdBy.role}</p>
+                          <p className="text-xs text-gray-500 capitalize">{data.event.createdBy.role}</p>
                         </div>
                       </div>
                     </div>
@@ -118,8 +129,8 @@ export default function EventDetailsModal({ eventId, onClose }) {
                 {data.participants.length === 0 ? (
                   <p className="text-gray-500 text-sm italic">No volunteers have joined this event yet.</p>
                 ) : (
-                  <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
-                    <table className="w-full text-left text-sm">
+                  <div className="bg-white border border-gray-100 rounded-xl overflow-x-auto">
+                    <table className="w-full min-w-[560px] text-left text-sm">
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-100 text-gray-500">
                           <th className="px-4 py-3 font-semibold">Volunteer Name</th>
@@ -134,7 +145,7 @@ export default function EventDetailsModal({ eventId, onClose }) {
                           <tr key={p._id} className="hover:bg-gray-50/50">
                             <td className="px-4 py-3">
                               <p className="font-medium text-gray-900">{p.name}</p>
-                              <p className="text-[11px] text-gray-400">{p.email}</p>
+                              <p className="text-xs text-gray-500">{p.email}</p>
                             </td>
                             <td className="px-4 py-3">
                               <span className="text-xs font-medium bg-gray-100 px-2 py-0.5 rounded-full text-gray-700">
@@ -147,7 +158,7 @@ export default function EventDetailsModal({ eventId, onClose }) {
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Attended
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 text-gray-400 font-medium text-xs">
+                                <span className="inline-flex items-center gap-1 text-gray-500 font-medium text-xs">
                                   <span className="w-1.5 h-1.5 rounded-full bg-gray-300" /> Pending
                                 </span>
                               )}

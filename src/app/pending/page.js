@@ -8,7 +8,7 @@ export default function PendingPage() {
       <Card className="w-full max-w-md shadow-lg text-center">
         <CardHeader className="pt-8 pb-2">
           <div className="text-5xl mb-4">⏳</div>
-          <CardTitle className="text-xl sm:text-2xl">Approval Pending</CardTitle>
+          <CardTitle as="h1" className="text-xl sm:text-2xl">Approval Pending</CardTitle>
           <CardDescription className="text-base mt-1">
             Your account has been created successfully
           </CardDescription>

@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import useAuthStore from '@/store/authStore';
 import { logout, getUnreadCount } from '@/app/actions';
 import { toast } from 'sonner';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 import { LogOut, Menu, X, LayoutDashboard, CalendarDays, Users, FileText, Building2, MessageSquare, Settings } from 'lucide-react';
 
 const Navbar = () => {
@@ -17,6 +18,7 @@ const Navbar = () => {
   const [mounted, setMounted] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [unreadCount, setUnreadCount] = useState(0);
+  const menuRef = useDialogA11y(isMenuOpen, () => setIsMenuOpen(false));
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -35,8 +37,15 @@ const Navbar = () => {
   useEffect(() => {
     if (!mounted || !isChatUser) return;
     fetchUnread();
-    const interval = setInterval(fetchUnread, 10000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchUnread();
+    }, 10000);
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchUnread(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [mounted, isChatUser, fetchUnread]);
 
   const handleLogout = async () => {
@@ -130,20 +139,20 @@ const Navbar = () => {
                   href={link.href}
                   className={`relative px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150 ${
                     isActive
-                      ? 'bg-[#0d3b26]/8 text-[#0d3b26]'
+                      ? 'bg-brand/8 text-brand'
                       : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                   }`}
                 >
                   <span className="flex items-center gap-1.5">
                     {link.label}
                     {link.badge && unreadCount > 0 && (
-                      <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center leading-none">
+                      <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[16px] text-center leading-none">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}
                   </span>
                   {isActive && (
-                    <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-[#0d3b26] rounded-full" />
+                    <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-brand rounded-full" />
                   )}
                 </Link>
               );
@@ -154,7 +163,7 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-3">
             <div className="text-right">
               <p className="text-[13px] font-semibold text-gray-900 leading-none">{user?.name}</p>
-              <p className="text-[11px] text-gray-400 capitalize mt-0.5">{user?.role?.replace(/_/g, ' ')}</p>
+              <p className="text-xs text-gray-500 capitalize mt-0.5">{user?.role?.replace(/_/g, ' ')}</p>
             </div>
             <div className="w-[1px] h-5 bg-gray-200 mx-1" />
             <Link
@@ -175,10 +184,16 @@ const Navbar = () => {
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+            className="md:hidden inline-flex items-center justify-center w-11 h-11 -mr-2 rounded-lg hover:bg-gray-100 transition-colors relative"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-expanded={isMenuOpen}
+            aria-controls="app-mobile-menu"
+            aria-label={
+              (isMenuOpen ? 'Close menu' : 'Open menu') +
+              (isChatUser && unreadCount > 0 ? `, ${unreadCount} unread message${unreadCount === 1 ? '' : 's'}` : '')
+            }
           >
-            {isMenuOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
+            {isMenuOpen ? <X className="w-5 h-5 text-gray-700" aria-hidden="true" /> : <Menu className="w-5 h-5 text-gray-700" aria-hidden="true" />}
             {/* Mobile unread dot */}
             {isChatUser && unreadCount > 0 && (
               <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
@@ -193,7 +208,16 @@ const Navbar = () => {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-40 bg-white flex flex-col pt-[60px]" onClick={() => setIsMenuOpen(false)}>
-          <div className="flex flex-col p-4 gap-1" onClick={e => e.stopPropagation()}>
+          <div
+            id="app-mobile-menu"
+            ref={menuRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            className="flex flex-col p-4 gap-1 outline-none"
+            onClick={e => e.stopPropagation()}
+          >
             {navLinks.map((link) => {
               const isActive = link.startsWith
                 ? pathname.startsWith(link.href)
@@ -206,14 +230,14 @@ const Navbar = () => {
                   onClick={() => setIsMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-medium transition-colors ${
                     isActive
-                      ? 'bg-[#0d3b26]/8 text-[#0d3b26]'
+                      ? 'bg-brand/8 text-brand'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
                   {link.label}
                   {link.badge && unreadCount > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
@@ -224,7 +248,7 @@ const Navbar = () => {
             <div className="mt-4 pt-4 border-t border-gray-100">
               <div className="px-4 mb-3">
                 <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
-                <p className="text-xs text-gray-400 capitalize">{user?.role?.replace(/_/g, ' ')}</p>
+                <p className="text-xs text-gray-500 capitalize">{user?.role?.replace(/_/g, ' ')}</p>
               </div>
               <Link
                 href="/settings"

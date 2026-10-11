@@ -36,7 +36,7 @@ export default function NameUpdateClient({ currentName }) {
   return (
     <div className="w-full max-w-md mx-auto mt-10">
       <div className="border border-gray-100 rounded-2xl p-8 bg-white shadow-sm text-center">
-        <div className="w-16 h-16 bg-[#f0f7f3] text-[#2e7d52] rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="w-16 h-16 bg-brand-tint text-brand-accent rounded-full flex items-center justify-center mx-auto mb-6">
           <UserCircle className="w-8 h-8" />
         </div>
         
@@ -60,7 +60,7 @@ export default function NameUpdateClient({ currentName }) {
 
           <Button 
             type="submit" 
-            className="w-full bg-[#0d3b26] hover:bg-[#1a5c3a] text-white" 
+            className="w-full bg-brand hover:bg-brand-strong text-white" 
             disabled={isPending}
           >
             {isPending ? (

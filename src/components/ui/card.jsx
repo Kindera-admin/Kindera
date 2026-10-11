@@ -34,10 +34,11 @@ function CardHeader({
 
 function CardTitle({
   className,
+  as: Comp = "div",
   ...props
 }) {
   return (
-    (<div
+    (<Comp
       data-slot="card-title"
       className={cn("leading-none font-semibold", className)}
       {...props} />)

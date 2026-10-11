@@ -1,8 +1,9 @@
 'use client';
 
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
+import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 export default function ConfirmModal({ 
   isOpen, 
@@ -26,6 +27,10 @@ export default function ConfirmModal({
     };
   }, [isOpen]);
 
+  const titleId = useId();
+  const messageId = useId();
+  const panelRef = useDialogA11y(isOpen, () => !isLoading && onClose());
+
   if (!isOpen) return null;
 
   return (
@@ -37,15 +42,23 @@ export default function ConfirmModal({
       />
       
       {/* Modal */}
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative z-10 animate-in fade-in zoom-in duration-200">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={messageId}
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative z-10 animate-in fade-in zoom-in duration-200 outline-none"
+      >
         <div className="p-6">
           <div className="flex items-start gap-4">
             <div className={`p-3 rounded-full shrink-0 ${isDestructive ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
-              <AlertTriangle className="w-6 h-6" />
+              <AlertTriangle className="w-6 h-6" aria-hidden="true" />
             </div>
             <div className="flex-1 pt-1">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">
+              <h3 id={titleId} className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
+              <p id={messageId} className="text-gray-600 text-sm leading-relaxed">
                 {message}
               </p>
             </div>

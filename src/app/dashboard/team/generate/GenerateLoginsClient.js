@@ -6,7 +6,6 @@ import { Download, Users, FileSpreadsheet, Loader2, UploadCloud, ChevronLeft, Ch
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { generateTeamLogins, bulkCreateFromExcel } from '@/app/actions';
-import * as XLSX from 'xlsx';
 import Link from 'next/link';
 
 export default function GenerateLoginsClient({ role, defaultOrg }) {
@@ -51,8 +50,9 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
     }
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
+        const XLSX = await import('xlsx');
         const bstr = evt.target.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
@@ -110,7 +110,7 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
           <ChevronLeft className="w-5 h-5 text-gray-500" />
         </Link>
         <div>
-          <p className="text-xs font-semibold tracking-widest uppercase text-[#2e7d52] mb-1">Team Management</p>
+          <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">Team Management</p>
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Generate Logins</h1>
           <p className="text-gray-500 text-sm">Bulk create approved accounts for corporate volunteers.</p>
         </div>
@@ -123,7 +123,7 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
             <button
               onClick={() => setActiveTab('quick')}
               className={`flex-1 py-4 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
-                activeTab === 'quick' ? 'border-b-2 border-[#0d3b26] text-[#0d3b26]' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                activeTab === 'quick' ? 'border-b-2 border-brand text-brand' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
               }`}
             >
               <Users className="w-4 h-4" /> Quick Generate
@@ -131,7 +131,7 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
             <button
               onClick={() => setActiveTab('excel')}
               className={`flex-1 py-4 text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
-                activeTab === 'excel' ? 'border-b-2 border-[#0d3b26] text-[#0d3b26]' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                activeTab === 'excel' ? 'border-b-2 border-brand text-brand' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
               }`}
             >
               <FileSpreadsheet className="w-4 h-4" /> Excel Upload
@@ -149,11 +149,11 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
                     onChange={e => setOrgName(e.target.value)}
                     readOnly={role === 'org_spoc'}
                     className={`w-full h-11 border rounded-lg px-4 text-sm focus:outline-none ${
-                      role === 'org_spoc' ? 'bg-gray-50 border-gray-200 text-gray-500' : 'bg-white border-gray-300 focus:border-[#0d3b26] focus:ring-1 focus:ring-[#0d3b26]'
+                      role === 'org_spoc' ? 'bg-gray-50 border-gray-200 text-gray-500' : 'bg-white border-gray-300 focus:border-brand focus:ring-1 focus:ring-brand'
                     }`}
                     placeholder="e.g. Tata Consultancy Services"
                   />
-                  {role === 'org_spoc' && <p className="text-xs text-gray-400 mt-1.5">Fixed to your organisation.</p>}
+                  {role === 'org_spoc' && <p className="text-xs text-gray-500 mt-1.5">Fixed to your organisation.</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Number of Logins</label>
@@ -163,14 +163,14 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
                     max="500"
                     value={count}
                     onChange={e => setCount(e.target.value)}
-                    className="w-full h-11 border border-gray-300 rounded-lg px-4 text-sm focus:outline-none focus:border-[#0d3b26] focus:ring-1 focus:ring-[#0d3b26]"
+                    className="w-full h-11 border border-gray-300 rounded-lg px-4 text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                     placeholder="How many volunteers?"
                   />
                 </div>
                 <Button
                   type="submit"
                   disabled={isPending || !orgName || !count}
-                  className="w-full h-11 bg-[#0d3b26] hover:bg-[#1a5c3a] text-white gap-2 mt-4 text-base"
+                  className="w-full h-11 bg-brand hover:bg-brand-strong text-white gap-2 mt-4 text-base"
                 >
                   {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Users className="w-5 h-5" />}
                   {isPending ? 'Generating...' : 'Generate Accounts'}
@@ -185,7 +185,7 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
                       type="text"
                       value={orgName}
                       onChange={e => setOrgName(e.target.value)}
-                      className="w-full h-11 border border-gray-300 rounded-lg px-4 text-sm focus:outline-none focus:border-[#0d3b26] focus:ring-1 focus:ring-[#0d3b26]"
+                      className="w-full h-11 border border-gray-300 rounded-lg px-4 text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                       placeholder="e.g. Tata Consultancy Services"
                     />
                   </div>
@@ -201,7 +201,7 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
                       id="excel-upload"
                     />
                     <label htmlFor="excel-upload" className="cursor-pointer flex flex-col items-center">
-                      <UploadCloud className="w-10 h-10 text-[#2e7d52] mb-3" />
+                      <UploadCloud className="w-10 h-10 text-brand-accent mb-3" />
                       <span className="text-sm font-medium text-gray-900 mb-1">Click to browse or drag file</span>
                       <span className="text-xs text-gray-500">Must contain a &quot;Name&quot; column</span>
                       {excelFile && (
@@ -215,7 +215,7 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
                 <Button
                   type="submit"
                   disabled={isPending || !excelFile || !orgName}
-                  className="w-full h-11 bg-[#0d3b26] hover:bg-[#1a5c3a] text-white gap-2 mt-4 text-base"
+                  className="w-full h-11 bg-brand hover:bg-brand-strong text-white gap-2 mt-4 text-base"
                 >
                   {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
                   {isPending ? 'Processing...' : 'Create from Excel'}
@@ -237,7 +237,7 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
               onClick={downloadCSV}
-              className="h-12 px-8 bg-[#0d3b26] hover:bg-[#1a5c3a] text-white gap-2 text-base font-semibold w-full sm:w-auto"
+              className="h-12 px-8 bg-brand hover:bg-brand-strong text-white gap-2 text-base font-semibold w-full sm:w-auto"
             >
               <Download className="w-5 h-5" />
               Download CSV
