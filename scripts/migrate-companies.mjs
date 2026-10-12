@@ -203,7 +203,9 @@ export async function cleanupMigration(db, { backupFile = null, now = new Date()
   if (ngoMissing > 0) throw new Error(`Refusing cleanup: ${ngoMissing} NGO accounts have an organizationName but no ngoName. Run --apply again first.`);
   const volunteerMissing = await users.countDocuments({ role: 'volunteer', organizationName: nonEmpty, employerName: { $in: [null, ''] } });
   if (volunteerMissing > 0) throw new Error(`Refusing cleanup: ${volunteerMissing} volunteer accounts have an organizationName but no employerName. Run --apply again first.`);
-  const companyKeys = new Set((await db.collection('companies').distinct('nameKey')).filter(Boolean));
+  // Only names apply can actually link (planned groups) count; an unrelated company
+  // created later in the UI must not block cleanup forever.
+  const companyKeys = new Set((await planMigration(db)).groups.map((g) => g.key));
   const pendingNames = (await attendances.distinct('organizationName', { companyId: null }))
     .filter((n) => hasText(n) && companyKeys.has(toNameKey(n)));
   const attendanceUnlinked = pendingNames.length

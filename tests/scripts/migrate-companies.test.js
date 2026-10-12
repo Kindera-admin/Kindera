@@ -244,9 +244,10 @@ describe('group naming', () => {
     expect((await db.collection('companies').findOne({ nameKey: 'zeta inc' })).name).toBe('Zeta Inc');
   });
   it('takes the logo of the most recently updated SPOC', async () => {
+    // Older SPOC inserted first, so an unsorted query (natural order) would pick the wrong logo.
     await db.collection('users').insertMany([
-      { username: 'new', role: 'org_spoc', name: 'N', organizationName: 'Beta LLC', organizationLogo: 'https://logo/new.png', updatedAt: new Date('2026-09-01T00:00:00Z') },
       { username: 'old', role: 'org_spoc', name: 'O', organizationName: 'beta llc', organizationLogo: 'https://logo/old.png', updatedAt: new Date('2026-01-01T00:00:00Z') },
+      { username: 'new', role: 'org_spoc', name: 'N', organizationName: 'Beta LLC', organizationLogo: 'https://logo/new.png', updatedAt: new Date('2026-09-01T00:00:00Z') },
     ]);
     await applyMigration(db, { now });
     expect((await db.collection('companies').findOne({ nameKey: 'beta llc' })).logoUrl).toBe('https://logo/new.png');
@@ -343,6 +344,15 @@ describe('cleanupMigration guards for records written after --apply', () => {
     const before = await countOld();
     await expect(cleanupMigration(db, { now })).rejects.toThrow(/Refusing cleanup.*attendance.*Run --apply again first/);
     expect(await countOld()).toEqual(before);
+  });
+  it('is not blocked by attendance matching a company that apply could never link', async () => {
+    const { eventId } = await seedLegacy();
+    await applyMigration(db, { now });
+    // A company created directly (e.g. in the admin UI): no user or event carries this name.
+    await db.collection('companies').insertOne({ name: 'Created Later', nameKey: 'created later', logoUrl: '', status: 'active', createdBy: null, createdAt: now, updatedAt: now });
+    await db.collection('attendances').insertOne({ eventId, userId: new mongoose.Types.ObjectId(), organizationName: 'Created Later', attended: true });
+    await expect(cleanupMigration(db, { now })).resolves.toBeDefined();
+    expect(await countOld()).toEqual({ users: 0, events: 0, attendances: 0 });
   });
   it('succeeds after the late records are re-applied', async () => {
     const { eventId } = await seedLegacy();
