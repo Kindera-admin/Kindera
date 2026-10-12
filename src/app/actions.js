@@ -8,6 +8,12 @@ import NGOPartner from '@/models/NGOPartner';
 import Attendance from '@/models/Attendance';
 import ImpactPhoto from '@/models/ImpactPhoto';
 import Message from '@/models/Message';
+import Company from '@/models/Company';
+import { isValidObjectId } from 'mongoose';
+import {
+  resolveCompanyAccess, eventVisibilityFilter, canSeeEvent, canManageEvent,
+  getCompanyName, getCompaniesByIds, asObjectId,
+} from '@/lib/company';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
@@ -95,7 +101,8 @@ export async function login(formData) {
           username: user.username,
           role: user.role,
           ngoId: user.ngoId,
-          organizationName: user.organizationName,
+          companyId: user.companyId ? String(user.companyId) : null,
+          companyName: await getCompanyName(user.companyId),
           name: user.name
         },
         token
@@ -180,7 +187,7 @@ export async function registerUser(formData) {
     const role = formData.get('role');
     const ngoId = formData.get('ngoId');
     const name = formData.get('name');
-    const organizationName = formData.get('organizationName');
+    const companyId = formData.get('companyId');
 
     if (user.role === 'employee' && role !== 'ngo') {
       return { success: false, message: 'Employees are only allowed to register NGO users' };
@@ -196,10 +203,6 @@ export async function registerUser(formData) {
 
     if (role === 'ngo' && !ngoId) {
       return { success: false, message: 'NGO ID is required for NGO users' };
-    }
-    
-    if ((role === 'org_spoc' || role === 'org_member') && !organizationName) {
-      return { success: false, message: 'Organisation name is required for Organisation SPOC and Organisation Member' };
     }
     
     const existingUser = await User.findOne({ username });
@@ -220,7 +223,12 @@ export async function registerUser(formData) {
     }
     
     if (role === 'org_spoc' || role === 'org_member') {
-      userData.organizationName = organizationName;
+      if (!companyId || !isValidObjectId(companyId)) {
+        return { success: false, message: 'Choose the company this person belongs to' };
+      }
+      const company = await Company.findOne({ _id: companyId, status: 'active' }).select('_id').lean();
+      if (!company) return { success: false, message: 'That company does not exist or is archived' };
+      userData.companyId = company._id;
     }
     
     const newUser = await User.create(userData);
@@ -481,11 +489,17 @@ export async function getAllUsers() {
     const users = await User.find({ _id: { $ne: currentUser._id } })
       .populate({
         path: 'eventRegistrations.eventId',
-        select: 'title createdBy',
-        populate: { path: 'createdBy', select: 'organizationName name' }
+        select: 'title createdBy companyId',
+        populate: { path: 'createdBy', select: 'name companyId' }
       })
       .select('-password').lean();
-    
+
+    const companies = await getCompaniesByIds([
+      ...users.map((u) => u.companyId),
+      ...users.flatMap((u) => (u.eventRegistrations || []).flatMap((r) => [r.eventId?.companyId, r.eventId?.createdBy?.companyId])),
+    ]);
+    const companyName = (id) => (id ? companies.get(String(id))?.name ?? null : null);
+
     return {
       success: true,
       users: users.map(user => ({
@@ -493,7 +507,10 @@ export async function getAllUsers() {
         username: user.username,
         role: user.role,
         ngoId: user.ngoId,
-        organizationName: user.organizationName,
+        companyId: user.companyId ? String(user.companyId) : null,
+        companyName: companyName(user.companyId),
+        ngoName: user.ngoName || '',
+        employerName: user.employerName || '',
         name: user.name,
         status: user.status || 'pending',
         mobile: user.mobile || '',
@@ -509,7 +526,7 @@ export async function getAllUsers() {
         eventRegistrations: (user.eventRegistrations || []).map(reg => ({
           eventId: reg.eventId?._id?.toString(),
           title: reg.eventId?.title,
-          organizerName: reg.eventId?.createdBy?.organizationName || reg.eventId?.createdBy?.name || 'Unknown',
+          organizerName: companyName(reg.eventId?.companyId) || companyName(reg.eventId?.createdBy?.companyId) || reg.eventId?.createdBy?.name || 'Unknown',
           status: reg.status,
           comment: reg.comment,
           appliedAt: reg.appliedAt ? reg.appliedAt.toISOString() : null
@@ -1073,7 +1090,8 @@ export async function signup(formData) {
     const username = formData.get('username');
     const password = formData.get('password');
     const confirmPassword = formData.get('confirmPassword');
-    const organizationName = formData.get('organizationName');
+    const ngoName = (formData.get('ngoName') || '').trim();
+    const employerName = (formData.get('employerName') || '').trim();
     const mobile = formData.get('mobile') || '';
     const role = formData.get('role') || 'volunteer';
     const ngoId = formData.get('ngoId') || '';
@@ -1092,14 +1110,14 @@ export async function signup(formData) {
       return { success: false, message: 'All fields are required' };
     }
 
-    if (role !== 'volunteer' && !organizationName) {
-      return { success: false, message: 'Organization name is required' };
+    // Public signup is for volunteers and NGOs. Admins register SPOCs and
+    // employees against a Company; SPOCs generate their team's logins.
+    if (!['volunteer', 'ngo'].includes(role)) {
+      return { success: false, message: 'Invalid role selected' };
     }
 
-    // Self-signup is limited to the roles the signup form offers. Kindera staff
-    // (employee) and team members (org_member) are created by admins and SPOCs.
-    if (!['volunteer', 'org_spoc', 'ngo'].includes(role)) {
-      return { success: false, message: 'Invalid role selected' };
+    if (role === 'ngo' && !ngoName) {
+      return { success: false, message: 'NGO name is required' };
     }
 
     if (password.length < 6) {
@@ -1132,9 +1150,10 @@ export async function signup(formData) {
 
     if (role === 'ngo') {
       userData.ngoId = ngoId;
-      userData.name = organizationName.trim(); // For NGO, 'organizationName' acts as the user's name
+      userData.ngoName = ngoName;
+      userData.name = ngoName; // an NGO's display name is its organisation
     } else {
-      userData.organizationName = organizationName.trim();
+      userData.employerName = employerName;
     }
 
     await User.create(userData);

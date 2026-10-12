@@ -90,7 +90,7 @@ function UserModal({ user, onClose, onStatusUpdate, isUpdatingStatus }) {
             </div>
             <div>
               <p className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Organisation</p>
-              <p className="font-medium">{user.organizationName || user.ngoId || '—'}</p>
+              <p className="font-medium">{user.companyName || user.ngoName || user.employerName || user.ngoId || '—'}</p>
             </div>
             <div>
               <p className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Mobile</p>
@@ -170,7 +170,7 @@ export default function UsersClient({ initialUsers = [], currentUserId }) {
       user.name.toLowerCase().includes(searchLower) ||
       user.username.toLowerCase().includes(searchLower) ||
       (user.ngoId && user.ngoId.toLowerCase().includes(searchLower)) ||
-      (user.organizationName && user.organizationName.toLowerCase().includes(searchLower))
+      (user.companyName && user.companyName.toLowerCase().includes(searchLower))
     );
   });
 
@@ -328,9 +328,9 @@ export default function UsersClient({ initialUsers = [], currentUserId }) {
                       >
                         <TableCell>
                           <div className="font-medium">{user.name}</div>
-                          {(user.organizationName || user.ngoId) && (
+                          {(user.companyName || user.ngoName || user.employerName || user.ngoId) && (
                             <div className="text-xs text-gray-500 mt-0.5">
-                              {user.organizationName || user.ngoId}
+                              {user.companyName || user.ngoName || user.employerName || user.ngoId}
                             </div>
                           )}
                           <div className="text-xs text-gray-500 mt-0.5">@{user.username}</div>
@@ -345,7 +345,7 @@ export default function UsersClient({ initialUsers = [], currentUserId }) {
                           <span className={getRoleColor(user.role)}>{getRoleDisplay(user.role)}</span>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm">{user.organizationName || user.ngoId || '—'}</div>
+                          <div className="text-sm">{user.companyName || user.ngoName || user.employerName || user.ngoId || '—'}</div>
                           <div className="text-xs text-gray-500 capitalize">{user.role === 'volunteer' ? 'Volunteer' : user.role.replace('_', ' ')}</div>
                         </TableCell>
                         <TableCell>{user.mobile || '-'}</TableCell>

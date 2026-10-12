@@ -61,7 +61,7 @@ function CertUpload({ certKey, label, desc, file, onFileSelect, onRemove }) {
   );
 }
 
-export default function RegisterForm({ userRole }) {
+export default function RegisterForm({ userRole, companies = [] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roleParam = searchParams.get('role');
@@ -71,8 +71,8 @@ export default function RegisterForm({ userRole }) {
   const [selectedRole, setSelectedRole] = useState(defaultRole);
   const [certFiles, setCertFiles] = useState({});
 
-  const { register, handleSubmit, formState: { errors }, setValue } = useForm({
-    defaultValues: { username: '', password: '', name: '', ngoId: '', organizationName: '' },
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm({
+    defaultValues: { username: '', password: '', name: '', ngoId: '', companyId: '' },
   });
 
   const handleFileSelect = (key, file) => setCertFiles(prev => ({ ...prev, [key]: file }));
@@ -97,7 +97,7 @@ export default function RegisterForm({ userRole }) {
       formData.append('name', data.name);
       if (selectedRole === 'ngo') formData.append('ngoId', data.ngoId);
       if (selectedRole === 'org_spoc' || selectedRole === 'org_member')
-        formData.append('organizationName', data.organizationName);
+        formData.append('companyId', data.companyId);
 
       const result = await registerUser(formData);
       if (!result.success) {
@@ -151,7 +151,7 @@ export default function RegisterForm({ userRole }) {
             <Label htmlFor="role">Role</Label>
             <Select disabled={userRole === 'employee'} value={selectedRole} onValueChange={(value) => {
               setSelectedRole(value);
-              setValue('organizationName', '');
+              setValue('companyId', '');
               setValue('ngoId', '');
               setCertFiles({});
             }}>
@@ -208,13 +208,25 @@ export default function RegisterForm({ userRole }) {
             </div>
           )}
 
-          {/* Organisation Name */}
+          {/* Company */}
           {showOrganizationField && (
             <div className="space-y-2">
-              <Label htmlFor="organizationName">Organisation Name</Label>
-              <Input id="organizationName" className="w-full" placeholder="Enter organisation name"
-                {...register('organizationName', { required: showOrganizationField ? 'Organisation name is required' : false })} />
-              {errors.organizationName && <p className="text-sm text-red-500">{errors.organizationName.message}</p>}
+              <Label htmlFor="companyId">Company</Label>
+              <Select value={watch('companyId')} onValueChange={(v) => setValue('companyId', v, { shouldValidate: true })}>
+                <SelectTrigger id="companyId" className="w-full">
+                  <SelectValue placeholder={companies.length ? 'Select a company' : 'No companies yet'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <input type="hidden" {...register('companyId', { required: showOrganizationField ? 'Company is required' : false })} />
+              {errors.companyId && <p className="text-sm text-red-500">{errors.companyId.message}</p>}
+              {companies.length === 0 && (
+                <p className="text-xs text-gray-500">
+                  Add the company on the <a href="/admin/companies" className="underline">Companies</a> page first.
+                </p>
+              )}
             </div>
           )}
 

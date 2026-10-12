@@ -77,7 +77,7 @@ function SignupForm() {
       name: '',
       username: '',
       role: 'volunteer',
-      organizationName: '',
+      affiliation: '',
       ngoId: '',
       mobile: '',
       password: '',
@@ -123,7 +123,8 @@ function SignupForm() {
       formData.append('name', data.name);
       formData.append('username', data.username);
       formData.append('role', data.role);
-      formData.append('organizationName', data.organizationName);
+      if (data.role === 'ngo') formData.append('ngoName', data.affiliation);
+      else formData.append('employerName', data.affiliation || '');
       if (data.role === 'ngo') formData.append('ngoId', data.ngoId);
       formData.append('mobile', data.mobile);
       formData.append('registrationReason', data.registrationReason);
@@ -184,7 +185,6 @@ function SignupForm() {
             <SelectTrigger className="w-full"><SelectValue placeholder="Select a role" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="volunteer">Volunteer</SelectItem>
-              <SelectItem value="org_spoc">Organisation SPOC</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-gray-500 mt-1">
@@ -203,14 +203,14 @@ function SignupForm() {
 
         {/* Organization / NGO Name */}
         <div className="space-y-2">
-          <Label htmlFor="organizationName">{role === 'ngo' ? 'NGO Name' : role === 'volunteer' ? 'Organization Name (Optional)' : 'Organization Name'}</Label>
-          <Input id="organizationName"
-            placeholder={`Enter your ${role === 'ngo' ? 'NGO name' : 'organization name'}`}
-            {...register('organizationName', {
-              required: role === 'volunteer' ? false : `${role === 'ngo' ? 'NGO name' : 'Organization name'} is required`,
+          <Label htmlFor="affiliation">{role === 'ngo' ? 'NGO Name' : 'Employer (Optional)'}</Label>
+          <Input id="affiliation"
+            placeholder={role === 'ngo' ? 'Enter your NGO name' : 'Where do you work? (optional)'}
+            {...register('affiliation', {
+              required: role === 'ngo' ? 'NGO name is required' : false,
               minLength: { value: 2, message: 'Must be at least 2 characters' },
             })} />
-          {errors.organizationName && <p className="text-sm text-red-500">{errors.organizationName.message}</p>}
+          {errors.affiliation && <p className="text-sm text-red-500">{errors.affiliation.message}</p>}
         </div>
 
         {/* NGO ID */}
