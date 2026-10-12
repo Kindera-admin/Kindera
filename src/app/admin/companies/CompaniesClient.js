@@ -128,11 +128,11 @@ export default function CompaniesClient({ companies }) {
                       </div>
                     )}
                     {editingId === c._id ? (
-                      <form onSubmit={(e) => { e.preventDefault(); handleRename(c._id); }} className="flex items-center gap-1">
+                      <form onSubmit={(e) => { e.preventDefault(); handleRename(c._id); }} className="flex items-center gap-2">
                         <label htmlFor={`rename-${c._id}`} className="sr-only">Company name</label>
                         <Input id={`rename-${c._id}`} value={editName} onChange={(e) => setEditName(e.target.value)} className="h-9 w-56" autoFocus />
-                        <Button type="submit" size="icon" aria-label="Save name" disabled={isPending}><Check className="h-4 w-4" aria-hidden="true" /></Button>
-                        <Button type="button" size="icon" variant="outline" aria-label="Cancel rename" onClick={() => setEditingId(null)}><X className="h-4 w-4" aria-hidden="true" /></Button>
+                        <Button type="submit" size="icon" className="hit-target" aria-label="Save name" disabled={isPending}><Check className="h-4 w-4" aria-hidden="true" /></Button>
+                        <Button type="button" size="icon" variant="outline" className="hit-target" aria-label="Cancel rename" onClick={() => setEditingId(null)}><X className="h-4 w-4" aria-hidden="true" /></Button>
                       </form>
                     ) : (
                       <div>
@@ -146,19 +146,19 @@ export default function CompaniesClient({ companies }) {
                 <td className="px-6 py-4 text-right tabular-nums">{c.memberCount}</td>
                 <td className="px-6 py-4 text-right font-semibold text-brand tabular-nums">{c.volunteerHours.toLocaleString()}</td>
                 <td className="px-6 py-4">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="outline" size="icon" aria-label={`Rename ${c.name}`} onClick={() => { setEditingId(c._id); setEditName(c.name); }}>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button variant="outline" size="icon" className="hit-target" aria-label={`Rename ${c.name}`} onClick={() => { setEditingId(c._id); setEditName(c.name); }}>
                       <Pencil className="h-4 w-4" aria-hidden="true" />
                     </Button>
-                    <Button variant="outline" size="icon" aria-label={`Upload logo for ${c.name}`} onClick={() => pickLogo(c._id)} disabled={uploadingId === c._id}>
+                    <Button variant="outline" size="icon" className="hit-target" aria-label={`Upload logo for ${c.name}`} onClick={() => pickLogo(c._id)} disabled={uploadingId === c._id}>
                       {uploadingId === c._id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ImageUp className="h-4 w-4" aria-hidden="true" />}
                     </Button>
                     {c.status === 'active' ? (
-                      <Button variant="outline" size="icon" aria-label={`Archive ${c.name}`} disabled={isPending} onClick={() => act(() => archiveCompany(c._id), `${c.name} archived`)}>
+                      <Button variant="outline" size="icon" className="hit-target" aria-label={`Archive ${c.name}`} disabled={isPending} onClick={() => act(() => archiveCompany(c._id), `${c.name} archived`)}>
                         <Archive className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     ) : (
-                      <Button variant="outline" size="icon" aria-label={`Restore ${c.name}`} disabled={isPending} onClick={() => act(() => restoreCompany(c._id), `${c.name} restored`)}>
+                      <Button variant="outline" size="icon" className="hit-target" aria-label={`Restore ${c.name}`} disabled={isPending} onClick={() => act(() => restoreCompany(c._id), `${c.name} restored`)}>
                         <ArchiveRestore className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     )}

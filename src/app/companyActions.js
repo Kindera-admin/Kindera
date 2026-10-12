@@ -10,6 +10,8 @@ import { getCurrentUser } from '@/lib/auth';
 import { isStaff, sameCompany } from '@/lib/company';
 
 const DUPLICATE = 'A company with this name already exists';
+const MAX_NAME_LENGTH = 100;
+const NAME_TOO_LONG = `Company name must be at most ${MAX_NAME_LENGTH} characters`;
 
 function serialize(c) {
   return {
@@ -71,6 +73,7 @@ export async function createCompany(name) {
     if (error) return { success: false, message: error };
     const clean = String(name ?? '').trim();
     if (clean.length < 2) return { success: false, message: 'Company name must be at least 2 characters' };
+    if (clean.length > MAX_NAME_LENGTH) return { success: false, message: NAME_TOO_LONG };
     // Uniqueness is enforced by the unique nameKey index (atomic), not by a pre-check.
     const company = await Company.create({ name: clean, createdBy: caller._id });
     revalidateCompanies();
@@ -89,6 +92,7 @@ export async function renameCompany(id, name) {
     if (!isValidObjectId(id)) return { success: false, message: 'Company not found' };
     const clean = String(name ?? '').trim();
     if (clean.length < 2) return { success: false, message: 'Company name must be at least 2 characters' };
+    if (clean.length > MAX_NAME_LENGTH) return { success: false, message: NAME_TOO_LONG };
     const company = await Company.findById(id);
     if (!company) return { success: false, message: 'Company not found' };
     company.name = clean;

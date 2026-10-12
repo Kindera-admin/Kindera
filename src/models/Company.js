@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { toNameKey } from '@/lib/companyName.mjs';
 
 const companySchema = new mongoose.Schema({
-  name: { type: String, required: true, trim: true },
+  name: { type: String, required: true, trim: true, maxlength: 100 },
   // Unique, case- and spacing-insensitive form of `name`; blocks "Acme" vs "acme ".
   nameKey: { type: String, required: true, unique: true },
   logoUrl: { type: String, default: '' },
