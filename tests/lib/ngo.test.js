@@ -99,10 +99,11 @@ describe('myNgosFilter', () => {
     expect(await namesFor(myNgosFilter(w.spocB))).toEqual(['AandB']);
   });
 
-  it('is null for staff, volunteers, NGOs, logged-out and company-less corporate callers', () => {
+  it('matches nothing for staff, volunteers, NGOs, logged-out and company-less corporate callers', async () => {
     const lost = { _id: 'lost', role: 'org_member', companyId: null };
     for (const u of [w.admin, w.employee, w.volunteer, w.ngo, lost, null, undefined]) {
-      expect(myNgosFilter(u)).toBeNull();
+      expect(myNgosFilter(u)).not.toBeNull();
+      expect(await namesFor(myNgosFilter(u))).toEqual([]);
     }
   });
 });

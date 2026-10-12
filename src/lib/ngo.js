@@ -16,11 +16,11 @@ export function partnerVisibilityFilter(caller) {
   return { ...PUBLIC_PARTNER };
 }
 
-// Filter for a company's own NGOs, or null when the caller has no company.
-// Callers must refuse on null.
+// Filter for a company's own NGOs. Callers without a company get a filter
+// that matches nothing (never null: find(null) would match everything).
 export function myNgosFilter(caller) {
   if (isCorporate(caller)) return { companyIds: caller.companyId };
-  return null;
+  return { _id: { $in: [] } };
 }
 
 // The companyId values an NGO login may put on an event: strings, or null for
