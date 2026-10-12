@@ -1,6 +1,7 @@
 import connectDB from '@/lib/db';
 import User from '@/models/User';
 import Event from '@/models/Event';
+import Company from '@/models/Company';
 
 let seq = 0;
 export const next = () => ++seq;
@@ -30,4 +31,9 @@ export async function makeEvent(creator, overrides = {}) {
     createdByRole: creator.role,
     ...overrides,
   });
+}
+
+export async function makeCompany(name = `Company ${next()}`, overrides = {}) {
+  await connectDB();
+  return Company.create({ name, ...overrides });
 }
