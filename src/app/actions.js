@@ -12,9 +12,11 @@ import Company from '@/models/Company';
 import mongoose, { isValidObjectId } from 'mongoose';
 import {
   resolveCompanyAccess, eventVisibilityFilter, canSeeEvent, canManageEvent,
-  getCompanyName, getCompaniesByIds, asObjectId, isCorporate, sameCompany,
+  getCompanyName, getCompaniesByIds, asObjectId, isStaff, isCorporate, sameCompany,
 } from '@/lib/company';
+import { partnerVisibilityFilter, myNgosFilter } from '@/lib/ngo';
 import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import { getCurrentUser } from '@/lib/auth';
@@ -206,6 +208,7 @@ export async function registerUser(formData) {
     
     if (role === 'ngo') {
       userData.ngoId = ngoId;
+      userData.ngoName = name; // an NGO's organisation name is its display name
     }
     
     if (role === 'org_spoc' || role === 'org_member') {
@@ -1132,40 +1135,134 @@ export async function signup(formData) {
 
 // ── NGO Partners ──────────────────────────────────────────────────────────────
 
+const NGO_STAFF_ONLY = 'Only admins and employees can manage NGO partners';
+const NGO_NOT_FOUND = { success: false, message: 'NGO partner not found' };
+const ACTIVE_COMPANIES_ONLY = { success: false, message: 'Choose active companies only' };
+const MAX_NGO_IMPORT_ROWS = 500;
+
+// A client-sent id must be a string: isValidObjectId alone also accepts numbers and buffers.
+const isIdString = (value) => typeof value === 'string' && isValidObjectId(value);
+
+// Every partner-management action is for admins and employees only.
+async function requireNgoStaff() {
+  await connectDB();
+  const caller = await getCurrentUser();
+  if (!caller) return { error: { success: false, message: 'Not authenticated' } };
+  if (!isStaff(caller)) return { error: { success: false, message: NGO_STAFF_ONLY } };
+  return { caller };
+}
+
+// Reads the `companyIds` form value: a JSON array of company ids. Missing or
+// empty means no companies (a public partner). Every id must be a valid id of
+// an active company. Returns { ids } (unique, lowercase) or { error }.
+async function readActiveCompanyIds(raw) {
+  let requested = [];
+  if (raw != null && raw !== '') {
+    if (typeof raw !== 'string') return { error: ACTIVE_COMPANIES_ONLY };
+    try {
+      requested = JSON.parse(raw);
+    } catch {
+      return { error: ACTIVE_COMPANIES_ONLY };
+    }
+    if (!Array.isArray(requested) || !requested.every(isIdString)) return { error: ACTIVE_COMPANIES_ONLY };
+  }
+  const ids = [...new Set(requested.map((id) => id.toLowerCase()))];
+  if (ids.length > 0) {
+    const active = await Company.countDocuments({ _id: { $in: ids }, status: 'active' });
+    if (active !== ids.length) return { error: ACTIVE_COMPANIES_ONLY };
+  }
+  return { ids };
+}
+
+// The card shape the pages use. Staff see every company on a card and the
+// username of its login. A company user sees only their own company on a card,
+// so they cannot learn which other companies share an NGO.
+async function presentPartners(partners, caller) {
+  const staff = isStaff(caller);
+  const ownCompany = isCorporate(caller) ? String(caller.companyId) : null;
+  const shownIds = (p) => (p.companyIds || []).map(String).filter((id) => staff || id === ownCompany);
+  const companies = await getCompaniesByIds(partners.flatMap(shownIds));
+
+  const usernames = new Map();
+  if (staff) {
+    const loginIds = partners.map((p) => p.loginUserId).filter(Boolean);
+    if (loginIds.length > 0) {
+      const logins = await User.find({ _id: { $in: loginIds } }).select('username').lean();
+      for (const login of logins) usernames.set(String(login._id), login.username);
+    }
+  }
+
+  return partners.map((p) => {
+    const companyIds = shownIds(p).filter((id) => companies.has(id));
+    const item = {
+      _id: p._id.toString(),
+      name: p.name,
+      description: p.description,
+      logoUrl: p.logoUrl || '',
+      focusAreas: p.focusAreas || '',
+      programs: p.programs || [],
+      impact: p.impact || '',
+      registeredOffice: p.registeredOffice || '',
+      location: p.location || '',
+      website: p.website || '',
+      createdAt: p.createdAt.toISOString(),
+      companyIds,
+      companyNames: companyIds.map((id) => companies.get(id).name),
+    };
+    if (staff) item.loginUsername = p.loginUserId ? usernames.get(String(p.loginUserId)) ?? null : null;
+    return item;
+  });
+}
+
+// Public cards for everyone; company cards only to staff and that company.
 export async function getAllNGOPartners() {
   try {
     await connectDB();
-    const partners = await NGOPartner.find().sort({ createdAt: -1 }).lean();
-    return {
-      success: true,
-      partners: partners.map((p) => ({
-        _id: p._id.toString(),
-        name: p.name,
-        description: p.description,
-        logoUrl: p.logoUrl || '',
-        focusAreas: p.focusAreas || '',
-        programs: p.programs || [],
-        impact: p.impact || '',
-        registeredOffice: p.registeredOffice || '',
-        location: p.location || '',
-        website: p.website || '',
-        createdAt: p.createdAt.toISOString(),
-      })),
-    };
+    const caller = await getCurrentUser();
+    const partners = await NGOPartner.find(partnerVisibilityFilter(caller)).sort({ createdAt: -1 }).lean();
+    return { success: true, partners: await presentPartners(partners, caller) };
   } catch (error) {
     console.error('Error fetching NGO partners:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not load NGO partners. Please try again.' };
+  }
+}
+
+// A company's own NGOs, for its SPOCs and employees, with how many upcoming
+// events each NGO's login has created for that company.
+export async function getMyNGOs() {
+  try {
+    await connectDB();
+    const caller = await getCurrentUser();
+    if (!caller) return { success: false, message: 'Not authenticated' };
+    if (!isCorporate(caller)) return { success: false, message: 'Not authorized' };
+
+    const partners = await NGOPartner.find(myNgosFilter(caller)).sort({ createdAt: -1 }).lean();
+    const items = await presentPartners(partners, caller);
+
+    const upcoming = new Map();
+    const loginIds = partners.map((p) => p.loginUserId).filter(Boolean);
+    if (loginIds.length > 0) {
+      const counts = await Event.aggregate([
+        { $match: { createdBy: { $in: loginIds }, companyId: asObjectId(caller.companyId), date: { $gte: new Date() } } },
+        { $group: { _id: '$createdBy', count: { $sum: 1 } } },
+      ]);
+      for (const c of counts) upcoming.set(String(c._id), c.count);
+    }
+
+    return {
+      success: true,
+      partners: items.map((item, i) => ({ ...item, upcomingEvents: upcoming.get(String(partners[i].loginUserId)) || 0 })),
+    };
+  } catch (error) {
+    console.error('Error fetching company NGOs:', error);
+    return { success: false, message: 'Could not load your NGOs. Please try again.' };
   }
 }
 
 export async function createNGOPartner(formData) {
   try {
-    const session = await getSession();
-    if (!session) return { success: false, message: 'Not authenticated' };
-
-    await connectDB();
-    const user = await getCurrentUser();
-    if (user.role !== 'admin' && user.role !== 'employee') return { success: false, message: 'Only admins and employees can add NGO partners' };
+    const { caller, error } = await requireNgoStaff();
+    if (error) return error;
 
     const name = formData.get('name')?.trim();
     const description = formData.get('description')?.trim();
@@ -1182,41 +1279,30 @@ export async function createNGOPartner(formData) {
       return { success: false, message: 'Name and description are required' };
     }
 
-    const partner = await NGOPartner.create({ name, description, logoUrl, focusAreas, programs, impact, registeredOffice, location, website });
+    const companies = await readActiveCompanyIds(formData.get('companyIds'));
+    if (companies.error) return companies.error;
+
+    const partner = await NGOPartner.create({
+      name, description, logoUrl, focusAreas, programs, impact, registeredOffice, location, website, companyIds: companies.ids,
+    });
 
     revalidatePath('/ngo-partners');
     revalidatePath('/admin/ngo-partners');
+    revalidatePath('/dashboard/my-ngos');
 
-    return {
-      success: true,
-      partner: {
-        _id: partner._id.toString(),
-        name: partner.name,
-        description: partner.description,
-        logoUrl: partner.logoUrl,
-        focusAreas: partner.focusAreas,
-        programs: partner.programs,
-        impact: partner.impact,
-        registeredOffice: partner.registeredOffice,
-        location: partner.location,
-        website: partner.website,
-        createdAt: partner.createdAt.toISOString(),
-      },
-    };
+    const [item] = await presentPartners([partner.toObject()], caller);
+    return { success: true, partner: item };
   } catch (error) {
     console.error('Error creating NGO partner:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not add the NGO partner. Please try again.' };
   }
 }
 
 export async function updateNGOPartner(id, formData) {
   try {
-    const session = await getSession();
-    if (!session) return { success: false, message: 'Not authenticated' };
-
-    await connectDB();
-    const user = await getCurrentUser();
-    if (user.role !== 'admin' && user.role !== 'employee') return { success: false, message: 'Only admins and employees can edit NGO partners' };
+    const { caller, error } = await requireNgoStaff();
+    if (error) return error;
+    if (!isIdString(id)) return NGO_NOT_FOUND;
 
     const name = formData.get('name')?.trim();
     const description = formData.get('description')?.trim();
@@ -1233,58 +1319,181 @@ export async function updateNGOPartner(id, formData) {
       return { success: false, message: 'Name and description are required' };
     }
 
-    const updateData = { name, description, focusAreas, programs, impact, registeredOffice, location, website };
+    const companies = await readActiveCompanyIds(formData.get('companyIds'));
+    if (companies.error) return companies.error;
+
+    const updateData = { name, description, focusAreas, programs, impact, registeredOffice, location, website, companyIds: companies.ids };
     if (logoUrl) {
       updateData.logoUrl = logoUrl;
     }
 
     const partner = await NGOPartner.findByIdAndUpdate(id, updateData, { new: true });
-    if (!partner) return { success: false, message: 'NGO partner not found' };
+    if (!partner) return NGO_NOT_FOUND;
 
     revalidatePath('/ngo-partners');
     revalidatePath('/admin/ngo-partners');
+    revalidatePath('/dashboard/my-ngos');
 
-    return {
-      success: true,
-      partner: {
-        _id: partner._id.toString(),
-        name: partner.name,
-        description: partner.description,
-        logoUrl: partner.logoUrl,
-        focusAreas: partner.focusAreas,
-        programs: partner.programs,
-        impact: partner.impact,
-        registeredOffice: partner.registeredOffice,
-        location: partner.location,
-        website: partner.website,
-        createdAt: partner.createdAt.toISOString(),
-      },
-    };
+    const [item] = await presentPartners([partner.toObject()], caller);
+    return { success: true, partner: item };
   } catch (error) {
     console.error('Error updating NGO partner:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not update the NGO partner. Please try again.' };
+  }
+}
+
+// Creates one card per valid row, all for the same companies (none = public).
+// Returns how many were created and which rows were skipped and why.
+export async function importNGOPartners(rows, companyIdsJson) {
+  try {
+    const { error } = await requireNgoStaff();
+    if (error) return error;
+    if (!Array.isArray(rows) || rows.length < 1 || rows.length > MAX_NGO_IMPORT_ROWS) {
+      return { success: false, message: `Import between 1 and ${MAX_NGO_IMPORT_ROWS} rows at a time` };
+    }
+    const companies = await readActiveCompanyIds(companyIdsJson);
+    if (companies.error) return companies.error;
+
+    const cell = (value) => (typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '');
+    const docs = [];
+    const rowNumbers = [];
+    const skipped = [];
+    rows.forEach((row, index) => {
+      const rowNumber = index + 1;
+      if (!row || typeof row !== 'object' || Array.isArray(row)) {
+        skipped.push({ row: rowNumber, reason: 'Not a valid row' });
+        return;
+      }
+      const name = cell(row.name);
+      const description = cell(row.description);
+      if (!name || !description) {
+        const missing = [!name && 'name', !description && 'description'].filter(Boolean).join(' and ');
+        skipped.push({ row: rowNumber, reason: `Missing ${missing}` });
+        return;
+      }
+      docs.push({
+        _id: new mongoose.Types.ObjectId(),
+        name,
+        description,
+        focusAreas: cell(row.focusAreas),
+        programs: cell(row.programs).split(/[\n;]/).map((l) => l.trim()).filter(Boolean),
+        impact: cell(row.impact),
+        registeredOffice: cell(row.registeredOffice),
+        location: cell(row.location),
+        website: cell(row.website),
+        companyIds: companies.ids,
+      });
+      rowNumbers.push(rowNumber);
+    });
+
+    let created = 0;
+    if (docs.length > 0) {
+      try {
+        await NGOPartner.insertMany(docs, { ordered: false });
+      } catch (insertError) {
+        // Some rows may still have been saved; count them below.
+        console.error('Some NGO partners were not imported:', insertError);
+      }
+      const saved = await NGOPartner.find({ _id: { $in: docs.map((d) => d._id) } }).select('_id').lean();
+      const savedIds = new Set(saved.map((p) => String(p._id)));
+      created = savedIds.size;
+      docs.forEach((d, i) => {
+        if (!savedIds.has(String(d._id))) skipped.push({ row: rowNumbers[i], reason: 'Could not be saved' });
+      });
+      skipped.sort((a, b) => a.row - b.row);
+      if (created === 0) {
+        return { success: false, message: 'Could not import the NGOs. Please try again.', created: 0, skipped };
+      }
+    }
+
+    revalidatePath('/ngo-partners');
+    revalidatePath('/admin/ngo-partners');
+    revalidatePath('/dashboard/my-ngos');
+    return { success: true, created, skipped };
+  } catch (error) {
+    console.error('Error importing NGO partners:', error);
+    return { success: false, message: 'Could not import the NGOs. Please try again.' };
+  }
+}
+
+// "Green Earth" -> "green-earth": at most 20 characters, never ending in a hyphen.
+const ngoLoginSlug = (name) =>
+  slugify(name).replace(/-{2,}/g, '-').replace(/^-+/, '').slice(0, 20).replace(/-+$/, '') || 'ngo';
+
+// Creates the one NGO login for a card and returns its credentials, once.
+export async function generateNGOLogin(partnerId) {
+  try {
+    const { error } = await requireNgoStaff();
+    if (error) return error;
+    if (!isIdString(partnerId)) return NGO_NOT_FOUND;
+
+    const partner = await NGOPartner.findById(partnerId).select('name loginUserId').lean();
+    if (!partner) return NGO_NOT_FOUND;
+    if (partner.loginUserId) return { success: false, message: 'This NGO already has a login' };
+
+    const password = crypto.randomBytes(8).toString('base64url').slice(0, 10);
+    const slug = ngoLoginSlug(partner.name);
+    let user = null;
+    for (let attempt = 0; attempt < 5 && !user; attempt++) {
+      const username = `${slug}-${String(crypto.randomInt(0, 10000)).padStart(4, '0')}`;
+      const ngoId = `NGO-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+      if (await User.exists({ $or: [{ username }, { ngoId }] })) continue;
+      try {
+        user = await User.create({
+          username,
+          password, // hashed by the User model before saving
+          name: partner.name,
+          ngoName: partner.name,
+          role: 'ngo',
+          status: 'approved',
+          ngoId,
+          ngoPartnerId: partner._id,
+        });
+      } catch (createError) {
+        if (createError?.code !== 11000) throw createError; // taken between the check and the save: try again
+      }
+    }
+    if (!user) return { success: false, message: 'Could not generate a login. Please try again.' };
+
+    // Link only if the card still has no login, so two simultaneous requests
+    // cannot both succeed. The loser removes the login it just created.
+    const linked = await NGOPartner.updateOne({ _id: partner._id, loginUserId: null }, { $set: { loginUserId: user._id } });
+    if (linked.modifiedCount !== 1) {
+      await User.deleteOne({ _id: user._id });
+      return { success: false, message: 'Could not generate a login. Please try again.' };
+    }
+
+    revalidatePath('/admin/ngo-partners');
+    return { success: true, username: user.username, password };
+  } catch (error) {
+    console.error('Error generating NGO login:', error);
+    return { success: false, message: 'Could not generate a login. Please try again.' };
   }
 }
 
 export async function deleteNGOPartner(id) {
   try {
-    const session = await getSession();
-    if (!session) return { success: false, message: 'Not authenticated' };
+    const { error } = await requireNgoStaff();
+    if (error) return error;
+    if (!isIdString(id)) return NGO_NOT_FOUND;
 
-    await connectDB();
-    const user = await getCurrentUser();
-    if (user.role !== 'admin' && user.role !== 'employee') return { success: false, message: 'Only admins and employees can delete NGO partners' };
+    const partner = await NGOPartner.findById(id).select('loginUserId').lean();
+    if (!partner) return NGO_NOT_FOUND;
 
-    const partner = await NGOPartner.findByIdAndDelete(id);
-    if (!partner) return { success: false, message: 'NGO partner not found' };
+    // Reject the card's login first, so a login can never outlive its card. Only NGO accounts are touched.
+    const linked = [{ ngoPartnerId: partner._id }];
+    if (partner.loginUserId) linked.push({ _id: partner.loginUserId });
+    await User.updateMany({ role: 'ngo', $or: linked }, { $set: { status: 'rejected', ngoPartnerId: null } });
+    await NGOPartner.deleteOne({ _id: partner._id });
 
     revalidatePath('/ngo-partners');
     revalidatePath('/admin/ngo-partners');
+    revalidatePath('/dashboard/my-ngos');
 
     return { success: true };
   } catch (error) {
     console.error('Error deleting NGO partner:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not delete the NGO partner. Please try again.' };
   }
 }
 
