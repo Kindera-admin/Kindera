@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema({
       return this.role === 'org_spoc' || this.role === 'org_member';
     },
   },
-  // NGO login's organisation name (was organizationName for role 'ngo').
+  // NGO login's organisation name (the old free-text field for role 'ngo').
   ngoName: { type: String, default: '', trim: true },
   // Optional free-text employer for individual volunteers (display only).
   employerName: { type: String, default: '', trim: true },

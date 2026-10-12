@@ -150,6 +150,16 @@ We have implemented and successfully deployed 4 significant features to make Kin
 
 ---
 
+## 🏢 15. Companies as Records
+* **Admin-managed companies**: Admins create, rename and archive companies, and set their logos, at [/admin/companies](/admin/companies). Archived companies can be restored.
+* **Registration against a company**: Admins register SPOCs and employees against a company instead of typing an organisation name.
+* **Public signup**: The public signup page offers Volunteer and NGO only. Corporate accounts are created by admins.
+* **Shared company dashboard**: All SPOCs of a company see one shared dashboard. Any of them can manage the company's events, registrations and attendance.
+* **Internal events**: Internal events are visible only to the company that created them. Public events stay visible to everyone.
+* **Corporate overview**: The admin corporate overview shows one row per company and lists every SPOC, including pending ones. Archived companies drop out of the overview.
+
+---
+
 ## 🚀 Verification
 - [x] Ran `npm run build` locally — **successfully compiled** with no errors.
 - [x] Committed changes locally to main branch.
