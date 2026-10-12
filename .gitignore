@@ -49,3 +49,6 @@ next-env.d.ts
 
 # logs
 *.log
+
+# migration backups (contain user data)
+backups/
