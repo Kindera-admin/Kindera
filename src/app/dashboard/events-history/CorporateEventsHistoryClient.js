@@ -157,7 +157,7 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
               <tbody className="divide-y divide-gray-100">
                 {filtered.map(item => {
                   const attendedCount = item.volunteers ? item.volunteers.filter(v => v.attended).length : 0;
-                  const canDelete = item.createdBy === currentUserId;
+                  const canDelete = item.canDelete === true;
                   
                   return (
                     <React.Fragment key={item._id}>

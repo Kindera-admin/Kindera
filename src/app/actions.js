@@ -849,6 +849,8 @@ export async function getEvents(optionsOrStatus = {}) {
         imageUrl: event.imageUrl,
         status: event.status,
         companyId: event.companyId ? String(event.companyId) : null,
+        // Any SPOC or employee of the hosting company, not only the creator.
+        isOwnCompanyEvent: isCorporate(currentUser) && !!event.companyId && sameCompany(event.companyId, currentUser.companyId),
         lifecycle,
         createdBy: event.createdBy ? {
           _id: event.createdBy._id.toString(),
@@ -3227,7 +3229,8 @@ export async function getAdminEventDetails(eventId) {
 export async function getOrgEventsHistory(companyId) {
   try {
     await connectDB();
-    const access = resolveCompanyAccess(await getCurrentUser(), companyId);
+    const caller = await getCurrentUser();
+    const access = resolveCompanyAccess(caller, companyId);
     if (access.error) return { success: false, message: access.error };
     if (!access.companyId) return { success: false, message: 'Company is required' };
     if (!isValidObjectId(access.companyId)) return { success: false, message: 'Company not found' };
@@ -3316,6 +3319,8 @@ export async function getOrgEventsHistory(companyId) {
         date: event.date.toISOString(),
         location: event.location,
         type: event.companyId && String(event.companyId) === ownCompany ? 'internal' : 'global',
+        // Any SPOC of the company may delete its internal events (spec §4.1).
+        canDelete: canManageEvent(caller, event),
         status: lifecycle,
         expected,
         joined,

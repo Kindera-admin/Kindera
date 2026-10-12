@@ -162,9 +162,9 @@ export default function EventsClient({ events: initialEvents, userRole, currentU
                     Share Event
                   </Button>
                   
-                  {userRole === 'org_spoc' && event.createdBy && event.createdBy._id === currentUserId ? (
+                  {userRole === 'org_spoc' && event.isOwnCompanyEvent ? (
                     <div className="flex-1 text-center py-2 px-4 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-100 flex items-center justify-center">
-                      ✨ Created by you. You can ask your volunteers to participate.
+                      ✨ Your company&apos;s event. Ask your employees to register.
                     </div>
                   ) : canRegisterForEvent && event.lifecycle !== 'ended' && (
                     approvedEventIds.includes(event._id) ? (
