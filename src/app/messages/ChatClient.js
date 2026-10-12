@@ -95,7 +95,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
 
   const filteredContacts = contactList.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
-    (c.organizationName || '').toLowerCase().includes(search.toLowerCase())
+    (c.companyName || c.ngoName || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const grouped = {
@@ -301,7 +301,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
                           {contact.name}
                         </p>
                         <p className={`text-xs truncate ${colors.text} font-medium`}>
-                          {contact.organizationName || ROLE_LABEL[contact.role]}
+                          {contact.companyName || contact.ngoName || ROLE_LABEL[contact.role]}
                         </p>
                       </div>
                       {contact.unread > 0 && (
@@ -366,7 +366,7 @@ export default function ChatClient({ contacts, currentUser, initialContactId, an
               <div>
                 <h3 className="font-bold text-gray-900 text-[15px]">{activeContact.name}</h3>
                 <p className={`text-xs font-medium ${ROLE_COLORS[activeContact.role]?.text}`}>
-                  {activeContact.organizationName || ROLE_LABEL[activeContact.role]}
+                  {activeContact.companyName || activeContact.ngoName || ROLE_LABEL[activeContact.role]}
                 </p>
               </div>
             </div>

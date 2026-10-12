@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { updateProfileName, updateOrganizationLogo, updatePassword } from '@/app/actions';
+import { updateProfileName, updatePassword } from '@/app/actions';
+import { updateCompanyLogo } from '@/app/companyActions';
 
-export default function SettingsClient({ user }) {
+export default function SettingsClient({ user, companyLogo = '' }) {
   const router = useRouter();
   
   // Nickname State
@@ -56,7 +57,7 @@ export default function SettingsClient({ user }) {
     }
   };
 
-  const [logo, setLogo] = useState(user.organizationLogo || '');
+  const [logo, setLogo] = useState(companyLogo);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   const handleLogoUpload = async (e) => {
@@ -84,7 +85,7 @@ export default function SettingsClient({ user }) {
       if (!uploadRes.ok) throw new Error('Upload failed');
       const { url } = await uploadRes.json();
 
-      const saveRes = await updateOrganizationLogo(url);
+      const saveRes = await updateCompanyLogo(url);
       if (saveRes.success) {
         setLogo(url);
         toast.success('Organization logo updated!', { id: toastId });
@@ -104,7 +105,7 @@ export default function SettingsClient({ user }) {
     setIsUploadingLogo(true);
     const toastId = toast.loading('Removing logo...');
     try {
-      const saveRes = await updateOrganizationLogo('');
+      const saveRes = await updateCompanyLogo('');
       if (saveRes.success) {
         setLogo('');
         toast.success('Organization logo removed!', { id: toastId });

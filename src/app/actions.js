@@ -2183,37 +2183,6 @@ export async function updateMemberName(newName) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// CORPORATE LOGO
-// ─────────────────────────────────────────────────────────────
-
-export async function updateOrganizationLogo(url) {
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, message: 'Not authenticated' };
-
-    await connectDB();
-    const caller = await getCurrentUser();
-    if (!caller) return { success: false, message: 'User not found' };
-
-    if (caller.role !== 'org_spoc') {
-      return { success: false, message: 'Only SPOCs can update organization logo' };
-    }
-
-    await User.updateOne(
-      { _id: caller._id },
-      { $set: { organizationLogo: url } }
-    );
-
-    revalidatePath('/dashboard');
-    revalidatePath('/settings');
-    return { success: true };
-  } catch (error) {
-    console.error('Error updating organization logo:', error);
-    return { success: false, message: error.message };
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
 // ORG MEMBER SELF-REPORTING (Hours & Feedback)
 // ─────────────────────────────────────────────────────────────
 
@@ -2659,32 +2628,38 @@ export async function getChatContacts() {
     if (currentUser.role === 'admin') {
       // Admin can chat: NGOs, SPOCs, and Employees
       contacts = await User.find({ role: { $in: ['ngo', 'org_spoc', 'employee'] } })
-        .select('name role organizationName ngoId')
+        .select('name role companyId ngoId ngoName')
         .lean();
     } else if (currentUser.role === 'ngo') {
       // NGO can chat: Admins only
       contacts = await User.find({ role: 'admin' })
-        .select('name role organizationName ngoId')
+        .select('name role companyId ngoId ngoName')
         .lean();
     } else if (currentUser.role === 'org_spoc') {
       // SPOC can chat: Admins and their own org members only
       const [admins, members] = await Promise.all([
         User.find({ role: 'admin' })
-          .select('name role organizationName ngoId').lean(),
-        User.find({ role: 'org_member', organizationName: currentUser.organizationName })
-          .select('name role organizationName ngoId').lean(),
+          .select('name role companyId ngoId ngoName').lean(),
+        // Fail closed: a SPOC without a company sees no members.
+        currentUser.companyId
+          ? User.find({ role: 'org_member', companyId: currentUser.companyId })
+            .select('name role companyId ngoId ngoName').lean()
+          : [],
       ]);
       contacts = [...admins, ...members];
     } else if (currentUser.role === 'employee') {
       // Employee can only chat with Admin
       contacts = await User.find({ role: 'admin' })
-        .select('name role organizationName ngoId')
+        .select('name role companyId ngoId ngoName')
         .lean();
     } else if (currentUser.role === 'org_member') {
       // Org member can only chat with their SPOC
-      contacts = await User.find({ role: 'org_spoc', organizationName: currentUser.organizationName })
-        .select('name role organizationName ngoId')
-        .lean();
+      // Fail closed: a member without a company sees no one.
+      contacts = currentUser.companyId
+        ? await User.find({ role: 'org_spoc', companyId: currentUser.companyId })
+          .select('name role companyId ngoId ngoName')
+          .lean()
+        : [];
     } else {
       return { success: false, message: 'Chat not available for your role' };
     }
@@ -2696,11 +2671,13 @@ export async function getChatContacts() {
     const unreadMap = {};
     unreadCounts.forEach((u) => { unreadMap[u._id.toString()] = u.count; });
 
+    const contactCompanies = await getCompaniesByIds(contacts.map((c) => c.companyId));
     const serialized = contacts.map((c) => ({
       _id: c._id.toString(),
       name: c.name,
       role: c.role,
-      organizationName: c.organizationName || null,
+      companyName: contactCompanies.get(String(c.companyId))?.name || null,
+      ngoName: c.ngoName || null,
       ngoId: c.ngoId || null,
       unread: unreadMap[c._id.toString()] || 0,
     }));
@@ -2708,7 +2685,7 @@ export async function getChatContacts() {
     return { success: true, contacts: serialized };
   } catch (error) {
     console.error('Error getting chat contacts:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not load your contacts. Please try again.' };
   }
 }
 
