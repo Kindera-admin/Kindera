@@ -565,11 +565,10 @@ export async function getPendingEventRegistrations() {
     await connectDB();
     const currentUser = await getCurrentUser();
 
-    // Find all events created by the current user, or all events if admin
+    // Admin: all events. SPOC: every event of their company. Others: events they created.
     let eventQuery = { createdBy: currentUser._id };
-    if (currentUser.role === 'admin') {
-      eventQuery = {};
-    }
+    if (currentUser.role === 'admin') eventQuery = {};
+    else if (currentUser.role === 'org_spoc' && currentUser.companyId) eventQuery = { companyId: currentUser.companyId };
     const userEvents = await Event.find(eventQuery).select('_id title').lean();
     const eventIds = userEvents.map(e => e._id);
 
@@ -578,6 +577,7 @@ export async function getPendingEventRegistrations() {
       'eventRegistrations.status': 'pending',
       'eventRegistrations.eventId': { $in: eventIds }
     }).populate('eventRegistrations.eventId', 'title').lean();
+    const companies = await getCompaniesByIds(users.map((u) => u.companyId));
 
     // Flatten and format the response: one entry per pending registration
     const pendingRegistrations = [];
@@ -589,7 +589,7 @@ export async function getPendingEventRegistrations() {
             name: user.name,
             username: user.username,
             role: user.role,
-            organizationName: user.organizationName || '',
+            companyName: companies.get(String(user.companyId))?.name || '',
             mobile: user.mobile || '',
             email: user.email || '',
             age: user.age || null,
@@ -737,7 +737,7 @@ export async function createEvent(formData) {
       imageUrl: imageUrl || '',
       createdBy: user._id,
       createdByRole: user.role,
-      organizationName: user.role === 'org_spoc' ? user.organizationName : null,
+      companyId: user.role === 'org_spoc' ? user.companyId : null,
       status: 'upcoming'
     });
     
@@ -772,32 +772,7 @@ export async function getHomeEvents() {
 
     const filter = { status: 'upcoming' };
     
-    if (!currentUser || currentUser.role === 'volunteer') {
-      filter.$or = [
-        { createdByRole: 'ngo' },
-        { createdByRole: 'admin' },
-        { organizationName: null },
-        { organizationName: { $exists: false } }
-      ];
-    } else if (currentUser.role === 'org_spoc') {
-      // SPOC sees NGO/admin events + only their own org events
-      filter.$or = [
-        { createdByRole: 'ngo' },
-        { createdByRole: 'admin' },
-        { organizationName: null },
-        { organizationName: { $exists: false } },
-        { createdBy: currentUser._id }
-      ];
-    } else if (currentUser.role === 'org_member') {
-      // Org member sees NGO/admin events + only events created by their SPOC
-      filter.$or = [
-        { createdByRole: 'ngo' },
-        { createdByRole: 'admin' },
-        { organizationName: null },
-        { organizationName: { $exists: false } },
-        ...(currentUser.spocId ? [{ createdBy: currentUser.spocId }] : [])
-      ];
-    }
+    Object.assign(filter, eventVisibilityFilter(currentUser));
 
     const events = await Event.find(filter)
       .sort({ date: 1 })
@@ -855,32 +830,7 @@ export async function getEvents(optionsOrStatus = {}) {
     if (status) filter.status = status;
     
     const currentUser = await getCurrentUser();
-    if (!currentUser || currentUser.role === 'volunteer') {
-      filter.$or = [
-        { createdByRole: 'ngo' },
-        { createdByRole: 'admin' },
-        { organizationName: null },
-        { organizationName: { $exists: false } }
-      ];
-    } else if (currentUser.role === 'org_spoc') {
-      // SPOC sees NGO/admin events + only their own org events
-      filter.$or = [
-        { createdByRole: 'ngo' },
-        { createdByRole: 'admin' },
-        { organizationName: null },
-        { organizationName: { $exists: false } },
-        { createdBy: currentUser._id }
-      ];
-    } else if (currentUser.role === 'org_member') {
-      // Org member sees NGO/admin events + only events created by their SPOC
-      filter.$or = [
-        { createdByRole: 'ngo' },
-        { createdByRole: 'admin' },
-        { organizationName: null },
-        { organizationName: { $exists: false } },
-        ...(currentUser.spocId ? [{ createdBy: currentUser.spocId }] : [])
-      ];
-    }
+    Object.assign(filter, eventVisibilityFilter(currentUser));
 
     const events = await Event.find(filter)
       .populate('createdBy', 'name role')
@@ -907,6 +857,7 @@ export async function getEvents(optionsOrStatus = {}) {
         durationHours: event.durationHours || 2,
         imageUrl: event.imageUrl,
         status: event.status,
+        companyId: event.companyId ? String(event.companyId) : null,
         lifecycle,
         createdBy: event.createdBy ? {
           _id: event.createdBy._id.toString(),
@@ -943,28 +894,13 @@ export async function getEventById(id) {
 
     const currentUser = await getCurrentUser();
     
-    if (event.organizationName) {
-      // It's a private SPOC event
-      if (!currentUser) {
-        return { success: false, message: 'You must be logged in to view this private event' };
-      }
-      if (currentUser.role === 'admin' || currentUser.role === 'employee') {
-        // admins and employees can always see everything — allowed
-      } else if (currentUser.role === 'org_spoc') {
-        // SPOC can only see events they created themselves
-        if (event.createdBy._id.toString() !== currentUser._id.toString()) {
-          return { success: false, message: 'You do not have permission to view this event' };
-        }
-      } else if (currentUser.role === 'org_member') {
-        // Org member can only see events created by their SPOC
-        if (!currentUser.spocId || event.createdBy._id.toString() !== currentUser.spocId.toString()) {
-          return { success: false, message: 'You do not have permission to view this event' };
-        }
-      } else {
-        return { success: false, message: 'You do not have permission to view this event' };
-      }
+    if (!canSeeEvent(currentUser, event)) {
+      return {
+        success: false,
+        message: currentUser ? 'You do not have permission to view this event' : 'You must be logged in to view this private event',
+      };
     }
-    
+
     const now = new Date();
     const start = new Date(event.date);
     const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);
@@ -985,6 +921,8 @@ export async function getEventById(id) {
         durationHours: event.durationHours || 2,
         imageUrl: event.imageUrl,
         status: event.status,
+        companyId: event.companyId ? String(event.companyId) : null,
+        companyName: await getCompanyName(event.companyId),
         lifecycle,
         createdBy: event.createdBy ? {
           _id: event.createdBy._id.toString(),
@@ -1016,8 +954,8 @@ export async function updateEvent(id, formData) {
       return { success: false, message: 'Event not found' };
     }
     
-    // Only the creator or admin can update events
-    if (user.role !== 'admin' && event.createdBy.toString() !== user._id.toString()) {
+    // Admins, the creator, or any SPOC of the event's company
+    if (!canManageEvent(user, event)) {
       return { success: false, message: 'You do not have permission to update this event' };
     }
     
@@ -1067,8 +1005,8 @@ export async function deleteEvent(id) {
       return { success: false, message: 'Event not found' };
     }
     
-    // Only the creator or admin can delete events
-    if (user.role !== 'admin' && event.createdBy.toString() !== user._id.toString()) {
+    // Admins, the creator, or any SPOC of the event's company
+    if (!canManageEvent(user, event)) {
       return { success: false, message: 'You do not have permission to delete this event' };
     }
     
@@ -2610,10 +2548,9 @@ export async function updateEventRegistrationStatus(formData) {
 
     const event = await Event.findById(eventId);
 
-    if (currentUser.role !== 'admin') {
-      if (event.createdBy.toString() !== currentUser._id.toString()) {
-        return { success: false, message: 'Not authorized. This user registered for another organizer\'s event.' };
-      }
+    if (!event) return { success: false, message: 'Event not found' };
+    if (!canManageEvent(currentUser, event)) {
+      return { success: false, message: 'Not authorized. This user registered for another organizer\'s event.' };
     }
 
     targetUser.eventRegistrations[regIndex].status = status;
