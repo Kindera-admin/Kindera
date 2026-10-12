@@ -16,9 +16,9 @@ export default async function AttendanceIndexPage() {
   if (user.role === 'admin') {
     const result = await getEvents({ includeEnded: true });
     events = result.success ? result.events : [];
-  } else if (user.role === 'org_spoc') {
-    // Find all events where members of this SPOC's organization have registered
-    const orgUsers = await User.find({ organizationName: user.organizationName }).select('eventRegistrations');
+  } else if (user.role === 'org_spoc' && user.companyId) {
+    // Find all events where members of this SPOC's company have registered
+    const orgUsers = await User.find({ companyId: user.companyId }).select('eventRegistrations');
     const registeredEventIds = new Set();
     for (const u of orgUsers) {
       for (const r of u.eventRegistrations) {
@@ -30,11 +30,10 @@ export default async function AttendanceIndexPage() {
 
     const result = await getEvents({ includeEnded: true });
     const allEvents = result.success ? result.events : [];
-    events = allEvents.filter(e => 
-      e.createdBy && (
-        e.createdBy._id.toString() === user._id.toString() || 
-        (!e.organizationName && registeredEventIds.has(e._id.toString()))
-      )
+    events = allEvents.filter((e) =>
+      e.companyId
+        ? e.companyId === String(user.companyId)       // any internal event of this company
+        : registeredEventIds.has(e._id.toString())     // public events the company joined
     );
   }
 

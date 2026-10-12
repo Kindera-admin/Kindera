@@ -1304,9 +1304,18 @@ export async function deleteNGOPartner(id) {
 // CORPORATE TEAM MANAGEMENT
 // ─────────────────────────────────────────────────────────────
 
+// Which active company new team logins go into: a SPOC's own; an admin must name one.
+async function teamCompanyFor(caller, requestedCompanyId) {
+  const id = caller.role === 'org_spoc' ? caller.companyId : requestedCompanyId;
+  if (!id || !isValidObjectId(String(id))) return null;
+  return Company.findOne({ _id: id, status: 'active' }).select('name').lean();
+}
+
+const slugify = (name) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
 /**
- * Generate N pre-approved org_member accounts for a corporate org.
- * Can be called by SPOC (for their own org) or Admin (for any org).
+ * Generate N pre-approved org_member accounts for a company.
+ * Can be called by a SPOC (for their own company) or an Admin (for any active company).
  * Returns array of plain-text credentials for one-time CSV download.
  */
 export async function generateTeamLogins(formData) {
@@ -1321,18 +1330,17 @@ export async function generateTeamLogins(formData) {
 
     await connectDB();
 
-    const orgName = formData.get('orgName')?.trim();
+    const company = await teamCompanyFor(caller, formData.get('companyId'));
     const count   = parseInt(formData.get('count'));
 
-    if (!orgName || !count || count < 1 || count > 500) {
-      return { success: false, message: 'Provide a valid org name and count (1–500)' };
+    if (!company || !count || count < 1 || count > 500) {
+      return { success: false, message: 'Choose a company and a count (1–500)' };
     }
-
-    // Org slug: lowercase, spaces → dashes, strip special chars
-    const orgSlug = orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const orgName = company.name;
+    const orgSlug = slugify(orgName);
 
     // Find the highest existing index for this org to avoid collisions
-    const existing = await User.find({ organizationName: orgName, role: 'org_member' })
+    const existing = await User.find({ companyId: company._id, role: 'org_member' })
       .select('username').lean();
     const existingNums = existing
       .map(u => parseInt(u.username.split('-').pop()))
@@ -1354,7 +1362,7 @@ export async function generateTeamLogins(formData) {
         password: hashed,
         name: `${orgName} Volunteer ${idx}`,
         role: 'org_member',
-        organizationName: orgName,
+        companyId: company._id,
         status: 'approved',
         spocId: caller.role === 'org_spoc' ? caller._id : null,
         requiresNameUpdate: true,
@@ -1377,7 +1385,7 @@ export async function generateTeamLogins(formData) {
  * Bulk create org_member accounts from parsed Excel rows.
  * Each row: { name, username (optional), email (optional) }
  */
-export async function bulkCreateFromExcel(rows, orgName, spocId = null) {
+export async function bulkCreateFromExcel(rows, companyId = null) {
   try {
     const session = await getSession();
     if (!session) return { success: false, message: 'Not authenticated' };
@@ -1389,11 +1397,12 @@ export async function bulkCreateFromExcel(rows, orgName, spocId = null) {
 
     await connectDB();
 
-    if (!rows?.length || !orgName) {
-      return { success: false, message: 'Rows and org name are required' };
+    const company = await teamCompanyFor(caller, companyId);
+    if (!Array.isArray(rows) || !rows.length || !company) {
+      return { success: false, message: 'Rows and a company are required' };
     }
-
-    const orgSlug = orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const orgName = company.name;
+    const orgSlug = slugify(orgName);
     const salt    = await bcrypt.genSalt(10);
     const plainCredentials = [];
     const usersToCreate    = [];
@@ -1410,9 +1419,9 @@ export async function bulkCreateFromExcel(rows, orgName, spocId = null) {
         password: hashed,
         name,
         role: 'org_member',
-        organizationName: orgName,
+        companyId: company._id,
         status: 'approved',
-        spocId: spocId || (caller.role === 'org_spoc' ? caller._id : null),
+        spocId: caller.role === 'org_spoc' ? caller._id : null,
       });
       plainCredentials.push({ username, password, name });
     }
@@ -1429,16 +1438,24 @@ export async function bulkCreateFromExcel(rows, orgName, spocId = null) {
 }
 
 /**
- * Get all org_member users for an organization.
+ * Get all org_member users for a company. SPOCs see their own company's;
+ * admins name one.
  */
-export async function getOrgMembers(requestedOrg) {
+export async function getOrgMembers(companyId) {
   try {
     await connectDB();
-    const access = await resolveOrgAccess(requestedOrg);
+    const caller = await getCurrentUser();
+    if (caller && caller.role !== 'admin' && caller.role !== 'org_spoc') {
+      return { success: false, message: 'Not authorized' };
+    }
+    if (companyId && !isValidObjectId(String(companyId))) {
+      return { success: false, message: 'Invalid company' };
+    }
+    const access = resolveCompanyAccess(caller, companyId);
     if (access.error) return { success: false, message: access.error };
-    const orgName = access.orgName;
+    if (!access.companyId) return { success: true, members: [] };
 
-    const members = await User.find({ organizationName: orgName, role: 'org_member' })
+    const members = await User.find({ companyId: access.companyId, role: 'org_member' })
       .select('-password').lean();
 
     return {
@@ -1475,21 +1492,34 @@ export async function markAttendance(eventId, attendanceList) {
       return { success: false, message: 'Only Admin or SPOC can mark attendance' };
     }
 
+    if (!isValidObjectId(String(eventId)) || !Array.isArray(attendanceList)
+        || attendanceList.some((a) => !a || !isValidObjectId(String(a.userId)))) {
+      return { success: false, message: 'Invalid attendance data' };
+    }
+
     await connectDB();
 
     const now = new Date();
-    
-    // Fetch existing records first to correctly calculate hours diff
-    const userIds = attendanceList.map(a => a.userId);
 
-    // SPOCs may only mark attendance for members of their own organisation
+    // Fetch existing records first to correctly calculate hours diff
+    const userIds = attendanceList.map(a => String(a.userId));
+
+    const event = await Event.findById(eventId).select('companyId').lean();
+    // An event this caller may not see answers exactly like a missing one.
+    if (!event || (caller.role === 'org_spoc' && !canSeeEvent(caller, event))) {
+      return { success: false, message: 'Event not found' };
+    }
+    const people = await User.find({ _id: { $in: userIds } }).select('companyId').lean();
+    const companyOf = new Map(people.map((p) => [String(p._id), p.companyId || null]));
+    if (userIds.some((id) => !companyOf.has(id))) {
+      return { success: false, message: 'Some of these people no longer exist' };
+    }
+
+    // SPOCs may only mark their own company's employees.
     if (caller.role === 'org_spoc') {
-      const ownMembers = await User.countDocuments({
-        _id: { $in: userIds },
-        organizationName: caller.organizationName,
-      });
-      if (ownMembers !== new Set(userIds.map(String)).size) {
-        return { success: false, message: 'You can only mark attendance for your own organisation' };
+      const outsiders = userIds.filter((id) => String(companyOf.get(id)) !== String(caller.companyId));
+      if (!caller.companyId || outsiders.length > 0) {
+        return { success: false, message: 'You can only mark attendance for your own company' };
       }
     }
     const existingRecords = await Attendance.find({ eventId, userId: { $in: userIds } }).lean();
@@ -1500,7 +1530,7 @@ export async function markAttendance(eventId, attendanceList) {
     const userIncOps = [];
 
     for (const entry of attendanceList) {
-      const existing = existingMap[entry.userId];
+      const existing = existingMap[String(entry.userId)];
       
       // Calculate diff in hours to credit/deduct
       const oldHours = existing?.attended ? (existing.hoursContributed || 0) : 0;
@@ -1508,7 +1538,7 @@ export async function markAttendance(eventId, attendanceList) {
       const diff = newHours - oldHours;
       
       if (diff !== 0) {
-        userIncOps.push({ userId: entry.userId, diff });
+        userIncOps.push({ userId: String(entry.userId), diff });
       }
 
       ops.push({
@@ -1516,7 +1546,7 @@ export async function markAttendance(eventId, attendanceList) {
           filter: { eventId, userId: entry.userId },
           update: {
             $set: {
-              organizationName: caller.organizationName || entry.organizationName,
+              companyId: companyOf.get(String(entry.userId)) ?? null,
               attended: entry.attended ?? false,
               hoursContributed: entry.hoursContributed ?? 0,
               feedbackScore: entry.feedbackScore || null,
@@ -1550,17 +1580,27 @@ export async function markAttendance(eventId, attendanceList) {
 }
 
 /**
- * Get attendance list for a specific event + org.
+ * Get attendance list for a specific event. SPOCs see their own company's
+ * records; admins see everyone's, or one company's when they name it.
  */
-export async function getEventAttendance(eventId, requestedOrg) {
+export async function getEventAttendance(eventId, companyId) {
   try {
     await connectDB();
-    const access = await resolveOrgAccess(requestedOrg);
+    const caller = await getCurrentUser();
+    if (caller && caller.role !== 'admin' && caller.role !== 'org_spoc') {
+      return { success: false, message: 'Not authorized' };
+    }
+    if (!isValidObjectId(String(eventId)) || (companyId && !isValidObjectId(String(companyId)))) {
+      return { success: false, message: 'Event not found' };
+    }
+    const access = resolveCompanyAccess(caller, companyId);
     if (access.error) return { success: false, message: access.error };
-    const orgName = access.orgName;
+
+    const event = await Event.findById(eventId).select('companyId').lean();
+    if (!event || !canSeeEvent(caller, event)) return { success: false, message: 'Event not found' };
 
     const filter = { eventId };
-    if (orgName) filter.organizationName = orgName;
+    if (access.companyId) filter.companyId = access.companyId;
 
     const records = await Attendance.find(filter)
       .populate('userId', 'name username')
@@ -1568,7 +1608,7 @@ export async function getEventAttendance(eventId, requestedOrg) {
 
     return {
       success: true,
-      records: records.map(r => ({
+      records: records.filter(r => r.userId).map(r => ({
         _id: r._id.toString(),
         userId: r.userId._id.toString(),
         name: r.userId.name,
@@ -2192,10 +2232,11 @@ export async function logMyHoursAndFeedback(eventId, hours, feedbackScore) {
     const caller = await getCurrentUser();
     if (caller.role !== 'org_member') return { success: false, message: 'Only org members can self-report' };
 
+    if (!isValidObjectId(String(eventId))) return { success: false, message: 'Event not found' };
     await connectDB();
 
     const event = await Event.findById(eventId).lean();
-    if (!event) return { success: false, message: 'Event not found' };
+    if (!event || !canSeeEvent(caller, event)) return { success: false, message: 'Event not found' };
 
     const eventDate = new Date(event.date);
     if (eventDate > new Date()) {
@@ -2216,7 +2257,7 @@ export async function logMyHoursAndFeedback(eventId, hours, feedbackScore) {
         $set: {
           hoursContributed: hours,
           feedbackScore: feedbackScore || null,
-          organizationName: caller.organizationName, // Ensure org name is captured
+          companyId: caller.companyId ?? null,
         }
       },
       { new: true, upsert: true }

@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { markAttendance, getOrgMembers } from '@/app/actions';
 import Link from 'next/link';
 
-export default function AttendanceClient({ event, initialRecords, orgName }) {
+export default function AttendanceClient({ event, initialRecords, companyId, companyName }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,9 +17,9 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
 
   // If this is an org_spoc, always fetch their team members and merge with existing records
   useEffect(() => {
-    if (orgName !== 'All Organizations') {
+    if (companyId) {
       setLoadingMembers(true);
-      getOrgMembers(orgName).then(res => {
+      getOrgMembers(companyId).then(res => {
         if (res.success) {
           const initialMap = {};
           initialRecords.forEach(r => initialMap[r.userId] = r);
@@ -40,7 +40,7 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
         setLoadingMembers(false);
       });
     }
-  }, [orgName, initialRecords]);
+  }, [companyId, initialRecords]);
 
   const handleToggleAttendance = (userId) => {
     setRecords(prev => prev.map(r => {
@@ -58,7 +58,6 @@ export default function AttendanceClient({ event, initialRecords, orgName }) {
     startTransition(async () => {
       const payload = records.map(r => ({
         userId: r.userId,
-        organizationName: orgName,
         attended: r.attended,
         hoursContributed: r.hoursContributed,
         feedbackScore: r.feedbackScore,

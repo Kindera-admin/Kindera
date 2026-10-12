@@ -1,20 +1,18 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Download, Users, FileSpreadsheet, Loader2, UploadCloud, ChevronLeft, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { generateTeamLogins, bulkCreateFromExcel } from '@/app/actions';
 import Link from 'next/link';
 
-export default function GenerateLoginsClient({ role, defaultOrg }) {
+export default function GenerateLoginsClient({ role, companyId, companyName }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const orgParam = searchParams.get('org');
 
   const [activeTab, setActiveTab] = useState('quick');
-  const [orgName, setOrgName] = useState(orgParam || defaultOrg || '');
+  const orgName = companyName;
   const [count, setCount] = useState('');
   const [isPending, startTransition] = useTransition();
   const [results, setResults] = useState(null);
@@ -22,13 +20,13 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
 
   const handleQuickGenerate = (e) => {
     e.preventDefault();
-    if (!orgName.trim() || !count || count < 1 || count > 500) {
-      toast.error('Please enter a valid organisation name and count (1-500)');
+    if (!count || count < 1 || count > 500) {
+      toast.error('Please enter a count between 1 and 500');
       return;
     }
 
     const fd = new FormData();
-    fd.append('orgName', orgName);
+    fd.append('companyId', companyId);
     fd.append('count', count);
 
     startTransition(async () => {
@@ -44,8 +42,8 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
 
   const handleExcelUpload = (e) => {
     e.preventDefault();
-    if (!excelFile || !orgName.trim()) {
-      toast.error('Please select an Excel file and enter the organisation name');
+    if (!excelFile) {
+      toast.error('Please select an Excel file');
       return;
     }
 
@@ -72,7 +70,7 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
         }
 
         startTransition(async () => {
-          const res = await bulkCreateFromExcel(rows, orgName);
+          const res = await bulkCreateFromExcel(rows, companyId);
           if (res.success) {
             toast.success(`Created ${res.credentials.length} accounts from Excel!`);
             setResults(res.credentials);
@@ -142,18 +140,8 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
             {activeTab === 'quick' ? (
               <form onSubmit={handleQuickGenerate} className="max-w-md mx-auto space-y-5">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Organisation Name</label>
-                  <input
-                    type="text"
-                    value={orgName}
-                    onChange={e => setOrgName(e.target.value)}
-                    readOnly={role === 'org_spoc'}
-                    className={`w-full h-11 border rounded-lg px-4 text-sm focus:outline-none ${
-                      role === 'org_spoc' ? 'bg-gray-50 border-gray-200 text-gray-500' : 'bg-white border-gray-300 focus:border-brand focus:ring-1 focus:ring-brand'
-                    }`}
-                    placeholder="e.g. Tata Consultancy Services"
-                  />
-                  {role === 'org_spoc' && <p className="text-xs text-gray-500 mt-1.5">Fixed to your organisation.</p>}
+                  <p className="block text-sm font-semibold text-gray-700 mb-1.5">Company</p>
+                  <p className="w-full h-11 flex items-center rounded-lg border border-gray-200 bg-gray-50 px-4 text-sm text-gray-700">{companyName}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Number of Logins</label>
@@ -169,7 +157,7 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
                 </div>
                 <Button
                   type="submit"
-                  disabled={isPending || !orgName || !count}
+                  disabled={isPending || !count}
                   className="w-full h-11 bg-brand hover:bg-brand-strong text-white gap-2 mt-4 text-base"
                 >
                   {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Users className="w-5 h-5" />}
@@ -178,18 +166,10 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
               </form>
             ) : (
               <form onSubmit={handleExcelUpload} className="max-w-md mx-auto space-y-5">
-                {role === 'admin' && (
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Organisation Name</label>
-                    <input
-                      type="text"
-                      value={orgName}
-                      onChange={e => setOrgName(e.target.value)}
-                      className="w-full h-11 border border-gray-300 rounded-lg px-4 text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
-                      placeholder="e.g. Tata Consultancy Services"
-                    />
-                  </div>
-                )}
+                <div>
+                  <p className="block text-sm font-semibold text-gray-700 mb-1.5">Company</p>
+                  <p className="w-full h-11 flex items-center rounded-lg border border-gray-200 bg-gray-50 px-4 text-sm text-gray-700">{companyName}</p>
+                </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Upload Excel (.xlsx)</label>
                   <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition-colors">
@@ -214,7 +194,7 @@ export default function GenerateLoginsClient({ role, defaultOrg }) {
                 </div>
                 <Button
                   type="submit"
-                  disabled={isPending || !excelFile || !orgName}
+                  disabled={isPending || !excelFile}
                   className="w-full h-11 bg-brand hover:bg-brand-strong text-white gap-2 mt-4 text-base"
                 >
                   {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}

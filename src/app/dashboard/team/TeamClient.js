@@ -92,11 +92,6 @@ export default function TeamClient({ members, stats, orgName }) {
                         </div>
                         <div className="flex flex-col min-w-0">
                           <span className="font-medium text-gray-900 text-sm truncate">{member.name}</span>
-                          {(member.organizationName || member.ngoId) && (
-                            <span className="text-xs text-gray-500 truncate">
-                              {member.organizationName || member.ngoId}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </td>

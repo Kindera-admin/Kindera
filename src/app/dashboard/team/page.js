@@ -10,7 +10,7 @@ export default async function TeamPage() {
 
   const orgName = user.organizationName;
   const [membersResult, statsResult] = await Promise.all([
-    getOrgMembers(orgName),
+    getOrgMembers(user.companyId ? String(user.companyId) : null),
     getOrgStats(orgName),
   ]);
 
