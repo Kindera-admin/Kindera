@@ -26,5 +26,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await mongoose.disconnect();
+  // src/lib/db.js caches its connection on globalThis; drop it so the next test file reconnects to its own mongod.
+  delete globalThis.mongoose;
   await mongod.stop();
 });
