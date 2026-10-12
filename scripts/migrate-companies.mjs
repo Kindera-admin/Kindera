@@ -125,6 +125,9 @@ export async function applyMigration(db, { backupFile = null, now = new Date() }
     attendances: await attendances.find({ organizationName: { $in: attendanceNames }, companyId: null }).toArray(),
     createdCompanyIds: [],
   };
+  // The backup file must exist before the first company is inserted, so a crash
+  // part-way through still leaves a file that lists what to roll back.
+  if (backupFile) writeBackup(backupFile, backup);
 
   // 2. One company per group (reuse an existing one with the same nameKey).
   const idByKey = new Map();
@@ -152,8 +155,8 @@ export async function applyMigration(db, { backupFile = null, now = new Date() }
     });
     idByKey.set(g.key, insertedId);
     backup.createdCompanyIds.push(insertedId);
+    if (backupFile) writeBackup(backupFile, backup);
   }
-  if (backupFile) writeBackup(backupFile, backup);
 
   // 3. Link records; companyId: null matches both null and missing, so re-runs skip linked docs.
   const link = async (col, names, extraFilter = {}) => {
@@ -193,6 +196,21 @@ export async function cleanupMigration(db, { backupFile = null, now = new Date()
   const leaking = await events.countDocuments({ organizationName: { $exists: true, $nin: [null, ''] }, companyId: null });
   if (leaking > 0) throw new Error(`Refusing cleanup: ${leaking} private events have no companyId and would become public. Run --apply first.`);
 
+  // The old deployment keeps writing organizationName during the expand window, so
+  // records created after --apply can still depend on the old fields.
+  const nonEmpty = { $exists: true, $nin: [null, ''] };
+  const ngoMissing = await users.countDocuments({ role: 'ngo', organizationName: nonEmpty, ngoName: { $in: [null, ''] } });
+  if (ngoMissing > 0) throw new Error(`Refusing cleanup: ${ngoMissing} NGO accounts have an organizationName but no ngoName. Run --apply again first.`);
+  const volunteerMissing = await users.countDocuments({ role: 'volunteer', organizationName: nonEmpty, employerName: { $in: [null, ''] } });
+  if (volunteerMissing > 0) throw new Error(`Refusing cleanup: ${volunteerMissing} volunteer accounts have an organizationName but no employerName. Run --apply again first.`);
+  const companyKeys = new Set((await db.collection('companies').distinct('nameKey')).filter(Boolean));
+  const pendingNames = (await attendances.distinct('organizationName', { companyId: null }))
+    .filter((n) => hasText(n) && companyKeys.has(toNameKey(n)));
+  const attendanceUnlinked = pendingNames.length
+    ? await attendances.countDocuments({ organizationName: { $in: pendingNames }, companyId: null })
+    : 0;
+  if (attendanceUnlinked > 0) throw new Error(`Refusing cleanup: ${attendanceUnlinked} attendance records match a company but have no companyId. Run --apply again first.`);
+
   const hasOld = { $or: [{ organizationName: { $exists: true } }, { organizationLogo: { $exists: true } }] };
   if (backupFile) {
     writeBackup(backupFile, {
@@ -221,19 +239,21 @@ export async function rollbackMigration(db, backup) {
   }
 }
 
-function hostOf(uri) {
+// host/dbname, so the operator sees which database a run will touch.
+function targetOf(uri) {
   const u = new URL(uri.replace(/^mongodb(\+srv)?:/, 'http:'));
-  return u.host;
+  return `${u.host}/${u.pathname.replace(/^\//, '') || '(default)'}`;
 }
 
-async function main(argv) {
+export async function main(argv) {
   const args = parseArgs(argv);
-  dotenv.config({ path: args.env });
+  // override: --env must win over a MONGODB_URI already in the shell environment.
+  dotenv.config({ path: args.env, override: true });
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error(`MONGODB_URI is not set in ${args.env}`);
-  console.log(`Target database: ${hostOf(uri)} (from ${args.env})`);
+  console.log(`Target database: ${targetOf(uri)} (from ${args.env})`);
   if (args.mode !== 'plan' && !args.yes) {
-    throw new Error(`--${args.mode} writes to ${hostOf(uri)}. Re-run with --yes to confirm.`);
+    throw new Error(`--${args.mode} writes to ${targetOf(uri)}. Re-run with --yes to confirm.`);
   }
 
   await mongoose.connect(uri);

@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import {
-  parseArgs, planMigration, applyMigration, cleanupMigration, rollbackMigration, readBackup,
+  parseArgs, planMigration, applyMigration, cleanupMigration, rollbackMigration, readBackup, main,
 } from '../../scripts/migrate-companies.mjs';
 
 let db;
@@ -197,5 +197,202 @@ describe('rollbackMigration', () => {
     await cleanupMigration(db, { now, backupFile: file });
     await rollbackMigration(db, readBackup(file));
     expect(await db.collection('users').findOne({ _id: spocId })).toEqual(linked);
+  });
+});
+
+// ---- Fix round 1: data-safety hardening ----
+
+const countOld = async () => ({
+  users: await db.collection('users').countDocuments({ organizationName: { $exists: true } }),
+  events: await db.collection('events').countDocuments({ organizationName: { $exists: true } }),
+  attendances: await db.collection('attendances').countDocuments({ organizationName: { $exists: true } }),
+});
+
+// Wraps `db` so companies.insertOne can be observed or made to fail.
+function dbWithInsertHook(hook) {
+  const real = db.collection('companies');
+  const fake = new Proxy(real, {
+    get(t, p) {
+      if (p === 'insertOne') return (...a) => { hook(); return t.insertOne(...a); };
+      const v = t[p];
+      return typeof v === 'function' ? v.bind(t) : v;
+    },
+  });
+  return { collection: (n) => (n === 'companies' ? fake : db.collection(n)) };
+}
+
+describe('planMigration is read-only for NGO and volunteer names', () => {
+  it('leaves ngoName and employerName unset', async () => {
+    await seedLegacy();
+    await planMigration(db);
+    expect(await db.collection('users').countDocuments({ ngoName: { $exists: true } })).toBe(0);
+    expect(await db.collection('users').countDocuments({ employerName: { $exists: true } })).toBe(0);
+  });
+});
+
+describe('group naming', () => {
+  it('uses the most-used spelling, not the first one seen', async () => {
+    await db.collection('users').insertMany([
+      { username: 'z1', role: 'org_spoc', name: 'Z1', organizationName: 'ZETA inc' },
+      { username: 'z2', role: 'org_member', name: 'Z2', organizationName: 'Zeta Inc' },
+      { username: 'z3', role: 'org_member', name: 'Z3', organizationName: 'Zeta Inc' },
+    ]);
+    const plan = await planMigration(db);
+    expect(plan.groups).toHaveLength(1);
+    expect(plan.groups[0].name).toBe('Zeta Inc');
+    await applyMigration(db, { now });
+    expect((await db.collection('companies').findOne({ nameKey: 'zeta inc' })).name).toBe('Zeta Inc');
+  });
+  it('takes the logo of the most recently updated SPOC', async () => {
+    await db.collection('users').insertMany([
+      { username: 'new', role: 'org_spoc', name: 'N', organizationName: 'Beta LLC', organizationLogo: 'https://logo/new.png', updatedAt: new Date('2026-09-01T00:00:00Z') },
+      { username: 'old', role: 'org_spoc', name: 'O', organizationName: 'beta llc', organizationLogo: 'https://logo/old.png', updatedAt: new Date('2026-01-01T00:00:00Z') },
+    ]);
+    await applyMigration(db, { now });
+    expect((await db.collection('companies').findOne({ nameKey: 'beta llc' })).logoUrl).toBe('https://logo/new.png');
+  });
+});
+
+describe('backup and rollback cover every changed document type', () => {
+  it('backs up the private event, matched attendance, NGO user and volunteer user', async () => {
+    const { eventId, memberId } = await seedLegacy();
+    const file = tmp();
+    await applyMigration(db, { now, backupFile: file });
+    const backup = readBackup(file);
+    const ngo = await db.collection('users').findOne({ username: 'ngo' });
+    const vol = await db.collection('users').findOne({ username: 'vol' });
+    const att = await db.collection('attendances').findOne({ userId: memberId });
+    const ids = (docs) => docs.map((d) => String(d._id));
+    expect(ids(backup.events)).toContain(String(eventId));
+    expect(ids(backup.attendances)).toContain(String(att._id));
+    expect(ids(backup.users)).toContain(String(ngo._id));
+    expect(ids(backup.users)).toContain(String(vol._id));
+    // the unmatched attendance and the public event are not changed, so they are not backed up
+    expect(backup.attendances).toHaveLength(1);
+    expect(backup.events).toHaveLength(2);
+  });
+  it('restores the events, attendance, NGO, volunteer and employee exactly', async () => {
+    const { eventId, memberId } = await seedLegacy();
+    const snap = async () => ({
+      event: await db.collection('events').findOne({ _id: eventId }),
+      orphan: await db.collection('events').findOne({ title: 'Orphan internal' }),
+      attendance: await db.collection('attendances').findOne({ userId: memberId }),
+      ngo: await db.collection('users').findOne({ username: 'ngo' }),
+      vol: await db.collection('users').findOne({ username: 'vol' }),
+      member: await db.collection('users').findOne({ _id: memberId }),
+    });
+    const before = await snap();
+    const file = tmp();
+    await applyMigration(db, { now, backupFile: file });
+    expect(await snap()).not.toEqual(before);
+    await rollbackMigration(db, readBackup(file));
+    expect(await snap()).toEqual(before);
+  });
+});
+
+describe('applyMigration backup ordering', () => {
+  it('has written the backup file before the first company is inserted', async () => {
+    await seedLegacy();
+    const file = tmp();
+    let existedAtFirstInsert = null;
+    const wrapped = dbWithInsertHook(() => {
+      if (existedAtFirstInsert === null) existedAtFirstInsert = fs.existsSync(file);
+    });
+    await applyMigration(wrapped, { now, backupFile: file });
+    expect(existedAtFirstInsert).toBe(true);
+  });
+  it('leaves a backup listing the companies created before a failure', async () => {
+    await seedLegacy();
+    const file = tmp();
+    let calls = 0;
+    const wrapped = dbWithInsertHook(() => {
+      calls += 1;
+      if (calls === 2) throw new Error('boom');
+    });
+    await expect(applyMigration(wrapped, { now, backupFile: file })).rejects.toThrow('boom');
+    expect(fs.existsSync(file)).toBe(true);
+    const backup = readBackup(file);
+    const created = await db.collection('companies').find({}).toArray();
+    expect(created).toHaveLength(1);
+    expect(backup.createdCompanyIds.map(String)).toEqual([String(created[0]._id)]);
+    expect(backup.users.length).toBeGreaterThan(0);
+  });
+});
+
+describe('cleanupMigration guards for records written after --apply', () => {
+  it('refuses while an NGO has an organizationName but no ngoName, and unsets nothing', async () => {
+    await seedLegacy();
+    await applyMigration(db, { now });
+    await db.collection('users').insertOne({ username: 'ngo2', role: 'ngo', name: 'N2', organizationName: 'Late NGO' });
+    const before = await countOld();
+    await expect(cleanupMigration(db, { now })).rejects.toThrow(/Refusing cleanup.*NGO.*Run --apply again first/);
+    expect(await countOld()).toEqual(before);
+  });
+  it('refuses while a volunteer has an organizationName but no employerName, and unsets nothing', async () => {
+    await seedLegacy();
+    await applyMigration(db, { now });
+    await db.collection('users').insertOne({ username: 'vol2', role: 'volunteer', name: 'V2', organizationName: 'Late Employer' });
+    const before = await countOld();
+    await expect(cleanupMigration(db, { now })).rejects.toThrow(/Refusing cleanup.*volunteer.*Run --apply again first/);
+    expect(await countOld()).toEqual(before);
+  });
+  it('refuses while attendance matching a company has no companyId, and unsets nothing', async () => {
+    const { eventId } = await seedLegacy();
+    await applyMigration(db, { now });
+    await db.collection('attendances').insertOne({ eventId, userId: new mongoose.Types.ObjectId(), organizationName: 'acme corp', attended: true });
+    const before = await countOld();
+    await expect(cleanupMigration(db, { now })).rejects.toThrow(/Refusing cleanup.*attendance.*Run --apply again first/);
+    expect(await countOld()).toEqual(before);
+  });
+  it('succeeds after the late records are re-applied', async () => {
+    const { eventId } = await seedLegacy();
+    await applyMigration(db, { now });
+    await db.collection('users').insertMany([
+      { username: 'ngo2', role: 'ngo', name: 'N2', organizationName: 'Late NGO' },
+      { username: 'vol2', role: 'volunteer', name: 'V2', organizationName: 'Late Employer' },
+    ]);
+    await db.collection('attendances').insertOne({ eventId, userId: new mongoose.Types.ObjectId(), organizationName: 'acme corp', attended: true });
+    await expect(cleanupMigration(db, { now })).rejects.toThrow(/Refusing cleanup/);
+    const again = await applyMigration(db, { now });
+    expect(again).toMatchObject({ ngoNames: 1, employerNames: 1, attendances: 1 });
+    await cleanupMigration(db, { now });
+    expect(await countOld()).toEqual({ users: 0, events: 0, attendances: 0 });
+    expect((await db.collection('users').findOne({ username: 'ngo2' })).ngoName).toBe('Late NGO');
+    expect((await db.collection('users').findOne({ username: 'vol2' })).employerName).toBe('Late Employer');
+  });
+});
+
+describe('main (CLI)', () => {
+  const neverEnv = () => {
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'mig-env-')), '.env.test');
+    fs.writeFileSync(file, 'MONGODB_URI=mongodb://127.0.0.1:1/never\n');
+    return file;
+  };
+  it('rejects --apply without --yes before connecting, and --env overrides the shell MONGODB_URI', async () => {
+    const envFile = neverEnv();
+    const saved = process.env.MONGODB_URI;
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await expect(main(['--env', envFile, '--apply'])).rejects.toThrow(/--yes/);
+      expect(log).toHaveBeenCalledWith(`Target database: 127.0.0.1:1/never (from ${envFile})`);
+      expect(process.env.MONGODB_URI).toBe('mongodb://127.0.0.1:1/never');
+      expect(mongoose.connection.readyState).toBe(1);
+      expect(mongoose.connection.db.databaseName).not.toBe('never');
+    } finally {
+      log.mockRestore();
+      process.env.MONGODB_URI = saved;
+    }
+  });
+  it('requires --yes for cleanup and rollback too', async () => {
+    const envFile = neverEnv();
+    const saved = process.env.MONGODB_URI;
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await expect(main(['--env', envFile, '--cleanup'])).rejects.toThrow(/--yes/);
+      await expect(main(['--env', envFile, '--rollback', 'x.json'])).rejects.toThrow(/--yes/);
+    } finally {
+      log.mockRestore();
+      process.env.MONGODB_URI = saved;
+    }
   });
 });
