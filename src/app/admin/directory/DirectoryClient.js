@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { exportDetailedAttendanceData } from '@/app/actions';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
+import { csvDocument, csvDataUri } from '@/lib/csv';
 
 export default function DirectoryClient({ spocs, ngos }) {
   const [activeTab, setActiveTab] = useState('spocs');
@@ -56,48 +57,30 @@ export default function DirectoryClient({ spocs, ngos }) {
     (n.ngoId || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleExportCSV = () => {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    
-    if (activeTab === 'spocs') {
-      csvContent += "Name,Username,Mobile,Organization,Status,Total Members,Total Hours,Events Attended,Joined At\n";
-      filteredSpocs.forEach(s => {
-        const row = [
-          `"${s.name || ''}"`,
-          `"${s.email || ''}"`,
-          `"${s.mobile || ''}"`,
-          `"${s.companyName || ''}"`,
-          `"${s.status || ''}"`,
-          s.memberCount || 0,
-          s.volunteerHours || 0,
-          s.eventsAttended || 0,
-          `"${s.joinedAt ? new Date(s.joinedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''}"`
-        ];
-        csvContent += row.join(",") + "\n";
-      });
-    } else {
-      csvContent += "NGO Name,Username,Mobile,NGO ID,Status,Events Created,Joined At\n";
-      filteredNgos.forEach(n => {
-        const row = [
-          `"${n.name || ''}"`,
-          `"${n.email || ''}"`,
-          `"${n.mobile || ''}"`,
-          `"${n.ngoId || ''}"`,
-          `"${n.status || ''}"`,
-          n.eventsCreated || 0,
-          `"${n.joinedAt ? new Date(n.joinedAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : ''}"`
-        ];
-        csvContent += row.join(",") + "\n";
-      });
-    }
-
-    const encodedUri = encodeURI(csvContent);
+  const downloadCsv = (csv, filename) => {
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `${activeTab}_directory_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("href", csvDataUri(csv));
+    link.setAttribute("download", filename);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleExportCSV = () => {
+    const joined = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '');
+    const csv = activeTab === 'spocs'
+      ? csvDocument(
+        ['Name', 'Username', 'Mobile', 'Organization', 'Status', 'Total Members', 'Total Hours', 'Events Attended', 'Joined At'],
+        filteredSpocs.map(s => [
+          s.name, s.email, s.mobile, s.companyName, s.status,
+          s.memberCount || 0, s.volunteerHours || 0, s.eventsAttended || 0, joined(s.joinedAt),
+        ]),
+      )
+      : csvDocument(
+        ['NGO Name', 'Username', 'Mobile', 'NGO ID', 'Status', 'Events Created', 'Joined At'],
+        filteredNgos.map(n => [n.name, n.email, n.mobile, n.ngoId, n.status, n.eventsCreated || 0, joined(n.joinedAt)]),
+      );
+    downloadCsv(csv, `${activeTab}_directory_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   const handleExportDetailedCSV = () => {
@@ -113,36 +96,18 @@ export default function DirectoryClient({ spocs, ngos }) {
         return;
       }
       
-      let csvContent = "data:text/csv;charset=utf-8,";
-      csvContent += "Organization,Volunteer Name,Volunteer Username,Event Title,Event Date,Event Location,Hours Contributed,Feedback Score,Feedback Text,Marked At\n";
-      
-      res.data.forEach(r => {
-        const row = [
-          `"${r.companyName}"`,
-          `"${r.volunteerName}"`,
-          `"${r.volunteerEmail}"`,
-          `"${r.eventTitle.replace(/"/g, '""')}"`,
-          `"${formatDateStr(r.eventDate)}"`,
-          `"${r.eventLocation.replace(/"/g, '""')}"`,
-          r.hoursContributed,
-          r.feedbackScore,
-          `"${r.feedbackText.replace(/"/g, '""')}"`,
-          `"${formatDateStr(r.markedAt)}"`
-        ];
-        csvContent += row.join(",") + "\n";
-      });
-
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
+      const csv = csvDocument(
+        ['Organization', 'Volunteer Name', 'Volunteer Username', 'Event Title', 'Event Date', 'Event Location', 'Hours Contributed', 'Feedback Score', 'Feedback Text', 'Marked At'],
+        res.data.map(r => [
+          r.companyName, r.volunteerName, r.volunteerEmail, r.eventTitle, formatDateStr(r.eventDate),
+          r.eventLocation, r.hoursContributed, r.feedbackScore, r.feedbackText, formatDateStr(r.markedAt),
+        ]),
+      );
       let filename = exportTarget?.name ? `${exportTarget.name.replace(/\s+/g, '_')}_attendance` : 'detailed_attendance_data';
       filename += `_${exportYear}`;
       if (exportQuarter !== 'All Year') filename += `_${exportQuarter}`;
       filename += `_${new Date().toISOString().split('T')[0]}.csv`;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadCsv(csv, filename);
       setShowExportModal(false);
     });
   };
