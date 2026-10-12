@@ -8,7 +8,7 @@ import useAuthStore from '@/store/authStore';
 import { logout, getUnreadCount } from '@/app/actions';
 import { toast } from 'sonner';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
-import { LogOut, Menu, X, LayoutDashboard, CalendarDays, Users, FileText, Building2, MessageSquare, Settings } from 'lucide-react';
+import { LogOut, Menu, X, LayoutDashboard, CalendarDays, Users, FileText, Building2, MessageSquare, Settings, Briefcase } from 'lucide-react';
 
 const Navbar = () => {
   const { user, clearAuth, isAuthenticated, isAdmin } = useAuthStore();
@@ -68,6 +68,7 @@ const Navbar = () => {
   const navLinks = [];
   if (isAdmin() || user?.role === 'employee') {
     navLinks.push({ label: 'Dashboard', href: '/admin', icon: LayoutDashboard, startsWith: true });
+    navLinks.push({ label: 'Companies', href: '/admin/companies', icon: Briefcase });
     if (isAdmin()) {
       navLinks.push({ label: 'Events', href: '/admin/events', icon: CalendarDays });
       navLinks.push({ label: 'Corporate', href: '/admin/corporate', icon: Building2 });

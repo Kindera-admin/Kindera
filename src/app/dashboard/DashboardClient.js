@@ -3,7 +3,7 @@
 import { CATEGORY_STRIPS } from '@/lib/categoryStrips';
 import { useRouter } from 'next/navigation';
 import { useTransition, useState } from 'react';
-import { Users, CalendarDays, UserPlus, Building2, ArrowRight, Loader2, FileText, BarChart3 } from 'lucide-react';
+import { Users, CalendarDays, UserPlus, Building2, ArrowRight, Loader2, FileText, BarChart3, Briefcase } from 'lucide-react';
 
 const cards = [
   {
@@ -40,6 +40,15 @@ const cards = [
     href: '/admin/corporate',
     accent: '#1a5c3a',
     gradient: 'from-brand-strong to-brand-accent',
+    lightBg: '#f0f7f3',
+  },
+  {
+    title: 'Companies',
+    description: 'Add corporate clients, set their logo, and archive old ones.',
+    icon: Briefcase,
+    href: '/admin/companies',
+    accent: '#0d3b26',
+    gradient: CATEGORY_STRIPS.brand,
     lightBg: '#f0f7f3',
   },
   {
