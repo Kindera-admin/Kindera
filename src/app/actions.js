@@ -677,6 +677,9 @@ export async function deleteUser(formData) {
     
     // Delete the user
     await User.findByIdAndDelete(userId);
+
+    // A card must not keep pointing at a deleted login, or no new login could ever be generated for it.
+    await NGOPartner.updateMany({ loginUserId: userToDelete._id }, { $set: { loginUserId: null } });
     
     revalidatePath('/admin/users');
     return { success: true, message: 'User and associated data deleted successfully' };
@@ -1154,8 +1157,10 @@ async function requireNgoStaff() {
 
 // Reads the `companyIds` form value: a JSON array of company ids. Missing or
 // empty means no companies (a public partner). Every id must be a valid id of
-// an active company. Returns { ids } (unique, lowercase) or { error }.
-async function readActiveCompanyIds(raw) {
+// an active company, except ids in `alreadyOnCard` (an archived company stays
+// on a card that already has it, but is never added to another).
+// Returns { ids } (unique, lowercase) or { error }.
+async function readActiveCompanyIds(raw, alreadyOnCard = []) {
   let requested = [];
   if (raw != null && raw !== '') {
     if (typeof raw !== 'string') return { error: ACTIVE_COMPANIES_ONLY };
@@ -1167,9 +1172,11 @@ async function readActiveCompanyIds(raw) {
     if (!Array.isArray(requested) || !requested.every(isIdString)) return { error: ACTIVE_COMPANIES_ONLY };
   }
   const ids = [...new Set(requested.map((id) => id.toLowerCase()))];
-  if (ids.length > 0) {
-    const active = await Company.countDocuments({ _id: { $in: ids }, status: 'active' });
-    if (active !== ids.length) return { error: ACTIVE_COMPANIES_ONLY };
+  const kept = new Set(alreadyOnCard.map(String));
+  const added = ids.filter((id) => !kept.has(id));
+  if (added.length > 0) {
+    const active = await Company.countDocuments({ _id: { $in: added }, status: 'active' });
+    if (active !== added.length) return { error: ACTIVE_COMPANIES_ONLY };
   }
   return { ids };
 }
@@ -1304,6 +1311,9 @@ export async function updateNGOPartner(id, formData) {
     if (error) return error;
     if (!isIdString(id)) return NGO_NOT_FOUND;
 
+    const existing = await NGOPartner.findById(id).select('companyIds').lean();
+    if (!existing) return NGO_NOT_FOUND;
+
     const name = formData.get('name')?.trim();
     const description = formData.get('description')?.trim();
     const focusAreas = formData.get('focusAreas')?.trim() || '';
@@ -1319,12 +1329,16 @@ export async function updateNGOPartner(id, formData) {
       return { success: false, message: 'Name and description are required' };
     }
 
-    const companies = await readActiveCompanyIds(formData.get('companyIds'));
-    if (companies.error) return companies.error;
-
-    const updateData = { name, description, focusAreas, programs, impact, registeredOffice, location, website, companyIds: companies.ids };
+    const updateData = { name, description, focusAreas, programs, impact, registeredOffice, location, website };
     if (logoUrl) {
       updateData.logoUrl = logoUrl;
+    }
+    // Only a companyIds field that was sent (even "[]") changes the companies; an absent one leaves them as they are.
+    const rawCompanyIds = formData.get('companyIds');
+    if (rawCompanyIds !== null) {
+      const companies = await readActiveCompanyIds(rawCompanyIds, existing.companyIds || []);
+      if (companies.error) return companies.error;
+      updateData.companyIds = companies.ids;
     }
 
     const partner = await NGOPartner.findByIdAndUpdate(id, updateData, { new: true });
@@ -1481,9 +1495,11 @@ export async function deleteNGOPartner(id) {
     if (!partner) return NGO_NOT_FOUND;
 
     // Reject the card's login first, so a login can never outlive its card. Only NGO accounts are touched.
+    // Their ngoPartnerId keeps pointing at the deleted card: a login whose card is missing may create nothing,
+    // whereas one with no card at all could create public events.
     const linked = [{ ngoPartnerId: partner._id }];
     if (partner.loginUserId) linked.push({ _id: partner.loginUserId });
-    await User.updateMany({ role: 'ngo', $or: linked }, { $set: { status: 'rejected', ngoPartnerId: null } });
+    await User.updateMany({ role: 'ngo', $or: linked }, { $set: { status: 'rejected' } });
     await NGOPartner.deleteOne({ _id: partner._id });
 
     revalidatePath('/ngo-partners');

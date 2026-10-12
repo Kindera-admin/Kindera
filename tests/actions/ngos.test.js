@@ -6,11 +6,12 @@ import NGOPartner from '@/models/NGOPartner';
 import User from '@/models/User';
 import Event from '@/models/Event';
 import Company from '@/models/Company';
+import { ngoEventCompanies } from '@/lib/ngo';
 import { actAs } from '../helpers/auth.js';
 import { makeWorld, makePartner, makeUser, makeEvent, makeCompany } from '../helpers/factories.js';
 import {
   login, registerUser, getAllNGOPartners, getMyNGOs, createNGOPartner, updateNGOPartner,
-  deleteNGOPartner, importNGOPartners, generateNGOLogin,
+  deleteNGOPartner, importNGOPartners, generateNGOLogin, deleteUser,
 } from '@/app/actions';
 
 const STAFF_ONLY = { success: false, message: 'Only admins and employees can manage NGO partners' };
@@ -329,12 +330,51 @@ describe('updateNGOPartner', () => {
     expect((await updateNGOPartner(String(card._id), partnerForm({ companyIds: '[]' }))).success).toBe(true);
     expect((await NGOPartner.findById(card._id).lean()).companyIds).toEqual([]);
   });
-  it('treats a missing companyIds field as an empty list', async () => {
+  it('leaves the companies unchanged when the companyIds field is absent', async () => {
     const w = await makeWorld();
-    const card = await makePartner({ companyIds: [w.companyA._id] });
+    const company = await makePartner({ name: 'Company card', companyIds: [w.companyA._id] });
+    const publicCard = await makePartner({ name: 'Public card' });
     await actAs(w.admin);
-    expect((await updateNGOPartner(String(card._id), partnerForm())).success).toBe(true);
-    expect((await NGOPartner.findById(card._id).lean()).companyIds).toEqual([]);
+    const res = await updateNGOPartner(String(company._id), partnerForm({ name: 'Renamed' }));
+    expect(res).toMatchObject({
+      success: true,
+      partner: { name: 'Renamed', companyIds: [String(w.companyA._id)], companyNames: ['Acme'] },
+    });
+    const stored = await NGOPartner.findById(company._id).lean();
+    expect(stored.name).toBe('Renamed');
+    expect(stored.companyIds.map(String)).toEqual([String(w.companyA._id)]);
+    expect((await updateNGOPartner(String(publicCard._id), partnerForm({ name: 'Still public' }))).success).toBe(true);
+    expect((await NGOPartner.findById(publicCard._id).lean()).companyIds).toEqual([]);
+  });
+  it('lets an archived company stay on a card but never be added to one', async () => {
+    const w = await makeWorld();
+    const old = await makeCompany('Old', { status: 'archived' });
+    const other = await makeCompany('Other', { status: 'archived' });
+    const card = await makePartner({ companyIds: [w.companyA._id, old._id] });
+    await makePartner({ name: 'Elsewhere', companyIds: [other._id] }); // archived there, but not on this card
+    const A = String(w.companyA._id);
+    const O = String(old._id);
+    const stored = async () => (await NGOPartner.findById(card._id).lean()).companyIds.map(String);
+    await actAs(w.admin);
+
+    // New archived companies are refused, even next to the kept one, and nothing changes.
+    const before = await dbState();
+    for (const companyIds of [JSON.stringify([A, O, String(other._id)]), JSON.stringify([String(other._id)])]) {
+      expect(await updateNGOPartner(String(card._id), partnerForm({ name: 'Changed', companyIds }))).toEqual(ACTIVE_ONLY);
+    }
+    expect(await dbState()).toEqual(before);
+
+    // The same list is accepted: the archived company stays and still shows its name.
+    const same = await updateNGOPartner(String(card._id), partnerForm({ name: 'Edited', companyIds: JSON.stringify([A, O]) }));
+    expect(same).toMatchObject({ success: true, partner: { name: 'Edited', companyIds: [A, O], companyNames: ['Acme', 'Old'] } });
+    // Dropping the active company while the archived one stays is accepted too.
+    expect((await updateNGOPartner(String(card._id), partnerForm({ companyIds: JSON.stringify([O]) }))).success).toBe(true);
+    expect(await stored()).toEqual([O]);
+
+    // Once removed it is just an archived company again: it cannot be put back.
+    expect((await updateNGOPartner(String(card._id), partnerForm({ companyIds: JSON.stringify([A]) }))).success).toBe(true);
+    expect(await updateNGOPartner(String(card._id), partnerForm({ companyIds: JSON.stringify([A, O]) }))).toEqual(ACTIVE_ONLY);
+    expect(await stored()).toEqual([A]);
   });
   it('refuses spocs, members, volunteers and NGOs and changes nothing', async () => {
     const w = await makeWorld();
@@ -687,7 +727,9 @@ describe('deleteNGOPartner', () => {
     expect(await deleteNGOPartner(String(card._id))).toEqual({ success: true });
     expect(await NGOPartner.findById(card._id)).toBeNull();
     const gone = await User.findOne({ username }).lean();
-    expect(gone).toMatchObject({ status: 'rejected', ngoPartnerId: null, role: 'ngo' });
+    // It keeps pointing at the deleted card, so it may create nothing (a login with no card could create public events).
+    expect(gone).toMatchObject({ status: 'rejected', ngoPartnerId: card._id, role: 'ngo' });
+    expect(ngoEventCompanies(gone, await NGOPartner.findById(card._id))).toEqual([]);
     // The rejected login can no longer sign in.
     await actAs(null);
     expect((await login(form({ username, password }))).success).toBe(false);
@@ -702,7 +744,7 @@ describe('deleteNGOPartner', () => {
     await NGOPartner.updateOne({ _id: card._id }, { loginUserId: w.volunteer._id }); // corrupted link to a non-NGO
     await actAs(w.admin);
     expect((await deleteNGOPartner(String(card._id))).success).toBe(true);
-    expect((await User.findById(stray._id).lean()).status).toBe('rejected');
+    expect(await User.findById(stray._id).lean()).toMatchObject({ status: 'rejected', ngoPartnerId: card._id });
     expect(await User.findById(w.volunteer._id).lean()).toMatchObject({ status: 'approved', role: 'volunteer' });
   });
   it('deletes a card that has no login without touching any user', async () => {
@@ -735,6 +777,63 @@ describe('deleteNGOPartner', () => {
       expect(await deleteNGOPartner(bad)).toEqual(NOT_FOUND);
     }
     expect(await dbState()).toEqual(before);
+  });
+});
+
+describe('deleteUser for an NGO login', () => {
+  const userForm = (user) => form({ userId: String(user._id) });
+
+  it('frees the card so a new login can be generated', async () => {
+    const w = await makeWorld();
+    const card = await makePartner({ name: 'Green Earth' });
+    const other = await makeLinkedPartner({ name: 'Other' });
+    await actAs(w.admin);
+    const first = await generateNGOLogin(String(card._id));
+    const firstUser = await User.findOne({ username: first.username });
+    expect(await deleteUser(userForm(firstUser))).toMatchObject({ success: true });
+    expect(await User.findById(firstUser._id)).toBeNull();
+    expect((await NGOPartner.findById(card._id).lean()).loginUserId).toBeNull();
+    // Another card keeps its login.
+    expect(String((await NGOPartner.findById(other.card._id).lean()).loginUserId)).toBe(String(other.user._id));
+
+    const second = await generateNGOLogin(String(card._id));
+    expect(second.success).toBe(true);
+    const logins = await User.find({ ngoPartnerId: card._id }).lean();
+    expect(logins).toHaveLength(1);
+    expect(logins[0].username).toBe(second.username);
+    expect(String((await NGOPartner.findById(card._id).lean()).loginUserId)).toBe(String(logins[0]._id));
+  });
+  it('clears every card whose loginUserId is the deleted user, even if the user does not point back', async () => {
+    const w = await makeWorld();
+    const unlinkedNgo = await makeUser('ngo'); // no ngoPartnerId
+    const card = await makePartner({ name: 'Points at it' });
+    const bystander = await makeLinkedPartner({ name: 'Bystander' });
+    await NGOPartner.updateOne({ _id: card._id }, { loginUserId: unlinkedNgo._id });
+    await actAs(w.admin);
+    expect((await deleteUser(userForm(unlinkedNgo))).success).toBe(true);
+    expect((await NGOPartner.findById(card._id).lean()).loginUserId).toBeNull();
+    expect(String((await NGOPartner.findById(bystander.card._id).lean()).loginUserId)).toBe(String(bystander.user._id));
+  });
+  it('leaves every card alone when the deleted user has no card', async () => {
+    const w = await makeWorld();
+    await makeLinkedPartner({ name: 'Linked' });
+    await makePartner({ name: 'Plain', companyIds: [w.companyA._id] });
+    const before = (await dbState()).partners;
+    await actAs(w.admin);
+    expect((await deleteUser(userForm(w.volunteer))).success).toBe(true);
+    expect(await User.findById(w.volunteer._id)).toBeNull();
+    expect((await dbState()).partners).toEqual(before);
+  });
+  it('is still admin only, and a refused call keeps the card linked', async () => {
+    const w = await makeWorld();
+    const { card, user } = await makeLinkedPartner({ name: 'Linked' });
+    const before = await dbState();
+    for (const who of [w.employee, w.spocA, w.volunteer]) {
+      await actAs(who);
+      expect(await deleteUser(userForm(user))).toEqual({ success: false, message: 'Only admin can delete users' });
+    }
+    expect(await dbState()).toEqual(before);
+    expect(String((await NGOPartner.findById(card._id).lean()).loginUserId)).toBe(String(user._id));
   });
 });
 

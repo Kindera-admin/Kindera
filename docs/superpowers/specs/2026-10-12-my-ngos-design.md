@@ -51,7 +51,8 @@ All rules live in a new `src/lib/ngo.js`, next to `src/lib/company.js`, and use 
   - Returns the cards from `myNgosFilter`, plus for each card a count of upcoming events this NGO's login created for the caller's company.
 - **`createNGOPartner` / `updateNGOPartner`**
   - Accept `companyIds`, a JSON array of ids in the form field `companyIds`.
-  - Each id must be valid and point to an active company, otherwise the action is refused.
+  - Each id must be valid and point to an active company, otherwise the action is refused. On update, an id already on that card is also accepted when its company is archived (archived companies stay on existing cards, never added to others).
+  - Create treats a missing `companyIds` as none. Update leaves the card's companies unchanged when the field is absent; only a field that is sent (including `[]`) changes them.
   - Staff only, as today.
 - **`importNGOPartners(rows, companyIds)`** (new, staff only)
   - Rows come from an Excel sheet with columns `name, description, focusAreas, programs, impact, registeredOffice, location, website`.
@@ -69,7 +70,9 @@ All rules live in a new `src/lib/ngo.js`, next to `src/lib/company.js`, and use 
     - `ngoPartnerId` = the card.
   - Sets `loginUserId` on the card and returns the username and password once, for staff to copy.
 - **`deleteNGOPartner`**
-  - Also sets any linked login to `status: 'rejected'` and clears its `ngoPartnerId`, so a dangling login cannot create events.
+  - Also sets any linked login to `status: 'rejected'` and keeps its `ngoPartnerId` pointing at the deleted card, so `ngoEventCompanies` returns nothing for it (fail closed) and a dangling login cannot create events.
+- **`deleteUser`**
+  - When the deleted user is a card's login, it clears that card's `loginUserId`, so a new login can be generated.
 - **`createEvent`** for `role: 'ngo'`
   - Reads the optional `companyId` form field and checks it against `ngoEventCompanies`.
   - An NGO linked to a company card must send one of its companies. A missing or other value is refused with "Choose which company this event is for".
