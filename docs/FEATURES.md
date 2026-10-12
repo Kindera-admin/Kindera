@@ -124,7 +124,7 @@ We have implemented and successfully deployed 4 significant features to make Kin
 * **Client-side Prevention**: 
   - Displays a clean **"{X} spots remaining"** badge in the event info sidebar.
   - Automatically changes to a red **"Event Full"** badge when capacity is reached.
-  - For SPOC group bookings, the number of employees input is dynamically capped at the remaining spots left (`max={spotsLeft}`).
+  - For SPOC group bookings, the number of corporate employees (`org_member`) input is dynamically capped at the remaining spots left (`max={spotsLeft}`).
   - Disables the **"Complete Registration"** button and displays **"Event Fully Booked"** if no capacity is left.
 
 ---
@@ -151,8 +151,8 @@ We have implemented and successfully deployed 4 significant features to make Kin
 ---
 
 ## 🏢 15. Companies as Records
-* **Admin-managed companies**: Admins create, rename and archive companies, and set their logos, at [/admin/companies](/admin/companies). Archived companies can be restored.
-* **Registration against a company**: Admins register SPOCs and employees against a company instead of typing an organisation name.
+* **Admin-managed companies**: Admins and Kindera staff (`employee`) create, rename and archive companies, and set their logos, at [/admin/companies](/admin/companies). Archived companies can be restored.
+* **Registration against a company**: Admins register SPOCs and corporate employees (`org_member`) against a company instead of typing an organisation name.
 * **Public signup**: The public signup page offers Volunteer and NGO only. Corporate accounts are created by admins.
 * **Shared company dashboard**: All SPOCs of a company see one shared dashboard. Any of them can manage the company's events, registrations and attendance, and delete the company's internal events from the events history page (public events cannot be deleted there).
 * **Internal events**: Internal events are visible only to the company that created them. Public events stay visible to everyone.
