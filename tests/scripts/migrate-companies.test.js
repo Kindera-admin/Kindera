@@ -556,7 +556,7 @@ describe('backfillLegacy (--backfill-legacy)', () => {
     await backfillLegacy(db, { now });
     expect(await backfillLegacy(db, { now })).toMatchObject({ users: 0, events: 0, attendances: 0, logos: 0 });
   });
-  it('requires --yes', async () => {
+  it('requires --yes for backfill', async () => {
     const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'mig-env-')), '.env.test');
     fs.writeFileSync(file, 'MONGODB_URI=mongodb://127.0.0.1:1/never\n');
     const saved = process.env.MONGODB_URI;
@@ -567,5 +567,34 @@ describe('backfillLegacy (--backfill-legacy)', () => {
       log.mockRestore();
       process.env.MONGODB_URI = saved;
     }
+  });
+});
+
+// ---- Final review A3: re-apply after a company rename ----
+
+describe('applyMigration after a company rename', () => {
+  it('links a late legacy user with the old name to the original company', async () => {
+    await seedLegacy();
+    await applyMigration(db, { now });
+    const acme = await db.collection('companies').findOne({ nameKey: 'acme corp' });
+    await db.collection('companies').updateOne({ _id: acme._id }, { $set: { name: 'Acme Global', nameKey: 'acme global' } });
+    const { insertedId } = await db.collection('users').insertOne({ username: 'late', role: 'org_member', name: 'L', organizationName: 'Acme Corp' });
+    const res = await applyMigration(db, { now });
+    expect(res.companiesCreated).toBe(0);
+    expect(await db.collection('companies').countDocuments()).toBe(2);
+    expect(String((await db.collection('users').findOne({ _id: insertedId })).companyId)).toBe(String(acme._id));
+  });
+  it('links nothing for a name already linked to two different companies', async () => {
+    await seedLegacy();
+    await applyMigration(db, { now });
+    const acme = await db.collection('companies').findOne({ nameKey: 'acme corp' });
+    await db.collection('companies').updateOne({ _id: acme._id }, { $set: { name: 'Acme Global', nameKey: 'acme global' } });
+    const { insertedId: otherId } = await db.collection('companies').insertOne({ name: 'Acme Corp', nameKey: 'acme corp', logoUrl: '', status: 'active', createdAt: now, updatedAt: now });
+    await db.collection('users').insertOne({ username: 'other-spoc', role: 'org_spoc', name: 'O', companyId: otherId, organizationName: 'Acme Corp' });
+    const { insertedId } = await db.collection('users').insertOne({ username: 'late', role: 'org_member', name: 'L', organizationName: 'acme corp' });
+    const res = await applyMigration(db, { now });
+    expect(res.ambiguous).toEqual([expect.objectContaining({ key: 'acme corp' })]);
+    expect(await db.collection('users').findOne({ _id: insertedId })).not.toHaveProperty('companyId');
+    expect(await db.collection('companies').countDocuments()).toBe(3);
   });
 });

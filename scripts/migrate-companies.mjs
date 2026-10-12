@@ -104,6 +104,27 @@ export function readBackup(file) {
   return EJSON.parse(fs.readFileSync(file, 'utf8'), { relaxed: false });
 }
 
+const asId = (id) => new mongoose.Types.ObjectId(String(id));
+
+// nameKey of organizationName -> Set of companyId strings, from records that
+// carry both (linked by an earlier run, or written back by --backfill-legacy).
+async function linkedCompanyIdsByKey(db) {
+  const map = new Map();
+  const filter = { companyId: { $ne: null }, organizationName: TEXT };
+  for (const [name, extra] of [['users', { role: { $in: CORPORATE } }], ['events', {}], ['attendances', {}]]) {
+    const rows = await db.collection(name).aggregate([
+      { $match: { ...extra, ...filter } },
+      { $group: { _id: { name: '$organizationName', companyId: '$companyId' } } },
+    ]).toArray();
+    for (const { _id } of rows) {
+      const key = toNameKey(_id.name);
+      if (!map.has(key)) map.set(key, new Set());
+      map.get(key).add(String(_id.companyId));
+    }
+  }
+  return map;
+}
+
 export async function applyMigration(db, { backupFile = null, now = new Date() } = {}) {
   const plan = await planMigration(db);
   const keys = new Set(plan.groups.map((g) => g.key));
@@ -136,10 +157,26 @@ export async function applyMigration(db, { backupFile = null, now = new Date() }
   // part-way through still leaves a file that lists what to roll back.
   if (backupFile) writeBackup(backupFile, backup);
 
-  // 2. One company per group (reuse an existing one with the same nameKey).
+  // 2. One company per group. A company may have been renamed since an earlier
+  // run, so first follow the links earlier runs made (old name -> companyId);
+  // then reuse a company with the same nameKey; otherwise create one.
+  const linkedIds = await linkedCompanyIdsByKey(db);
   const idByKey = new Map();
+  const ambiguous = [];
   let companiesReused = 0;
   for (const g of plan.groups) {
+    const linkedTo = linkedIds.get(g.key);
+    if (linkedTo && linkedTo.size > 1) {
+      // Fail closed: the same old name already points at two companies, so
+      // nothing new is linked for it. The cleanup guard keeps blocking.
+      ambiguous.push({ key: g.key, name: g.name, companyIds: [...linkedTo] });
+      continue;
+    }
+    if (linkedTo) {
+      idByKey.set(g.key, asId([...linkedTo][0]));
+      companiesReused += 1;
+      continue;
+    }
     const existing = await companies.findOne({ nameKey: g.key });
     if (existing) {
       idByKey.set(g.key, existing._id);
@@ -170,6 +207,7 @@ export async function applyMigration(db, { backupFile = null, now = new Date() }
     let modified = 0;
     for (const name of names) {
       const companyId = idByKey.get(toNameKey(name));
+      if (!companyId) continue;
       const r = await col.updateMany({ ...extraFilter, organizationName: name, companyId: null }, { $set: { companyId } });
       modified += r.modifiedCount;
     }
@@ -190,6 +228,7 @@ export async function applyMigration(db, { backupFile = null, now = new Date() }
     attendances: linkedAttendances,
     ngoNames: ngo.modifiedCount,
     employerNames: vol.modifiedCount,
+    ambiguous,
   };
 }
 
