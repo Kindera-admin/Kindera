@@ -598,3 +598,39 @@ describe('applyMigration after a company rename', () => {
     expect(await db.collection('companies').countDocuments()).toBe(3);
   });
 });
+
+// ---- Final review A4: attendance linked through the attendee ----
+
+describe('attendance linked through the attendee', () => {
+  const allOrgs = () => db.collection('attendances').findOne({ organizationName: 'All Organizations' });
+  it("gives an 'All Organizations' row the company of its linked corporate attendee", async () => {
+    const { memberId } = await seedLegacy();
+    await db.collection('attendances').updateOne({ organizationName: 'All Organizations' }, { $set: { userId: memberId } });
+    const file = tmp();
+    const res = await applyMigration(db, { now, backupFile: file });
+    const acme = await db.collection('companies').findOne({ nameKey: 'acme corp' });
+    expect(String((await allOrgs()).companyId)).toBe(String(acme._id));
+    expect(res.attendances).toBe(2);
+    const row = await allOrgs();
+    expect(readBackup(file).attendances.map((a) => String(a._id))).toContain(String(row._id));
+    await rollbackMigration(db, readBackup(file));
+    expect(await allOrgs()).not.toHaveProperty('companyId');
+  });
+  it('leaves the row of an attendee who is not a corporate user unassigned', async () => {
+    const { eventId } = await seedLegacy();
+    const vol = await db.collection('users').findOne({ username: 'vol' });
+    await db.collection('attendances').insertOne({ eventId, userId: vol._id, organizationName: 'All Organizations', attended: true });
+    await applyMigration(db, { now });
+    expect(await db.collection('attendances').countDocuments({ userId: vol._id, companyId: { $ne: null } })).toBe(0);
+  });
+  it('blocks cleanup while such a row is still unlinked, and unsets nothing', async () => {
+    const { eventId, memberId } = await seedLegacy();
+    await applyMigration(db, { now });
+    await db.collection('attendances').insertOne({ eventId, userId: memberId, organizationName: 'All Organizations', attended: true });
+    const before = await countOld();
+    await expect(cleanupMigration(db, { now })).rejects.toThrow(/Refusing cleanup: 1 attendance records belong to a linked SPOC\/employee/);
+    expect(await countOld()).toEqual(before);
+    await applyMigration(db, { now });
+    await expect(cleanupMigration(db, { now })).resolves.toBeDefined();
+  });
+});

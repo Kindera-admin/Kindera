@@ -104,6 +104,13 @@ export function readBackup(file) {
   return EJSON.parse(fs.readFileSync(file, 'utf8'), { relaxed: false });
 }
 
+// _ids of SPOCs/employees matching `userFilter` who have attendance with no companyId.
+async function corporateAttendees(db, userFilter) {
+  const userIds = await db.collection('attendances').distinct('userId', { companyId: null });
+  if (!userIds.length) return [];
+  return db.collection('users').distinct('_id', { _id: { $in: userIds }, role: { $in: CORPORATE }, ...userFilter });
+}
+
 const asId = (id) => new mongoose.Types.ObjectId(String(id));
 
 // nameKey of organizationName -> Set of companyId strings, from records that
@@ -140,6 +147,10 @@ export async function applyMigration(db, { backupFile = null, now = new Date() }
   const ngoFilter = { role: 'ngo', organizationName: { $exists: true, $nin: [null, ''] }, ngoName: { $in: [null, ''] } };
   const volunteerFilter = { role: 'volunteer', organizationName: { $exists: true, $nin: [null, ''] }, employerName: { $in: [null, ''] } };
 
+  // Unlinked attendance of corporate users who are linked, or will be by this run
+  // (e.g. rows an admin marked as "All Organizations"), takes the attendee's company.
+  const attendeeIds = await corporateAttendees(db, { $or: [{ companyId: { $ne: null } }, { organizationName: { $in: userNames } }] });
+
   // 1. Back up every document this run will change (before changing anything).
   const backup = {
     kind: 'apply',
@@ -150,7 +161,10 @@ export async function applyMigration(db, { backupFile = null, now = new Date() }
       volunteerFilter,
     ] }).toArray(),
     events: await events.find({ organizationName: { $in: eventNames }, companyId: null }).toArray(),
-    attendances: await attendances.find({ organizationName: { $in: attendanceNames }, companyId: null }).toArray(),
+    attendances: await attendances.find({ companyId: null, $or: [
+      { organizationName: { $in: attendanceNames } },
+      { userId: { $in: attendeeIds } },
+    ] }).toArray(),
     createdCompanyIds: [],
   };
   // The backup file must exist before the first company is inserted, so a crash
@@ -216,7 +230,11 @@ export async function applyMigration(db, { backupFile = null, now = new Date() }
 
   const linkedUsers = await link(users, userNames, { role: { $in: CORPORATE } });
   const linkedEvents = await link(events, eventNames);
-  const linkedAttendances = await link(attendances, attendanceNames);
+  let linkedAttendances = await link(attendances, attendanceNames);
+  const attendees = await users.find({ _id: { $in: attendeeIds }, companyId: { $ne: null } }).project({ companyId: 1 }).toArray();
+  for (const u of attendees) {
+    linkedAttendances += (await attendances.updateMany({ userId: u._id, companyId: null }, { $set: { companyId: u.companyId } })).modifiedCount;
+  }
   const ngo = await users.updateMany(ngoFilter, [{ $set: { ngoName: '$organizationName' } }]);
   const vol = await users.updateMany(volunteerFilter, [{ $set: { employerName: '$organizationName' } }]);
 
@@ -258,6 +276,11 @@ export async function cleanupMigration(db, { backupFile = null, now = new Date()
     ? await attendances.countDocuments({ organizationName: { $in: pendingNames }, companyId: null })
     : 0;
   if (attendanceUnlinked > 0) throw new Error(`Refusing cleanup: ${attendanceUnlinked} attendance records match a company but have no companyId. Run --apply again first.`);
+  const linkedAttendees = await corporateAttendees(db, { companyId: { $ne: null } });
+  const viaAttendee = linkedAttendees.length
+    ? await attendances.countDocuments({ userId: { $in: linkedAttendees }, companyId: null })
+    : 0;
+  if (viaAttendee > 0) throw new Error(`Refusing cleanup: ${viaAttendee} attendance records belong to a linked SPOC/employee but have no companyId. Run --apply again first.`);
 
   const hasOld = { $or: [{ organizationName: { $exists: true } }, { organizationLogo: { $exists: true } }] };
   if (backupFile) {
