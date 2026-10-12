@@ -4,6 +4,7 @@ import EventRegisterClient from './EventRegisterClient';
 import { getCurrentUser } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
+import { getCompanyName } from '@/lib/company';
 
 export const metadata = {
   title: 'Register for Event | Kindera',
@@ -26,11 +27,13 @@ export default async function EventRegisterPage({ params }) {
     await connectDB();
     const spocDoc = await User.findOne({
       role: 'org_spoc',
-      organizationName: user.organizationName,
+      companyId: user.companyId,
       'eventRegistrations.eventId': eventId
     });
     spocRegistered = !!spocDoc;
   }
+
+  const companyName = user?.companyId ? await getCompanyName(user.companyId) : null;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8">
@@ -40,6 +43,7 @@ export default async function EventRegisterPage({ params }) {
         registeredCount={registeredCount}
         spocCount={spocCount}
         spocRegistered={spocRegistered}
+        companyName={companyName}
       />
     </div>
   );

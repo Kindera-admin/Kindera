@@ -13,14 +13,14 @@ import { registerForEvent, registerForEventLoggedIn } from '@/app/actions';
 import { Loader2, Calendar, MapPin, Users, Info, Upload, UserCheck, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
-export default function EventRegisterClient({ event, currentUser, registeredCount = 0, spocCount = 0, spocRegistered = false }) {
+export default function EventRegisterClient({ event, currentUser, registeredCount = 0, spocCount = 0, spocRegistered = false, companyName }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
 
   const isSpoc = currentUser?.role === 'org_spoc';
   const isOrgMember = currentUser?.role === 'org_member';
-  const isGlobalEvent = !event.organizationName; // NGO or Admin event
+  const isGlobalEvent = !event.companyId; // not scoped to a company
 
   const spotsLeft = event.capacity ? Math.max(0, event.capacity - registeredCount) : null;
   const isFull = event.capacity ? registeredCount >= event.capacity : false;
@@ -249,7 +249,7 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
               </CardTitle>
               <CardDescription>
                 {isSpoc && isGlobalEvent
-                  ? `Registering as SPOC for ${currentUser.organizationName || 'your organisation'}`
+                  ? `Registering as SPOC for ${companyName || 'your company'}`
                   : currentUser
                     ? 'Confirm your registration below.'
                     : 'Fill in your details to register for this event'}
@@ -292,7 +292,7 @@ export default function EventRegisterClient({ event, currentUser, registeredCoun
                             <p className="text-xs text-red-500">{errors.volunteersCount.message}</p>
                           )}
                           <p className="text-xs text-gray-500">
-                            How many employees from <strong>{currentUser.organizationName}</strong> will attend?
+                            How many employees from <strong>{companyName || 'your company'}</strong> will attend?
                           </p>
                         </div>
 

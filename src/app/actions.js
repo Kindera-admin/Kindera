@@ -2366,12 +2366,11 @@ export async function registerForEvent(formData, eventId) {
   try {
     await connectDB();
     
-    const event = await Event.findById(eventId);
-    if (!event) return { success: false, message: 'Event not found' };
+    if (!isValidObjectId(eventId)) return { success: false, message: 'Event not found' };
 
-    if (event.organizationName) {
-      return { success: false, message: 'This is a private corporate event. Guest registration is not allowed.' };
-    }
+    const event = await Event.findById(eventId);
+    // Guests are logged out, so they can only see public events. Anything else behaves as missing.
+    if (!event || !canSeeEvent(null, event)) return { success: false, message: 'Event not found' };
 
     const start = new Date(event.date);
     const end = new Date(start.getTime() + (event.durationHours || 2) * 60 * 60 * 1000);
@@ -2444,37 +2443,31 @@ export async function registerForEventLoggedIn(eventId, comment, volunteersCount
 
     await connectDB();
     const currentUser = await getCurrentUser();
+    if (!currentUser) return { success: false, message: 'Not authenticated' };
 
-    const event = await Event.findById(eventId).populate('createdBy');
-    if (!event) return { success: false, message: 'Event not found' };
+    if (!isValidObjectId(eventId)) return { success: false, message: 'Event not found' };
 
-    // Role-based registration restrictions for internal/global events
-    if (event.organizationName) {
-      // It's a private internal corporate event
-      if (currentUser.role === 'org_member') {
-        if (!currentUser.spocId || event.createdBy._id.toString() !== currentUser.spocId.toString()) {
-          return { success: false, message: 'Only members whose logins are created by the hosting SPOC can register for this event.' };
-        }
-      } else if (currentUser.role === 'org_spoc') {
-        if (event.createdBy._id.toString() === currentUser._id.toString()) {
-          return { success: false, message: 'This is an internal event created by you. You can ask your volunteers to participate.' };
-        } else {
-          return { success: false, message: 'Only corporate members of the hosting organization can register for this event.' };
-        }
-      } else {
-        return { success: false, message: 'Only corporate members of this organization can register for this event.' };
+    const event = await Event.findById(eventId);
+    // An event the caller cannot see behaves exactly like a missing one.
+    if (!event || !canSeeEvent(currentUser, event)) return { success: false, message: 'Event not found' };
+
+    // Internal company events: employees of that company only.
+    // Public events: an employee joins once any SPOC of their company has registered it.
+    if (event.companyId) {
+      if (currentUser.role === 'org_spoc') {
+        return { success: false, message: 'This is an internal event for your company. Ask your team to register.' };
       }
-    } else {
-      // It's a global event
-      if (currentUser.role === 'org_member') {
-        const spocDoc = await User.findOne({
-          role: 'org_spoc',
-          organizationName: currentUser.organizationName,
-          'eventRegistrations.eventId': eventId
-        });
-        if (!spocDoc) {
-          return { success: false, message: 'Your SPOC has not registered your organization for this event yet. Please contact your SPOC.' };
-        }
+      if (currentUser.role !== 'org_member') {
+        return { success: false, message: 'Only members of the hosting company can register for this event.' };
+      }
+    } else if (currentUser.role === 'org_member') {
+      const spocDoc = await User.findOne({
+        role: 'org_spoc',
+        companyId: currentUser.companyId,
+        'eventRegistrations.eventId': eventId,
+      });
+      if (!spocDoc) {
+        return { success: false, message: 'Your company has not registered for this event yet. Please contact your SPOC.' };
       }
     }
 
