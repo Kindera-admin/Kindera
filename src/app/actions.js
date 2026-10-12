@@ -12,7 +12,7 @@ import Company from '@/models/Company';
 import { isValidObjectId } from 'mongoose';
 import {
   resolveCompanyAccess, eventVisibilityFilter, canSeeEvent, canManageEvent,
-  getCompanyName, getCompaniesByIds, asObjectId,
+  getCompanyName, getCompaniesByIds, asObjectId, isCorporate, sameCompany,
 } from '@/lib/company';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
@@ -2435,6 +2435,8 @@ export async function registerForEvent(formData, eventId) {
   }
 }
 
+const MAX_VOLUNTEERS = 500;
+
 export async function registerForEventLoggedIn(eventId, comment, volunteersCount = 1, volunteerNames = '') {
   try {
     const session = await getSession();
@@ -2450,6 +2452,14 @@ export async function registerForEventLoggedIn(eventId, comment, volunteersCount
     // An event the caller cannot see behaves exactly like a missing one.
     if (!event || !canSeeEvent(currentUser, event)) return { success: false, message: 'Event not found' };
 
+    // A whole number of volunteers, 1–500. Only a SPOC registers more than one.
+    const requested = typeof volunteersCount === 'string' && /^\d+$/.test(volunteersCount.trim())
+      ? Number(volunteersCount.trim())
+      : volunteersCount;
+    if (!Number.isInteger(requested) || requested < 1 || requested > MAX_VOLUNTEERS) {
+      return { success: false, message: `Choose between 1 and ${MAX_VOLUNTEERS} volunteers.` };
+    }
+
     // Internal company events: employees of that company only.
     // Public events: an employee joins once any SPOC of their company has registered it.
     if (event.companyId) {
@@ -2460,6 +2470,10 @@ export async function registerForEventLoggedIn(eventId, comment, volunteersCount
         return { success: false, message: 'Only members of the hosting company can register for this event.' };
       }
     } else if (currentUser.role === 'org_member') {
+      // Fail closed: without a company, companyId: null could match a stray SPOC.
+      if (!isCorporate(currentUser)) {
+        return { success: false, message: 'Your account is not linked to a company. Please contact your SPOC.' };
+      }
       const spocDoc = await User.findOne({
         role: 'org_spoc',
         companyId: currentUser.companyId,
@@ -2491,7 +2505,7 @@ export async function registerForEventLoggedIn(eventId, comment, volunteersCount
         const reg = u.eventRegistrations.find(r => r.eventId.toString() === eventId.toString());
         return sum + (reg ? (reg.volunteersCount || 1) : 0);
       }, 0);
-      const incomingCount = currentUser.role === 'org_spoc' ? (parseInt(volunteersCount) || 1) : 1;
+      const incomingCount = currentUser.role === 'org_spoc' ? requested : 1;
       if (totalRegistered + incomingCount > event.capacity) {
         const spotsLeft = event.capacity - totalRegistered;
         if (spotsLeft <= 0) return { success: false, message: 'This event is fully booked. No spots remaining.' };
@@ -2502,7 +2516,7 @@ export async function registerForEventLoggedIn(eventId, comment, volunteersCount
     // Auto-approve all registrations
     let status = 'approved';
 
-    const count = currentUser.role === 'org_spoc' ? (parseInt(volunteersCount) || 1) : 1;
+    const count = currentUser.role === 'org_spoc' ? requested : 1;
 
     user.eventRegistrations.push({
       eventId,
@@ -2824,8 +2838,14 @@ export async function getImpactStats() {
 
 // Get registered count for an event (for capacity display and breakdown)
 export async function getEventRegisteredCount(eventId) {
+  const notFound = { success: false, message: 'Event not found' };
   try {
+    if (typeof eventId !== 'string' || !isValidObjectId(eventId)) return notFound;
     await connectDB();
+    const currentUser = await getCurrentUser();
+    const event = await Event.findById(eventId).select('companyId').lean();
+    // An event the caller cannot see answers exactly like a missing one.
+    if (!event || !canSeeEvent(currentUser, event)) return notFound;
     const registeredUsers = await User.find({
       'eventRegistrations.eventId': eventId,
       'eventRegistrations.status': 'approved'
@@ -2844,8 +2864,9 @@ export async function getEventRegisteredCount(eventId) {
     });
 
     return { success: true, count: totalCount, spocCount, volunteerCount: totalCount };
-  } catch {
-    return { success: true, count: 0, spocCount: 0, volunteerCount: 0 };
+  } catch (error) {
+    console.error('Error counting event registrations:', error);
+    return { success: false, message: 'Could not load the registration count.' };
   }
 }
 

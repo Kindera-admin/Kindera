@@ -4,7 +4,7 @@ import EventRegisterClient from './EventRegisterClient';
 import { getCurrentUser } from '@/lib/auth';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
-import { getCompanyName } from '@/lib/company';
+import { getCompanyName, isCorporate } from '@/lib/company';
 
 export const metadata = {
   title: 'Register for Event | Kindera',
@@ -23,7 +23,8 @@ export default async function EventRegisterPage({ params }) {
   const { count: registeredCount = 0, spocCount = 0 } = await getEventRegisteredCount(eventId);
 
   let spocRegistered = false;
-  if (user && user.role === 'org_member') {
+  // Fail closed: an employee with no company never matches a SPOC (companyId: null).
+  if (user && user.role === 'org_member' && isCorporate(user)) {
     await connectDB();
     const spocDoc = await User.findOne({
       role: 'org_spoc',
