@@ -605,7 +605,9 @@ describe('attendance linked through the attendee', () => {
   const allOrgs = () => db.collection('attendances').findOne({ organizationName: 'All Organizations' });
   it("gives an 'All Organizations' row the company of its linked corporate attendee", async () => {
     const { memberId } = await seedLegacy();
-    await db.collection('attendances').updateOne({ organizationName: 'All Organizations' }, { $set: { userId: memberId } });
+    // Another event: the Attendance model's unique (eventId, userId) index exists once any
+    // test file has registered the model, so the member's existing row must not be duplicated.
+    await db.collection('attendances').updateOne({ organizationName: 'All Organizations' }, { $set: { userId: memberId, eventId: new mongoose.Types.ObjectId() } });
     const file = tmp();
     const res = await applyMigration(db, { now, backupFile: file });
     const acme = await db.collection('companies').findOne({ nameKey: 'acme corp' });
@@ -624,9 +626,9 @@ describe('attendance linked through the attendee', () => {
     expect(await db.collection('attendances').countDocuments({ userId: vol._id, companyId: { $ne: null } })).toBe(0);
   });
   it('blocks cleanup while such a row is still unlinked, and unsets nothing', async () => {
-    const { eventId, memberId } = await seedLegacy();
+    const { memberId } = await seedLegacy();
     await applyMigration(db, { now });
-    await db.collection('attendances').insertOne({ eventId, userId: memberId, organizationName: 'All Organizations', attended: true });
+    await db.collection('attendances').insertOne({ eventId: new mongoose.Types.ObjectId(), userId: memberId, organizationName: 'All Organizations', attended: true });
     const before = await countOld();
     await expect(cleanupMigration(db, { now })).rejects.toThrow(/Refusing cleanup: 1 attendance records belong to a linked SPOC\/employee/);
     expect(await countOld()).toEqual(before);
