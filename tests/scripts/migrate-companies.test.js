@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import {
   parseArgs, planMigration, applyMigration, cleanupMigration, rollbackMigration, readBackup, main,
+  backfillLegacy,
 } from '../../scripts/migrate-companies.mjs';
 
 let db;
@@ -484,5 +485,87 @@ describe('rollbackMigration is field-scoped', () => {
     await expect(rollbackMigration(db, { kind: 'mystery', users: [{ _id: spocId }], events: [], attendances: [] }))
       .rejects.toThrow(/Unknown backup kind/);
     expect(await db.collection('users').findOne({ _id: spocId })).toEqual(before);
+  });
+});
+
+// ---- Final review A2: --backfill-legacy writes the old fields back for old code ----
+
+// The previous deployment's public-event filter matched organizationName null or missing.
+const oldPublicFilter = { $or: [{ organizationName: null }, { organizationName: { $exists: false } }] };
+
+async function seedNewStyle() {
+  const companyId = new mongoose.Types.ObjectId();
+  await db.collection('companies').insertOne({ _id: companyId, name: 'Acme Global', nameKey: 'acme global', logoUrl: 'https://logo/global.png', status: 'active', createdAt: now, updatedAt: now });
+  const spocId = new mongoose.Types.ObjectId();
+  await db.collection('users').insertMany([
+    { _id: spocId, username: 'nspoc', role: 'org_spoc', name: 'NS', companyId },
+    { username: 'nmem', role: 'org_member', name: 'NM', companyId, organizationName: '  ' },
+    { username: 'kept', role: 'org_spoc', name: 'K', companyId, organizationName: 'Legacy Spelling', organizationLogo: 'https://logo/own.png' },
+    { username: 'nvol', role: 'volunteer', name: 'NV', employerName: 'Somewhere' },
+  ]);
+  const { insertedId: eventId } = await db.collection('events').insertOne({ title: 'New internal', companyId, createdBy: spocId, createdByRole: 'org_spoc' });
+  await db.collection('events').insertOne({ title: 'New public', createdBy: spocId, createdByRole: 'admin' });
+  await db.collection('attendances').insertOne({ eventId, userId: spocId, companyId, attended: true });
+  return { companyId, spocId, eventId };
+}
+
+describe('backfillLegacy (--backfill-legacy)', () => {
+  it('parses --backfill-legacy', () => {
+    expect(parseArgs(['--backfill-legacy', '--yes'])).toMatchObject({ mode: 'backfill', yes: true });
+  });
+  it('makes an internal event created with only companyId private again for the old filter', async () => {
+    const { eventId } = await seedNewStyle();
+    expect(await db.collection('events').countDocuments({ _id: eventId, ...oldPublicFilter })).toBe(1);
+    await backfillLegacy(db, { now });
+    expect((await db.collection('events').findOne({ _id: eventId })).organizationName).toBe('Acme Global');
+    expect(await db.collection('events').countDocuments({ _id: eventId, ...oldPublicFilter })).toBe(0);
+    // a public event stays public
+    expect(await db.collection('events').countDocuments({ title: 'New public', ...oldPublicFilter })).toBe(1);
+  });
+  it('fills organizationName on corporate users and attendance, keeping non-blank names', async () => {
+    const { spocId } = await seedNewStyle();
+    const res = await backfillLegacy(db, { now });
+    expect((await db.collection('users').findOne({ _id: spocId })).organizationName).toBe('Acme Global');
+    expect((await db.collection('users').findOne({ username: 'nmem' })).organizationName).toBe('Acme Global');
+    expect((await db.collection('users').findOne({ username: 'kept' })).organizationName).toBe('Legacy Spelling');
+    expect(await db.collection('users').findOne({ username: 'nvol' })).not.toHaveProperty('organizationName');
+    expect((await db.collection('attendances').findOne({ userId: spocId })).organizationName).toBe('Acme Global');
+    expect(res).toMatchObject({ users: 2, events: 1, attendances: 1, logos: 1 });
+  });
+  it("gives SPOCs without a logo the company's logo, and leaves employees and existing logos alone", async () => {
+    const { spocId } = await seedNewStyle();
+    await backfillLegacy(db, { now });
+    expect((await db.collection('users').findOne({ _id: spocId })).organizationLogo).toBe('https://logo/global.png');
+    expect((await db.collection('users').findOne({ username: 'kept' })).organizationLogo).toBe('https://logo/own.png');
+    expect(await db.collection('users').findOne({ username: 'nmem' })).not.toHaveProperty('organizationLogo');
+  });
+  it('writes a backup first that rolls the backfill back', async () => {
+    const { spocId, eventId } = await seedNewStyle();
+    const file = tmp();
+    await backfillLegacy(db, { now, backupFile: file });
+    const backup = readBackup(file);
+    expect(backup.kind).toBe('backfill');
+    expect(backup.users.map((u) => String(u._id))).toContain(String(spocId));
+    await rollbackMigration(db, backup);
+    expect(await db.collection('events').findOne({ _id: eventId })).not.toHaveProperty('organizationName');
+    expect(await db.collection('users').findOne({ _id: spocId })).not.toHaveProperty('organizationLogo');
+    expect((await db.collection('users').findOne({ username: 'nmem' })).organizationName).toBe('  ');
+  });
+  it('is safe to run twice', async () => {
+    await seedNewStyle();
+    await backfillLegacy(db, { now });
+    expect(await backfillLegacy(db, { now })).toMatchObject({ users: 0, events: 0, attendances: 0, logos: 0 });
+  });
+  it('requires --yes', async () => {
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'mig-env-')), '.env.test');
+    fs.writeFileSync(file, 'MONGODB_URI=mongodb://127.0.0.1:1/never\n');
+    const saved = process.env.MONGODB_URI;
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await expect(main(['--env', file, '--backfill-legacy'])).rejects.toThrow(/--yes/);
+    } finally {
+      log.mockRestore();
+      process.env.MONGODB_URI = saved;
+    }
   });
 });

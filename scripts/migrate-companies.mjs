@@ -5,6 +5,9 @@
 //   node scripts/migrate-companies.mjs [--env <file>] --apply --yes    expand: add companyId etc., keep old fields
 //   node scripts/migrate-companies.mjs [--env <file>] --cleanup --yes  contract: remove organizationName / organizationLogo
 //   node scripts/migrate-companies.mjs [--env <file>] --rollback <backup.json> --yes
+//   node scripts/migrate-companies.mjs [--env <file>] --backfill-legacy --yes
+//       rollback helper: writes organizationName / organizationLogo back from the
+//       Company records; run it before redeploying the previous code
 //
 // Works on raw collections so it never depends on the app's current schemas.
 import fs from 'node:fs';
@@ -17,6 +20,9 @@ import { toNameKey } from '../src/lib/companyName.mjs';
 const CORPORATE = ['org_spoc', 'org_member'];
 const { EJSON } = mongoose.mongo.BSON;
 const hasText = (v) => typeof v === 'string' && v.trim() !== '';
+// Query forms of hasText, so the queries and the in-memory grouping agree on "blank".
+const TEXT = { $regex: /\S/ };
+const BLANK = { $not: /\S/ }; // missing, null, '' or whitespace only
 
 export function parseArgs(argv) {
   const args = { env: '.env.local', mode: 'plan', yes: false, rollbackFile: null };
@@ -25,6 +31,7 @@ export function parseArgs(argv) {
     if (a === '--env') args.env = argv[++i];
     else if (a === '--apply') args.mode = 'apply';
     else if (a === '--cleanup') args.mode = 'cleanup';
+    else if (a === '--backfill-legacy') args.mode = 'backfill';
     else if (a === '--rollback') { args.mode = 'rollback'; args.rollbackFile = argv[++i]; }
     else if (a === '--yes') args.yes = true;
     else throw new Error(`Unknown argument: ${a}`);
@@ -232,6 +239,46 @@ export async function cleanupMigration(db, { backupFile = null, now = new Date()
   return { users: u.modifiedCount, events: e.modifiedCount, attendances: a.modifiedCount };
 }
 
+// Rollback step: the previous deployment only reads organizationName /
+// organizationLogo, so before redeploying it, write them back from the Company
+// records. Without this an internal event created by the new code (companyId
+// only) matches the old public filter (organizationName null or missing).
+export async function backfillLegacy(db, { backupFile = null, now = new Date() } = {}) {
+  const users = db.collection('users');
+  const events = db.collection('events');
+  const attendances = db.collection('attendances');
+  const linked = { companyId: { $ne: null } };
+  const userFilter = { role: { $in: CORPORATE }, ...linked, organizationName: BLANK };
+  const eventFilter = { ...linked, organizationName: BLANK };
+  const logoFilter = { role: 'org_spoc', ...linked, organizationLogo: BLANK };
+
+  const backup = {
+    kind: 'backfill',
+    createdAt: now.toISOString(),
+    users: await users.find({ $or: [userFilter, logoFilter] }).toArray(),
+    events: await events.find(eventFilter).toArray(),
+    attendances: await attendances.find(eventFilter).toArray(),
+    createdCompanyIds: [],
+  };
+  if (backupFile) writeBackup(backupFile, backup);
+
+  const ids = [...backup.users, ...backup.events, ...backup.attendances].map((d) => d.companyId);
+  const companies = await db.collection('companies').find({ _id: { $in: ids } }).toArray();
+  const counts = { users: 0, events: 0, attendances: 0, logos: 0, missingCompanies: 0 };
+  const known = new Set(companies.map((c) => String(c._id)));
+  counts.missingCompanies = new Set(ids.map(String).filter((id) => !known.has(id))).size;
+  for (const c of companies) {
+    const byCompany = { companyId: c._id };
+    counts.users += (await users.updateMany({ ...userFilter, ...byCompany }, { $set: { organizationName: c.name } })).modifiedCount;
+    counts.events += (await events.updateMany({ ...eventFilter, ...byCompany }, { $set: { organizationName: c.name } })).modifiedCount;
+    counts.attendances += (await attendances.updateMany({ ...eventFilter, ...byCompany }, { $set: { organizationName: c.name } })).modifiedCount;
+    if (hasText(c.logoUrl)) {
+      counts.logos += (await users.updateMany({ ...logoFilter, ...byCompany }, { $set: { organizationLogo: c.logoUrl } })).modifiedCount;
+    }
+  }
+  return counts;
+}
+
 // Which fields each backup kind may put back. Rollback never replaces whole
 // documents: anything else (hours, registrations, titles) may have changed since
 // the backup and must survive.
@@ -316,6 +363,12 @@ export async function main(argv) {
   } else if (args.mode === 'cleanup') {
     const backupFile = path.join(backupDir, `migrate-companies-cleanup-${stamp}.json`);
     console.log(await cleanupMigration(db, { backupFile }));
+    console.log(`Backup: ${backupFile}`);
+  } else if (args.mode === 'backfill') {
+    const backupFile = path.join(backupDir, `migrate-companies-backfill-${stamp}.json`);
+    const res = await backfillLegacy(db, { backupFile });
+    console.log(`Backfilled organizationName on ${res.users} users, ${res.events} events and ${res.attendances} attendance records; organizationLogo on ${res.logos} SPOCs.`);
+    if (res.missingCompanies) console.log(`Skipped records pointing at ${res.missingCompanies} missing companies.`);
     console.log(`Backup: ${backupFile}`);
   } else if (args.mode === 'rollback') {
     await rollbackMigration(db, readBackup(args.rollbackFile));
