@@ -180,13 +180,14 @@ describe('cleanupMigration (contract)', () => {
 });
 
 describe('rollbackMigration', () => {
-  it('restores every changed document exactly and deletes the created companies', async () => {
+  it('removes companyId, restores the migration fields and deletes the created companies', async () => {
     const { spocId } = await seedLegacy();
-    const before = await db.collection('users').findOne({ _id: spocId });
     const file = tmp();
     await applyMigration(db, { now, backupFile: file });
     await rollbackMigration(db, readBackup(file));
-    expect(await db.collection('users').findOne({ _id: spocId })).toEqual(before);
+    const spoc = await db.collection('users').findOne({ _id: spocId });
+    expect(spoc).not.toHaveProperty('companyId');
+    expect(spoc.organizationName).toBe('Acme Corp');
     expect(await db.collection('companies').countDocuments()).toBe(0);
   });
   it('restores fields removed by cleanup from the cleanup backup', async () => {
@@ -404,5 +405,84 @@ describe('main (CLI)', () => {
       log.mockRestore();
       process.env.MONGODB_URI = saved;
     }
+  });
+});
+
+// ---- Final review A1: rollback only touches the fields the migration changed ----
+
+describe('rollbackMigration is field-scoped', () => {
+  it('apply rollback keeps changes made after the backup', async () => {
+    const { spocId, eventId } = await seedLegacy();
+    const file = tmp();
+    await applyMigration(db, { now, backupFile: file });
+    await db.collection('users').updateOne({ _id: spocId }, {
+      $set: { totalVolunteerHours: 42 },
+      $push: { eventRegistrations: { eventId, status: 'approved' } },
+    });
+    await db.collection('users').updateOne({ username: 'ngo' }, { $set: { totalVolunteerHours: 7 } });
+    await db.collection('events').updateOne({ _id: eventId }, { $set: { title: 'Renamed after backup' } });
+    await rollbackMigration(db, readBackup(file));
+    const spoc = await db.collection('users').findOne({ _id: spocId });
+    expect(spoc.totalVolunteerHours).toBe(42);
+    expect(spoc.eventRegistrations).toHaveLength(1);
+    expect((await db.collection('users').findOne({ username: 'ngo' })).totalVolunteerHours).toBe(7);
+    expect((await db.collection('events').findOne({ _id: eventId })).title).toBe('Renamed after backup');
+  });
+  it('apply rollback restores companyId, ngoName and employerName to their backed-up state', async () => {
+    const { spocId, memberId, eventId } = await seedLegacy();
+    // An NGO that already had an (empty) ngoName gets it back; one that had none loses the copied value.
+    await db.collection('users').insertOne({ username: 'ngo-blank', role: 'ngo', name: 'NB', organizationName: 'Blue Sky', ngoName: '' });
+    const file = tmp();
+    await applyMigration(db, { now, backupFile: file });
+    expect((await db.collection('users').findOne({ username: 'ngo-blank' })).ngoName).toBe('Blue Sky');
+    await rollbackMigration(db, readBackup(file));
+    for (const id of [spocId, memberId]) {
+      expect(await db.collection('users').findOne({ _id: id })).not.toHaveProperty('companyId');
+    }
+    expect(await db.collection('events').findOne({ _id: eventId })).not.toHaveProperty('companyId');
+    expect(await db.collection('attendances').findOne({ userId: memberId })).not.toHaveProperty('companyId');
+    expect(await db.collection('users').findOne({ username: 'ngo' })).not.toHaveProperty('ngoName');
+    expect((await db.collection('users').findOne({ username: 'ngo-blank' })).ngoName).toBe('');
+    expect(await db.collection('users').findOne({ username: 'vol' })).not.toHaveProperty('employerName');
+    expect(await db.collection('companies').countDocuments()).toBe(0);
+  });
+  it('cleanup rollback restores organizationName and organizationLogo and keeps later changes', async () => {
+    const { spocId, eventId, memberId } = await seedLegacy();
+    await applyMigration(db, { now });
+    const linked = await db.collection('users').findOne({ _id: spocId });
+    const file = tmp();
+    await cleanupMigration(db, { now, backupFile: file });
+    await db.collection('users').updateOne({ _id: spocId }, { $set: { totalVolunteerHours: 9 } });
+    await db.collection('events').updateOne({ _id: eventId }, { $set: { title: 'Edited after cleanup' } });
+    await rollbackMigration(db, readBackup(file));
+    const spoc = await db.collection('users').findOne({ _id: spocId });
+    expect(spoc.organizationName).toBe('Acme Corp');
+    expect(spoc.organizationLogo).toBe('https://logo/acme.png');
+    expect(String(spoc.companyId)).toBe(String(linked.companyId));
+    expect(spoc.totalVolunteerHours).toBe(9);
+    const event = await db.collection('events').findOne({ _id: eventId });
+    expect(event.organizationName).toBe('Acme Corp');
+    expect(event.title).toBe('Edited after cleanup');
+    expect((await db.collection('attendances').findOne({ userId: memberId })).organizationName).toBe('ACME CORP');
+  });
+  it('never replaces whole documents', async () => {
+    await seedLegacy();
+    const file = tmp();
+    await applyMigration(db, { now, backupFile: file });
+    const spy = vi.spyOn(db.collection('users').constructor.prototype, 'replaceOne');
+    try {
+      await rollbackMigration(db, readBackup(file));
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+  it('refuses a backup of an unknown kind and changes nothing', async () => {
+    const { spocId } = await seedLegacy();
+    await applyMigration(db, { now });
+    const before = await db.collection('users').findOne({ _id: spocId });
+    await expect(rollbackMigration(db, { kind: 'mystery', users: [{ _id: spocId }], events: [], attendances: [] }))
+      .rejects.toThrow(/Unknown backup kind/);
+    expect(await db.collection('users').findOne({ _id: spocId })).toEqual(before);
   });
 });

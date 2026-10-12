@@ -232,11 +232,43 @@ export async function cleanupMigration(db, { backupFile = null, now = new Date()
   return { users: u.modifiedCount, events: e.modifiedCount, attendances: a.modifiedCount };
 }
 
-export async function rollbackMigration(db, backup) {
-  for (const [name, docs] of [['users', backup.users], ['events', backup.events], ['attendances', backup.attendances]]) {
-    for (const doc of docs) await db.collection(name).replaceOne({ _id: doc._id }, doc);
+// Which fields each backup kind may put back. Rollback never replaces whole
+// documents: anything else (hours, registrations, titles) may have changed since
+// the backup and must survive.
+const ROLLBACK_FIELDS = {
+  apply: ['ngoName', 'employerName'],
+  cleanup: ['organizationName', 'organizationLogo'],
+  backfill: ['organizationName', 'organizationLogo'],
+};
+
+// $set each field to its backed-up value, or $unset it if the backup did not have it.
+function restoreFields(doc, fields) {
+  const $set = {};
+  const $unset = {};
+  for (const f of fields) {
+    if (Object.prototype.hasOwnProperty.call(doc, f)) $set[f] = doc[f];
+    else $unset[f] = '';
   }
-  if (backup.createdCompanyIds?.length) {
+  return { $set, $unset };
+}
+
+export async function rollbackMigration(db, backup) {
+  const fields = ROLLBACK_FIELDS[backup?.kind];
+  if (!fields) throw new Error(`Unknown backup kind: ${backup?.kind}. Nothing was restored.`);
+  for (const [name, docs] of [['users', backup.users], ['events', backup.events], ['attendances', backup.attendances]]) {
+    const col = db.collection(name);
+    for (const doc of docs || []) {
+      const { $set, $unset } = restoreFields(doc, name === 'users' ? fields : fields.filter((f) => f === 'organizationName'));
+      // Apply set companyId only where the backup had none; a companyId that was
+      // already there was never touched, so it is left alone.
+      if (backup.kind === 'apply' && doc.companyId == null) $unset.companyId = '';
+      const update = {};
+      if (Object.keys($set).length) update.$set = $set;
+      if (Object.keys($unset).length) update.$unset = $unset;
+      if (Object.keys(update).length) await col.updateOne({ _id: doc._id }, update);
+    }
+  }
+  if (backup.kind === 'apply' && backup.createdCompanyIds?.length) {
     await db.collection('companies').deleteMany({ _id: { $in: backup.createdCompanyIds } });
   }
 }
