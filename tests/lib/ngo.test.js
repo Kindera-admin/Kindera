@@ -54,7 +54,7 @@ describe('partnerVisibilityFilter', () => {
 
   it('volunteers, NGOs and logged-out callers see public only', async () => {
     for (const u of [w.volunteer, w.ngo, null, undefined]) {
-      expect(partnerVisibilityFilter(u)).toEqual({ companyIds: { $size: 0 } });
+      expect(partnerVisibilityFilter(u)).toEqual({ 'companyIds.0': { $exists: false } });
       expect(await namesFor(partnerVisibilityFilter(u))).toEqual(['Public']);
     }
   });
@@ -62,6 +62,32 @@ describe('partnerVisibilityFilter', () => {
   it('a corporate user without a company falls back to public only', async () => {
     const lost = { _id: 'lost', role: 'org_spoc', companyId: null };
     expect(await namesFor(partnerVisibilityFilter(lost))).toEqual(['Public']);
+  });
+});
+
+describe('legacy partner with no companyIds field', () => {
+  beforeEach(async () => {
+    await NGOPartner.collection.insertOne({ name: 'Legacy', description: 'old' });
+  });
+
+  it('is stored without the field (precondition)', async () => {
+    const raw = await NGOPartner.collection.findOne({ name: 'Legacy' });
+    expect('companyIds' in raw).toBe(false);
+  });
+
+  it('is public: visible to staff, company users, volunteers and logged-out callers', async () => {
+    for (const u of [w.admin, w.employee, w.spocA, w.spocB, w.volunteer, w.ngo, null]) {
+      expect(await namesFor(partnerVisibilityFilter(u))).toContain('Legacy');
+    }
+  });
+
+  it('is not a company NGO: myNgosFilter excludes it', async () => {
+    expect(await namesFor(myNgosFilter(w.spocA))).toEqual(['AandB', 'OnlyA']);
+  });
+
+  it('gives an NGO linked to it public events only', async () => {
+    const raw = await NGOPartner.collection.findOne({ name: 'Legacy' });
+    expect(ngoEventCompanies({ ngoPartnerId: raw._id }, raw)).toEqual([null]);
   });
 });
 
