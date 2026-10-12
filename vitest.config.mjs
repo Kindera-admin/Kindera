@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.js'],
+    globalSetup: ['./tests/globalSetup.js'],
     setupFiles: ['./tests/setup.js'],
     // One process: the in-memory MongoDB and mongoose's global connection cache are shared.
     pool: 'forks',

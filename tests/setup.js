@@ -1,10 +1,10 @@
-import { vi, beforeEach, afterAll } from 'vitest';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { vi, beforeEach, inject } from 'vitest';
 import mongoose from 'mongoose';
 import { authState } from './helpers/auth.js';
 
-const mongod = await MongoMemoryServer.create();
-process.env.MONGODB_URI = mongod.getUri('kindera_test');
+// One in-memory server and one connection are shared by all test files on purpose:
+// mongoose models and their index/init state outlive a single file, so per-file servers break them.
+process.env.MONGODB_URI = inject('mongoUri');
 process.env.JWT_SECRET = 'test-only-secret-that-is-at-least-32-chars';
 
 vi.mock('next/headers', () => ({
@@ -22,11 +22,4 @@ beforeEach(async () => {
     const collections = Object.values(mongoose.connection.collections);
     await Promise.all(collections.map((c) => c.deleteMany({})));
   }
-});
-
-afterAll(async () => {
-  await mongoose.disconnect();
-  // src/lib/db.js caches its connection on globalThis; drop it so the next test file reconnects to its own mongod.
-  delete globalThis.mongoose;
-  await mongod.stop();
 });
