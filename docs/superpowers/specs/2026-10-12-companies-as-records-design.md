@@ -99,7 +99,7 @@ Specific rules:
   - `listCompanies({ includeArchived })`
   - `createCompany(name)`, rejecting a duplicate `nameKey`
   - `renameCompany(id, name)`, which must keep `nameKey` unique
-  - `setCompanyLogo(id, url)`
+  - `setCompanyLogo(id, url)`: implemented by folding it into `updateCompanyLogo(url, companyId?)`, one action for both callers. Staff pass `companyId`; a SPOC's own company is implied and any other `companyId` is refused.
   - `archiveCompany(id)` / `restoreCompany(id)`
 - `login` returns `companyId` and the company name (for the client auth store) instead of `organizationName`.
 
@@ -135,21 +135,35 @@ Usage: `node scripts/migrate-companies.mjs [--env <file>] [--apply | --cleanup |
   - Copies NGO `organizationName` to `ngoName`, and volunteer `organizationName` to `employerName`.
   - **Leaves `organizationName` / `organizationLogo` in place**, so the currently deployed code keeps working.
   - Idempotent: re-running skips documents that already have the new fields.
-- **`--cleanup` (contract):** unsets `organizationName` and `organizationLogo` on every collection. It refuses to run unless every `org_spoc` / `org_member` user has a `companyId`.
-- **`--rollback <backup.json>`:** restores the backed-up documents and deletes companies the script created.
+  - Follows earlier links first: a name already linked to a company (on a user, event or attendance record) keeps pointing at that company even after it is renamed. A name linked to two different companies is not linked at all and is reported.
+  - Attendance with no `companyId` whose attendee is a linked SPOC/employee (for example rows labelled "All Organizations") takes the attendee's company.
+- **Dry run also lists** corporate users with no usable company name and events whose `organizationName` is blank (by `_id` and username/title), and each proposed company's SPOCs by status (approved/pending/rejected) so typo or squatter companies stand out.
+- **`--cleanup` (contract):** unsets `organizationName` and `organizationLogo` on every collection. It refuses, listing the ids, while any `org_spoc` / `org_member` has no `companyId`, any event has a blank or unlinked `organizationName`, or any attendance it could still link has no `companyId`. Blank means empty after trimming, everywhere.
+- **`--rollback <backup.json>`:** field-scoped, never a whole-document replace, so later changes (hours, registrations, titles) survive.
+  - Apply backup: unsets `companyId` on the backed-up users, events and attendance, restores `ngoName` / `employerName` to their backed-up values (or unsets them), and deletes only the companies that apply inserted.
+  - Cleanup backup: sets `organizationName` / `organizationLogo` back from the backup and leaves every other field alone.
+- **`--backfill-legacy`:** writes `organizationName = Company.name` on SPOCs/employees, events and attendance that have a `companyId` and no non-blank `organizationName`, and `organizationLogo` on SPOCs from `Company.logoUrl` when missing. Writes a backup first and prints counts. Run it before redeploying the old code, so internal events created by the new code do not match the old public filter.
 
 ## 8. Release order
 
-1. **Test database / staging.** I run the dry run and you review the proposed companies. I run `--apply` and push to `test`. We verify staging.
-2. **Production.**
-   - You run the dry run with `--env` pointing at production credentials, and we review it together.
-   - You run `--apply`.
-   - I merge `test` into `main` (kindera.co redeploys) and verify.
-3. **Cleanup.** After a few days without issues, `--cleanup` runs on each database.
+Every write needs `--yes`, and `--env <file>` picks the database. Run the same steps on the test database (staging, `test` branch) first, then on production (`main`, kindera.co).
 
-**Rollback:**
-- Before cleanup: redeploy the previous `main`. The old fields still exist, so the old code works.
-- After cleanup: `--rollback` with the backup file.
+1. **Dry run** (`node scripts/migrate-companies.mjs --env <file>`). Review the proposed companies, the SPOC status per company, and the unlinkable users and events. Fix those by hand (assign a company or change the role) before going on.
+2. **`--apply --yes`.** Keep the printed backup path.
+3. **Deploy the new code** (push `test`, or merge `test` into `main`).
+4. **`--apply --yes` again, immediately.** The old code kept writing `organizationName` until the deploy finished; this links the records it wrote in that window.
+5. **Verify** the deployment (company dashboards, event visibility, attendance).
+6. **`--cleanup --yes`** after a few days without issues. Keep the printed backup path.
+
+**Rollback before cleanup:**
+1. `--backfill-legacy --yes`, so records created by the new code carry `organizationName` again.
+2. Redeploy the previous `main`. The old fields still exist, so the old code works.
+3. Optionally `--rollback <apply backup> --yes` to remove `companyId` and the created companies.
+
+**Rollback after cleanup:**
+1. `--rollback <cleanup backup> --yes` to put `organizationName` / `organizationLogo` back.
+2. `--backfill-legacy --yes` for records created after cleanup.
+3. Redeploy the old code.
 
 I cannot connect to the production database. Every production step is run by the user.
 

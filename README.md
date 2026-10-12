@@ -53,7 +53,7 @@ Each variable is described in [`.env.example`](.env.example). All env files exce
 |---------|--------------|
 | `npm run dev` / `build` / `start` / `lint` | Standard Next.js commands |
 | `npm test` | Runs the Vitest suite against an in-memory MongoDB (no real database needed) |
-| `npm run migrate:companies` | Moves free-text organisation names onto Company records. Dry run by default; `--apply --yes` applies, `--cleanup --yes` removes the old fields, `--rollback <file> --yes` restores a backup, `--env <file>` picks the env file |
+| `npm run migrate:companies` | Moves free-text organisation names onto Company records. Dry run by default; `--apply --yes` applies, `--cleanup --yes` removes the old fields, `--rollback <file> --yes` restores the migration fields from a backup, `--backfill-legacy --yes` writes the old fields back before redeploying old code, `--env <file>` picks the env file. See "Company migration" below |
 | `npm run seed:qa` / `npm run seed:qa -- --remove` | Creates or deletes prefixed QA accounts and companies. Refuses any database except the test cluster |
 | `npm run create-admin` | Creates an admin user from `ADMIN_*` env vars and skips it if the user already exists |
 | `npm run seed-events` | Inserts 5 sample events, only into an empty `events` collection |
@@ -61,7 +61,21 @@ Each variable is described in [`.env.example`](.env.example). All env files exce
 | `npm run check-data` | Prints the user count |
 | `node scripts/clear-data.mjs` | **Destructive.** Wipes events, attendance, reports, messages, announcements and every non-admin, non-NGO user in the database that `MONGODB_URI` points at |
 
-Every script reads `.env.local`. Never hardcode a connection string in a script.
+Scripts read `.env.local`, except `migrate-companies`, which reads the file given with `--env` (default `.env.local`), and `seed-qa`, which refuses any database other than the test cluster. Never hardcode a connection string in a script.
+
+### Company migration
+
+Run on the test database first, then production. Every write needs `--yes`.
+
+1. Dry run: `npm run migrate:companies -- --env <file>`. Review the proposed companies, each company's SPOCs by status, and the unlinkable users and events (fix those first).
+2. `--apply --yes`.
+3. Deploy the new code.
+4. `--apply --yes` again, immediately, to link records the old code wrote while the deploy was going out.
+5. Verify.
+6. `--cleanup --yes` after a few days without issues.
+
+Rollback before cleanup: `--backfill-legacy --yes`, then redeploy the previous `main`, then optionally `--rollback <apply backup> --yes`.
+Rollback after cleanup: `--rollback <cleanup backup> --yes`, then `--backfill-legacy --yes`, then redeploy the old code.
 
 ## Project structure
 
