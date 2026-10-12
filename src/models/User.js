@@ -26,16 +26,19 @@ const userSchema = new mongoose.Schema({
   sparse: true
 }
 ,
-  organizationName: {
-    type: String,
-    required: function() {
+  // Corporate users (SPOCs and employees) belong to exactly one company.
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    default: null,
+    required: function () {
       return this.role === 'org_spoc' || this.role === 'org_member';
-    }
+    },
   },
-  organizationLogo: {
-    type: String,
-    default: ''
-  },
+  // NGO login's organisation name (was organizationName for role 'ngo').
+  ngoName: { type: String, default: '', trim: true },
+  // Optional free-text employer for individual volunteers (display only).
+  employerName: { type: String, default: '', trim: true },
   name: {
     type: String,
     required: true
@@ -63,7 +66,7 @@ const userSchema = new mongoose.Schema({
   hasFCRA: { type: Boolean, default: false },
   regFCRA: { type: String, default: '' },
 
-  // Corporate team: links org_member back to their SPOC
+  // Which SPOC created this login. Record only: never used for access decisions.
   spocId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -96,6 +99,8 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+userSchema.index({ companyId: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {

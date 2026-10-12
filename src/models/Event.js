@@ -41,10 +41,12 @@ const eventSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  organizationName: {
-    type: String,
-    trim: true,
-    default: null
+  // Set means a private event for this company; null means public.
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    default: null,
+    index: true,
   },
   capacity: {
     type: Number,

@@ -37,3 +37,19 @@ export async function makeCompany(name = `Company ${next()}`, overrides = {}) {
   await connectDB();
   return Company.create({ name, ...overrides });
 }
+
+// Two companies, two SPOCs in A, one employee in each company, plus staff and outsiders.
+export async function makeWorld() {
+  const companyA = await makeCompany('Acme');
+  const companyB = await makeCompany('Beta');
+  const admin = await makeUser('admin');
+  const employee = await makeUser('employee');
+  const spocA = await makeUser('org_spoc', { companyId: companyA._id });
+  const spocA2 = await makeUser('org_spoc', { companyId: companyA._id });
+  const spocB = await makeUser('org_spoc', { companyId: companyB._id });
+  const memberA = await makeUser('org_member', { companyId: companyA._id, spocId: spocA._id });
+  const memberB = await makeUser('org_member', { companyId: companyB._id, spocId: spocB._id });
+  const volunteer = await makeUser('volunteer');
+  const ngo = await makeUser('ngo', { ngoName: 'Green Earth' });
+  return { companyA, companyB, admin, employee, spocA, spocA2, memberA, spocB, memberB, volunteer, ngo };
+}

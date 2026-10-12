@@ -11,9 +11,11 @@ const attendanceSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
-  organizationName: {
-    type: String,
-    required: true,
+  // Company of the attendee at the time of marking; null for individual volunteers.
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    default: null,
   },
   attended: {
     type: Boolean,
@@ -45,8 +47,8 @@ const attendanceSchema = new mongoose.Schema({
 
 // Each user can only have one attendance record per event
 attendanceSchema.index({ eventId: 1, userId: 1 }, { unique: true });
-// Fast lookup by org
-attendanceSchema.index({ organizationName: 1 });
+// Fast lookup by company
+attendanceSchema.index({ companyId: 1 });
 // Fast lookup by event
 attendanceSchema.index({ eventId: 1 });
 
