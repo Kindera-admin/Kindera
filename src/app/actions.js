@@ -583,7 +583,7 @@ export async function getPendingEventRegistrations() {
     const pendingRegistrations = [];
     users.forEach(user => {
       user.eventRegistrations.forEach(reg => {
-        if (reg.status === 'pending' && eventIds.some(id => id.toString() === reg.eventId._id.toString())) {
+        if (reg.status === 'pending' && reg.eventId && eventIds.some(id => id.toString() === reg.eventId._id.toString())) {
           pendingRegistrations.push({
             _id: user._id.toString(),
             name: user.name,
@@ -724,6 +724,11 @@ export async function createEvent(formData) {
 
     if (!title || !description || !date || !location) {
       return { success: false, message: 'All required fields must be filled' };
+    }
+
+    // A SPOC's events are company-internal. Without a company they would become public, so refuse.
+    if (user.role === 'org_spoc' && !user.companyId) {
+      return { success: false, message: 'Your account is not linked to a company' };
     }
     
     const event = await Event.create({
@@ -884,6 +889,7 @@ export async function getEvents(optionsOrStatus = {}) {
 
 export async function getEventById(id) {
   try {
+    if (!isValidObjectId(id)) return { success: false, message: 'Event not found' };
     await connectDB();
     
     const event = await Event.findById(id).populate('createdBy', 'name role').lean();
@@ -945,6 +951,7 @@ export async function updateEvent(id, formData) {
       return { success: false, message: 'Not authenticated' };
     }
     
+    if (!isValidObjectId(id)) return { success: false, message: 'Event not found' };
     await connectDB();
     
     const user = await getCurrentUser();
@@ -996,6 +1003,7 @@ export async function deleteEvent(id) {
       return { success: false, message: 'Not authenticated' };
     }
     
+    if (!isValidObjectId(id)) return { success: false, message: 'Event not found' };
     await connectDB();
     
     const user = await getCurrentUser();
@@ -2540,18 +2548,21 @@ export async function updateEventRegistrationStatus(formData) {
       return { success: false, message: 'Invalid status' };
     }
 
+    if (!isValidObjectId(userId) || !isValidObjectId(eventId)) {
+      return { success: false, message: 'Registration not found' };
+    }
+
+    // Check the caller may manage the event before revealing whether the user or registration exists.
+    const event = await Event.findById(eventId);
+    if (!event || !canManageEvent(currentUser, event)) {
+      return { success: false, message: 'Not authorized. This user registered for another organizer\'s event.' };
+    }
+
     const targetUser = await User.findById(userId);
     if (!targetUser) return { success: false, message: 'User not found' };
 
     const regIndex = targetUser.eventRegistrations.findIndex(r => r.eventId.toString() === eventId.toString());
     if (regIndex === -1) return { success: false, message: 'Registration not found' };
-
-    const event = await Event.findById(eventId);
-
-    if (!event) return { success: false, message: 'Event not found' };
-    if (!canManageEvent(currentUser, event)) {
-      return { success: false, message: 'Not authorized. This user registered for another organizer\'s event.' };
-    }
 
     targetUser.eventRegistrations[regIndex].status = status;
     await targetUser.save();
