@@ -63,7 +63,7 @@ export async function listCompanies({ includeArchived = false } = {}) {
     };
   } catch (error) {
     console.error('Error listing companies:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not load companies. Please try again.' };
   }
 }
 
@@ -81,7 +81,7 @@ export async function createCompany(name) {
   } catch (error) {
     if (error?.code === 11000) return { success: false, message: DUPLICATE };
     console.error('Error creating company:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not create the company. Please try again.' };
   }
 }
 
@@ -102,7 +102,7 @@ export async function renameCompany(id, name) {
   } catch (error) {
     if (error?.code === 11000) return { success: false, message: DUPLICATE };
     console.error('Error renaming company:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not rename the company. Please try again.' };
   }
 }
 
@@ -117,7 +117,7 @@ async function setStatus(id, status) {
     return { success: true };
   } catch (error) {
     console.error('Error updating company status:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not update the company. Please try again.' };
   }
 }
 
@@ -155,6 +155,6 @@ export async function updateCompanyLogo(url, companyId = null) {
     return { success: true };
   } catch (error) {
     console.error('Error updating company logo:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not update the logo. Please try again.' };
   }
 }
