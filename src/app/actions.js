@@ -9,7 +9,7 @@ import Attendance from '@/models/Attendance';
 import ImpactPhoto from '@/models/ImpactPhoto';
 import Message from '@/models/Message';
 import Company from '@/models/Company';
-import { isValidObjectId } from 'mongoose';
+import mongoose, { isValidObjectId } from 'mongoose';
 import {
   resolveCompanyAccess, eventVisibilityFilter, canSeeEvent, canManageEvent,
   getCompanyName, getCompaniesByIds, asObjectId, isCorporate, sameCompany,
@@ -1298,6 +1298,47 @@ async function teamCompanyFor(caller, requestedCompanyId) {
 }
 
 const slugify = (name) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+// Username prefix for generated logins; a name with no ASCII letters falls back to "team".
+const loginSlug = (name) => slugify(name).replace(/^-+|-+$/g, '') || 'team';
+
+// Next free <slug>-<n> index across every user, not only this company's:
+// two companies can share a slug ("Acme" and "ACME!").
+async function nextLoginIndex(slug) {
+  // loginSlug only yields [a-z0-9-], so the slug needs no regex escaping.
+  const pattern = new RegExp(`^${slug}-(\\d+)$`);
+  const users = await User.find({ username: pattern }).select('username').lean();
+  return users.reduce((max, u) => Math.max(max, Number(pattern.exec(u.username)?.[1]) || 0), 0) + 1;
+}
+
+// Inserts every account it can. Returns the credentials of the rows actually
+// created plus a generic message; never the driver's error text or other
+// companies' usernames.
+async function insertAccounts(docs, credentials) {
+  for (const d of docs) d._id = new mongoose.Types.ObjectId();
+  let duplicate = false;
+  try {
+    await User.insertMany(docs, { ordered: false });
+  } catch (error) {
+    console.error('Some accounts were not created:', error);
+    const errs = error?.writeErrors || [];
+    duplicate = error?.code === 11000 || (errs.length > 0 && errs.every((e) => (e.code ?? e.err?.code) === 11000));
+  }
+  const saved = await User.find({ _id: { $in: docs.map((d) => d._id) } }).select('_id').lean();
+  const savedIds = new Set(saved.map((u) => String(u._id)));
+  const created = credentials.filter((_, i) => savedIds.has(String(docs[i]._id)));
+  const failed = docs.length - created.length;
+  if (failed === 0) return { success: true, created: created.length, failed: 0, credentials: created };
+  const why = duplicate
+    ? 'The others were not created because their usernames are already taken.'
+    : 'The others could not be created. Please try again.';
+  return {
+    success: created.length > 0,
+    created: created.length,
+    failed,
+    credentials: created,
+    message: `Created ${created.length} of ${docs.length} accounts. ${why}`,
+  };
+}
 
 /**
  * Generate N pre-approved org_member accounts for a company.
@@ -1323,15 +1364,8 @@ export async function generateTeamLogins(formData) {
       return { success: false, message: 'Choose a company and a count (1–500)' };
     }
     const orgName = company.name;
-    const orgSlug = slugify(orgName);
-
-    // Find the highest existing index for this org to avoid collisions
-    const existing = await User.find({ companyId: company._id, role: 'org_member' })
-      .select('username').lean();
-    const existingNums = existing
-      .map(u => parseInt(u.username.split('-').pop()))
-      .filter(n => !isNaN(n));
-    const startIndex = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
+    const orgSlug = loginSlug(orgName);
+    const startIndex = await nextLoginIndex(orgSlug);
 
     const plainCredentials = [];
     const usersToCreate    = [];
@@ -1356,14 +1390,13 @@ export async function generateTeamLogins(formData) {
       plainCredentials.push({ username, password, name: `${orgName} Volunteer ${idx}` });
     }
 
-    await User.insertMany(usersToCreate);
+    const result = await insertAccounts(usersToCreate, plainCredentials);
     revalidatePath('/admin/corporate');
     revalidatePath('/dashboard/team');
-
-    return { success: true, credentials: plainCredentials };
+    return result;
   } catch (error) {
     console.error('Error generating team logins:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not generate team logins. Please try again.' };
   }
 }
 
@@ -1388,7 +1421,7 @@ export async function bulkCreateFromExcel(rows, companyId = null) {
       return { success: false, message: 'Rows and a company are required' };
     }
     const orgName = company.name;
-    const orgSlug = slugify(orgName);
+    const orgSlug = loginSlug(orgName);
     const salt    = await bcrypt.genSalt(10);
     const plainCredentials = [];
     const usersToCreate    = [];
@@ -1412,14 +1445,13 @@ export async function bulkCreateFromExcel(rows, companyId = null) {
       plainCredentials.push({ username, password, name });
     }
 
-    await User.insertMany(usersToCreate);
+    const result = await insertAccounts(usersToCreate, plainCredentials);
     revalidatePath('/admin/corporate');
     revalidatePath('/dashboard/team');
-
-    return { success: true, credentials: plainCredentials };
+    return result;
   } catch (error) {
     console.error('Error bulk creating accounts:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not create the accounts. Please try again.' };
   }
 }
 
@@ -1478,9 +1510,18 @@ export async function markAttendance(eventId, attendanceList) {
       return { success: false, message: 'Only Admin or SPOC can mark attendance' };
     }
 
+    // Validate the whole payload before any database call.
+    const isIdValue = (v) => (typeof v === 'string' || v instanceof mongoose.Types.ObjectId) && isValidObjectId(v);
     if (!isValidObjectId(String(eventId)) || !Array.isArray(attendanceList)
-        || attendanceList.some((a) => !a || !isValidObjectId(String(a.userId)))) {
+        || attendanceList.some((a) => !a || !isIdValue(a.userId))) {
       return { success: false, message: 'Invalid attendance data' };
+    }
+    if (new Set(attendanceList.map((a) => String(a.userId))).size !== attendanceList.length) {
+      return { success: false, message: 'Each person can appear only once' };
+    }
+    const validHours = (h) => typeof h === 'number' && Number.isFinite(h) && h >= 0 && h <= 24;
+    if (attendanceList.some((a) => !validHours(a.hoursContributed ?? 0))) {
+      return { success: false, message: 'Hours must be a number from 0 to 24' };
     }
 
     await connectDB();

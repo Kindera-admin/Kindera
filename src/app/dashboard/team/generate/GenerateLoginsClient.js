@@ -32,7 +32,8 @@ export default function GenerateLoginsClient({ role, companyId, companyName }) {
     startTransition(async () => {
       const res = await generateTeamLogins(fd);
       if (res.success) {
-        toast.success(`Generated ${res.credentials.length} logins!`);
+        if (res.failed) toast.warning(res.message);
+        else toast.success(`Generated ${res.credentials.length} logins!`);
         setResults(res.credentials);
       } else {
         toast.error(res.message);
@@ -72,7 +73,8 @@ export default function GenerateLoginsClient({ role, companyId, companyName }) {
         startTransition(async () => {
           const res = await bulkCreateFromExcel(rows, companyId);
           if (res.success) {
-            toast.success(`Created ${res.credentials.length} accounts from Excel!`);
+            if (res.failed) toast.warning(res.message);
+            else toast.success(`Created ${res.credentials.length} accounts from Excel!`);
             setResults(res.credentials);
           } else {
             toast.error(res.message);
