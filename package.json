@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
     "create-admin": "node scripts/create-admin.mjs",
     "fix-index": "node scripts/fix-index.js",
     "seed-events": "node scripts/seed-events.js",
@@ -45,7 +46,9 @@
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
+    "mongodb-memory-server": "^10.4.3",
     "tailwindcss": "^4",
-    "tw-animate-css": "^1.2.8"
+    "tw-animate-css": "^1.2.8",
+    "vitest": "^3.2.7"
   }
 }
