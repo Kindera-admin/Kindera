@@ -437,6 +437,8 @@ export async function rollbackMigration(db, backup) {
     const col = db.collection(name);
     for (const doc of docs || []) {
       const { $set, $unset } = restoreFields(doc, name === 'users' ? fields : fields.filter((f) => f === 'organizationName'));
+      // Cleanup only removed fields, so undoing it only puts back the ones it removed.
+      if (backup.kind === 'cleanup') for (const f of Object.keys($unset)) delete $unset[f];
       // Apply set companyId only where the backup had none; a companyId that was
       // already there was never touched, so it is left alone.
       if (backup.kind === 'apply' && doc.companyId == null) $unset.companyId = '';

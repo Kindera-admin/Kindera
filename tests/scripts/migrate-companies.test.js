@@ -466,6 +466,18 @@ describe('rollbackMigration is field-scoped', () => {
     expect(event.title).toBe('Edited after cleanup');
     expect((await db.collection('attendances').findOne({ userId: memberId })).organizationName).toBe('ACME CORP');
   });
+  it('cleanup rollback only sets fields; it never unsets one the backup lacked', async () => {
+    const { memberId } = await seedLegacy();
+    await applyMigration(db, { now });
+    const file = tmp();
+    await cleanupMigration(db, { now, backupFile: file });
+    // The member had no organizationLogo when cleanup ran; one written later must survive.
+    await db.collection('users').updateOne({ _id: memberId }, { $set: { organizationLogo: 'https://logo/later.png' } });
+    await rollbackMigration(db, readBackup(file));
+    const member = await db.collection('users').findOne({ _id: memberId });
+    expect(member.organizationLogo).toBe('https://logo/later.png');
+    expect(member.organizationName).toBe('acme  corp ');
+  });
   it('never replaces whole documents', async () => {
     await seedLegacy();
     const file = tmp();
