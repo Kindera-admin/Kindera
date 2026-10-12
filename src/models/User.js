@@ -37,6 +37,12 @@ const userSchema = new mongoose.Schema({
   },
   // NGO login's organisation name (the old free-text field for role 'ngo').
   ngoName: { type: String, default: '', trim: true },
+  // The NGO card this login was generated from (role 'ngo' only; set by staff).
+  ngoPartnerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'NGOPartner',
+    default: null,
+  },
   // Optional free-text employer for individual volunteers (display only).
   employerName: { type: String, default: '', trim: true },
   name: {

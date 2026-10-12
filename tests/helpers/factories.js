@@ -2,6 +2,7 @@ import connectDB from '@/lib/db';
 import User from '@/models/User';
 import Event from '@/models/Event';
 import Company from '@/models/Company';
+import NGOPartner from '@/models/NGOPartner';
 
 let seq = 0;
 export const next = () => ++seq;
@@ -36,6 +37,11 @@ export async function makeEvent(creator, overrides = {}) {
 export async function makeCompany(name = `Company ${next()}`, overrides = {}) {
   await connectDB();
   return Company.create({ name, ...overrides });
+}
+
+export async function makePartner(fields = {}) {
+  await connectDB();
+  return NGOPartner.create({ name: 'Partner', description: 'desc', ...fields });
 }
 
 // Two companies, two SPOCs in A, one employee in each company, plus staff and outsiders.

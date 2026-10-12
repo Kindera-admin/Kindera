@@ -39,6 +39,17 @@ const ngoPartnerSchema = new mongoose.Schema({
     default: '',
     trim: true,
   },
+  // Empty means a public partner. Non-empty means private to those companies.
+  companyIds: {
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Company' }],
+    default: [],
+  },
+  // The NGO login linked to this card (at most one).
+  loginUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
 }, {
   timestamps: true,
 });
