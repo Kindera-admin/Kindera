@@ -250,7 +250,7 @@ export default function MyImpactClient({ events, stats }) {
         <p className="text-xs font-semibold tracking-widest uppercase text-brand-accent mb-1">My Dashboard</p>
         <h1 className="text-3xl font-bold text-gray-900 mb-1">My Volunteer Impact</h1>
         <p className="text-gray-500 text-sm">
-          {stats.organizationName && <span className="font-medium text-gray-700">{stats.organizationName} · </span>}
+          {stats.companyName && <span className="font-medium text-gray-700">{stats.companyName} · </span>}
           Log your hours for past events and track your personal contribution.
         </p>
       </div>
@@ -341,10 +341,10 @@ export default function MyImpactClient({ events, stats }) {
                       {new Date(ev.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', year: 'numeric' })}
                     </span>
                     <span className="text-gray-300 text-xs">•</span>
-                    {ev.organizationName ? (
+                    {ev.companyName ? (
                       <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 flex items-center gap-1">
                         <Building2 className="w-2.5 h-2.5" />
-                        Internal Event ({ev.organizationName})
+                        Internal Event ({ev.companyName})
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 flex items-center gap-1">
@@ -433,12 +433,12 @@ export default function MyImpactClient({ events, stats }) {
               
               {/* Top Left: Corporate Logo */}
               <div className="absolute top-10 left-12 flex items-center gap-3 text-left">
-                {stats.organizationLogo ? (
+                {stats.companyLogo ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={cldImage(stats.organizationLogo, 600)} alt={stats.organizationName} className="h-24 object-contain" />
+                  <img src={cldImage(stats.companyLogo, 600)} alt={stats.companyName} className="h-24 object-contain" />
                 ) : (
                   <span className="text-2xl font-bold text-navy border-l-4 border-certificate-lime pl-3">
-                    {stats.organizationName || 'Corporate Partner'}
+                    {stats.companyName || 'Corporate Partner'}
                   </span>
                 )}
               </div>
@@ -463,7 +463,7 @@ export default function MyImpactClient({ events, stats }) {
               </h2>
               
               <p className="text-gray-600 mt-2 mb-4">
-                from <strong className="text-navy">{stats.organizationName || 'our corporate partner'}</strong>
+                from <strong className="text-navy">{stats.companyName || 'our corporate partner'}</strong>
               </p>
               
               <p className="text-gray-500 text-sm mb-2">has participated in</p>

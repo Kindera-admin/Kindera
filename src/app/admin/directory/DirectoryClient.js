@@ -37,14 +37,16 @@ export default function DirectoryClient({ spocs, ngos }) {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleExportIndividualCSV = (orgName) => {
-    setExportTarget(orgName);
+  const handleExportIndividualCSV = (company) => {
+    // No company id would export every company's attendance, so do nothing.
+    if (!company?.id) return;
+    setExportTarget(company);
     setShowExportModal(true);
   };
 
   const filteredSpocs = spocs.filter(s => 
     (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.organizationName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (s.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -64,7 +66,7 @@ export default function DirectoryClient({ spocs, ngos }) {
           `"${s.name || ''}"`,
           `"${s.email || ''}"`,
           `"${s.mobile || ''}"`,
-          `"${s.organizationName || ''}"`,
+          `"${s.companyName || ''}"`,
           `"${s.status || ''}"`,
           s.memberCount || 0,
           s.volunteerHours || 0,
@@ -99,14 +101,13 @@ export default function DirectoryClient({ spocs, ngos }) {
   };
 
   const handleExportDetailedCSV = () => {
-    setExportTarget('all');
+    setExportTarget(null);
     setShowExportModal(true);
   };
 
   const executeDetailedExport = () => {
     startTransition(async () => {
-      const orgName = exportTarget === 'all' ? null : exportTarget;
-      const res = await exportDetailedAttendanceData(orgName, exportYear, exportQuarter);
+      const res = await exportDetailedAttendanceData(exportTarget?.id ?? null, exportYear, exportQuarter);
       if (!res.success) {
         alert('Failed to export data: ' + res.message);
         return;
@@ -117,7 +118,7 @@ export default function DirectoryClient({ spocs, ngos }) {
       
       res.data.forEach(r => {
         const row = [
-          `"${r.organizationName}"`,
+          `"${r.companyName}"`,
           `"${r.volunteerName}"`,
           `"${r.volunteerEmail}"`,
           `"${r.eventTitle.replace(/"/g, '""')}"`,
@@ -134,7 +135,7 @@ export default function DirectoryClient({ spocs, ngos }) {
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      let filename = orgName ? `${orgName.replace(/\s+/g, '_')}_attendance` : 'detailed_attendance_data';
+      let filename = exportTarget?.name ? `${exportTarget.name.replace(/\s+/g, '_')}_attendance` : 'detailed_attendance_data';
       filename += `_${exportYear}`;
       if (exportQuarter !== 'All Year') filename += `_${exportQuarter}`;
       filename += `_${new Date().toISOString().split('T')[0]}.csv`;
@@ -249,9 +250,9 @@ export default function DirectoryClient({ spocs, ngos }) {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-white font-bold text-xs">
-                          {(spoc.organizationName || 'C').charAt(0).toUpperCase()}
+                          {(spoc.companyName || 'C').charAt(0).toUpperCase()}
                         </div>
-                        <span className="font-semibold text-gray-900">{spoc.organizationName || '-'}</span>
+                        <span className="font-semibold text-gray-900">{spoc.companyName || '-'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -287,7 +288,7 @@ export default function DirectoryClient({ spocs, ngos }) {
                     <td className="px-6 py-4 text-right">
                       <button
                         title="Download Attendance Data"
-                        onClick={() => handleExportIndividualCSV(spoc.organizationName)}
+                        onClick={() => handleExportIndividualCSV({ id: spoc.companyId, name: spoc.companyName })}
                         className="p-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors inline-flex"
                       >
                         <Download className="w-4 h-4" />

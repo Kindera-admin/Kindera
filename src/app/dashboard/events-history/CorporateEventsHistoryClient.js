@@ -59,7 +59,7 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
     const matchesSearch = 
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
       (item.createdBy?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.organizationName || '').toLowerCase().includes(searchTerm.toLowerCase());
+      (item.type || '').includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
 
@@ -190,7 +190,7 @@ export default function CorporateEventsHistoryClient({ history: initialHistory, 
                         </td>
                         
                         <td className="px-6 py-4">
-                          {item.organizationName ? (
+                          {item.type === 'internal' ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
                               <Building2 className="w-3 h-3" />
                               Internal Event

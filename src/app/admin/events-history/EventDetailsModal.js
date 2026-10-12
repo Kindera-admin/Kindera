@@ -78,9 +78,9 @@ export default function EventDetailsModal({ eventId, onClose }) {
                     <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
                       {data.event.status.toUpperCase()}
                     </span>
-                    {data.event.organizationName ? (
+                    {data.event.companyName ? (
                       <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-                        {data.event.organizationName}
+                        {data.event.companyName}
                       </span>
                     ) : (
                       <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
@@ -149,7 +149,7 @@ export default function EventDetailsModal({ eventId, onClose }) {
                             </td>
                             <td className="px-4 py-3">
                               <span className="text-xs font-medium bg-gray-100 px-2 py-0.5 rounded-full text-gray-700">
-                                {p.organizationName || 'None'}
+                                {p.companyName || 'None'}
                               </span>
                             </td>
                             <td className="px-4 py-3">

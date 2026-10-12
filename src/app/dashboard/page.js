@@ -35,7 +35,7 @@ export default async function DashboardPage({ searchParams }) {
 
   if (user.role === 'org_spoc') {
     const year = searchParams?.year || new Date().getFullYear();
-    const { stats = {}, monthly = [], quarterly = [] } = await getOrgStats(user.organizationName, year);
+    const { stats = {}, monthly = [], quarterly = [] } = await getOrgStats(user.companyId ? String(user.companyId) : null, year);
     return (
       <>
         <CorporateDashboardClient stats={stats} monthly={monthly} quarterly={quarterly} selectedYear={year} />

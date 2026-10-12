@@ -51,20 +51,6 @@ async function getSession() {
   }
 }
 
-// Admins and Kindera staff may read any organisation's data; corporate
-// users (SPOCs and members) only their own. Returns the organisation name
-// the caller is allowed to query, or an error.
-async function resolveOrgAccess(orgName) {
-  const caller = await getCurrentUser();
-  if (!caller) return { error: 'Not authenticated' };
-  if (caller.role === 'admin' || caller.role === 'employee') return { caller, orgName };
-  if ((caller.role === 'org_spoc' || caller.role === 'org_member') && caller.organizationName) {
-    if (orgName && orgName !== caller.organizationName) return { error: 'Not authorized for this organisation' };
-    return { caller, orgName: caller.organizationName };
-  }
-  return { error: 'Not authorized' };
-}
-
 export async function login(formData) {
   try {
     const username = formData.get('username');
@@ -1631,22 +1617,23 @@ export async function getEventAttendance(eventId, companyId) {
 /**
  * Get full KPI stats for a corporate org (used by SPOC dashboard and Admin drill-down).
  */
-export async function getOrgStats(requestedOrg, targetYear) {
+export async function getOrgStats(companyId, targetYear) {
   try {
     await connectDB();
-    const access = await resolveOrgAccess(requestedOrg);
+    const access = resolveCompanyAccess(await getCurrentUser(), companyId);
     if (access.error) return { success: false, message: access.error };
-    const orgName = access.orgName;
-    if (!orgName) return { success: false, message: 'Organisation is required' };
+    if (!access.companyId) return { success: false, message: 'Company is required' };
+    if (!isValidObjectId(access.companyId)) return { success: false, message: 'Company not found' };
+    const company = asObjectId(access.companyId);
 
     const year = targetYear ? parseInt(targetYear, 10) : new Date().getFullYear();
 
     // Total members
-    const totalVolunteers = await User.countDocuments({ organizationName: orgName, role: 'org_member' });
+    const totalVolunteers = await User.countDocuments({ companyId: company, role: 'org_member' });
 
     // Aggregate from Attendance (for all time or we could scope it to the year, but usually top-level stats are all-time)
     const agg = await Attendance.aggregate([
-      { $match: { organizationName: orgName, attended: true } },
+      { $match: { companyId: company, attended: true } },
       {
         $group: {
           _id: null,
@@ -1665,7 +1652,7 @@ export async function getOrgStats(requestedOrg, targetYear) {
     const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
 
     const monthly = await Attendance.aggregate([
-      { $match: { organizationName: orgName, attended: true, markedAt: { $gte: startOfYear, $lte: endOfYear } } },
+      { $match: { companyId: company, attended: true, markedAt: { $gte: startOfYear, $lte: endOfYear } } },
       {
         $group: {
           _id: {
@@ -1710,12 +1697,12 @@ export async function getOrgStats(requestedOrg, targetYear) {
     // Unique NGOs engaged (via events)
     const eventIds = stats.totalEvents || [];
     const eventsData = await Event.find({ _id: { $in: eventIds } })
-      .select('title date location organizationName createdBy').populate('createdBy', 'ngoId').lean();
+      .select('title date location companyId createdBy').populate('createdBy', 'ngoId').lean();
     const ngoIds = [...new Set(eventsData.map(e => e.createdBy?.ngoId).filter(Boolean))];
 
     // Aggregate attendance per event for detail list
     const eventAttendanceDetails = await Attendance.aggregate([
-      { $match: { organizationName: orgName, attended: true } },
+      { $match: { companyId: company, attended: true } },
       {
         $lookup: {
           from: 'users',
@@ -1754,9 +1741,9 @@ export async function getOrgStats(requestedOrg, targetYear) {
         hours: detail.hours,
         attendees: detail.attendees,
         attendeeDetails: detail.attendeeDetails,
-        isCorporate: !!ev.organizationName, // corporate/personal vs global
+        isCorporate: !!ev.companyId, // internal company event vs public
       };
-    }).filter(Boolean);
+    }).filter(Boolean).sort((a, b) => b.date.localeCompare(a.date) || a._id.localeCompare(b._id));
 
     return {
       success: true,
@@ -1789,34 +1776,36 @@ export async function getAllCorporateStats() {
     if (!session) return { success: false, message: 'Not authenticated' };
 
     const caller = await getCurrentUser();
-    if (caller.role !== 'admin') return { success: false, message: 'Admin only' };
+    if (caller?.role !== 'admin') return { success: false, message: 'Admin only' };
 
     await connectDB();
 
-    // Get all distinct orgs with their SPOCs
-    const spocs = await User.find({ role: 'org_spoc', status: 'approved' })
-      .select('name organizationName status createdAt').lean();
+    const companies = await Company.find({ status: 'active' }).sort({ name: 1 }).lean();
+    const ids = companies.map((c) => c._id);
+    const [spocs, memberCounts, attendance] = await Promise.all([
+      User.find({ role: 'org_spoc', companyId: { $in: ids } }).select('name companyId').lean(),
+      User.aggregate([{ $match: { role: 'org_member', companyId: { $in: ids } } }, { $group: { _id: '$companyId', n: { $sum: 1 } } }]),
+      Attendance.aggregate([
+        { $match: { attended: true, companyId: { $in: ids } } },
+        { $group: { _id: '$companyId', hours: { $sum: '$hoursContributed' }, events: { $addToSet: '$eventId' } } },
+      ]),
+    ]);
+    const membersBy = new Map(memberCounts.map((m) => [String(m._id), m.n]));
+    const attendanceBy = new Map(attendance.map((a) => [String(a._id), a]));
 
-    const orgs = await Promise.all(spocs.map(async spoc => {
-      const memberCount = await User.countDocuments({
-        organizationName: spoc.organizationName,
-        role: 'org_member',
-      });
-      const agg = await Attendance.aggregate([
-        { $match: { organizationName: spoc.organizationName, attended: true } },
-        { $group: { _id: null, hours: { $sum: '$hoursContributed' }, events: { $addToSet: '$eventId' } } }
-      ]);
-      const a = agg[0] || {};
+    const orgs = companies.map((c) => {
+      const id = String(c._id);
+      const a = attendanceBy.get(id) || {};
       return {
-        spocId:          spoc._id.toString(),
-        spocName:        spoc.name,
-        organizationName: spoc.organizationName,
-        memberCount,
-        volunteerHours:  a.hours || 0,
-        eventsAttended:  (a.events || []).length,
-        joinedAt:        spoc.createdAt ? spoc.createdAt.toISOString() : null,
+        companyId: id,
+        name: c.name,
+        spocNames: spocs.filter((s) => String(s.companyId) === id).map((s) => s.name),
+        memberCount: membersBy.get(id) || 0,
+        volunteerHours: a.hours || 0,
+        eventsAttended: (a.events || []).length,
+        joinedAt: c.createdAt ? c.createdAt.toISOString() : null,
       };
-    }));
+    });
 
     return { success: true, orgs };
   } catch (error) {
@@ -1834,25 +1823,28 @@ export async function getDetailedDirectoryStats() {
     if (!session) return { success: false, message: 'Not authenticated' };
 
     const caller = await getCurrentUser();
-    if (caller.role !== 'admin' && caller.role !== 'employee') return { success: false, message: 'Admin/Employee only' };
+    if (caller?.role !== 'admin' && caller?.role !== 'employee') return { success: false, message: 'Admin/Employee only' };
 
     await connectDB();
 
     // 1. Get all SPOCs and calculate their stats
     const spocs = await User.find({ role: 'org_spoc' })
-      .select('name username organizationName status createdAt mobile').lean();
+      .select('name username companyId status createdAt mobile').lean();
+    const companies = await getCompaniesByIds(spocs.map((s) => s.companyId));
 
     const spocsWithStats = await Promise.all(spocs.map(async spoc => {
-      const members = await User.find({
-        organizationName: spoc.organizationName,
+      // A SPOC with no company has no team and no company attendance. Matching on a
+      // null companyId would pick up every individual, so skip the lookups.
+      const members = spoc.companyId ? await User.find({
+        companyId: spoc.companyId,
         role: 'org_member',
-      }).select('name username').lean();
+      }).select('name username').lean() : [];
       
       const memberCount = members.length;
       const memberNames = members.map(m => m.name);
 
-      const agg = await Attendance.aggregate([
-        { $match: { organizationName: spoc.organizationName, attended: true } },
+      const agg = !spoc.companyId ? [] : await Attendance.aggregate([
+        { $match: { companyId: spoc.companyId, attended: true } },
         {
           $lookup: {
             from: 'events',
@@ -1877,7 +1869,8 @@ export async function getDetailedDirectoryStats() {
         name:            spoc.name,
         email:           spoc.username,
         mobile:          spoc.mobile || '-',
-        organizationName: spoc.organizationName,
+        companyId:       spoc.companyId ? String(spoc.companyId) : null,
+        companyName:     companies.get(String(spoc.companyId))?.name || '',
         status:          spoc.status,
         memberCount,
         memberNames,
@@ -1922,24 +1915,27 @@ export async function getDetailedDirectoryStats() {
 /**
  * Get detailed master attendance data for all corporate volunteers
  */
-export async function exportDetailedAttendanceData(orgName = null, year = null, quarter = null) {
+export async function exportDetailedAttendanceData(companyId = null, year = null, quarter = null) {
   try {
     const session = await getSession();
     if (!session) return { success: false, message: 'Not authenticated' };
 
     const caller = await getCurrentUser();
-    if (caller.role !== 'admin' && caller.role !== 'employee') return { success: false, message: 'Admin/Employee only' };
+    if (caller?.role !== 'admin' && caller?.role !== 'employee') return { success: false, message: 'Admin/Employee only' };
 
     await connectDB();
 
     const query = { attended: true };
-    if (orgName) {
-      query.organizationName = orgName;
+    if (companyId) {
+      // A filter that is not a real id must not widen into "everything".
+      if (!isValidObjectId(String(companyId))) return { success: false, message: 'Company not found' };
+      query.companyId = String(companyId);
     }
 
     let attendanceRecords = await Attendance.find(query)
       .populate('eventId', 'title date location')
       .populate('userId', 'name username')
+      .populate('companyId', 'name')
       .lean();
 
     if (year) {
@@ -1961,7 +1957,7 @@ export async function exportDetailedAttendanceData(orgName = null, year = null, 
     }
 
     const detailedData = attendanceRecords.map(record => ({
-      organizationName: record.organizationName || 'Individual',
+      companyName: record.companyId?.name || 'Individual',
       volunteerName: record.userId?.name || 'Unknown',
       volunteerEmail: record.userId?.username || 'Unknown',
       eventTitle: record.eventId?.title || 'Unknown Event',
@@ -2291,16 +2287,17 @@ export async function getMyImpact() {
     if (!session) return { success: false, message: 'Not authenticated' };
 
     const caller = await getCurrentUser();
-    if (!['org_member', 'volunteer'].includes(caller.role)) return { success: false, message: 'Volunteers and Org Members only' };
+    if (!caller || !['org_member', 'volunteer'].includes(caller.role)) return { success: false, message: 'Volunteers and Org Members only' };
 
     await connectDB();
 
     // Get only events the user has registered for (participated in)
     const registeredEventIds = (caller.eventRegistrations || []).map(r => r.eventId);
     const allEvents = await Event.find({ _id: { $in: registeredEventIds } })
-      .select('title date location description status durationHours organizationName')
+      .select('title date location description status durationHours companyId')
       .sort({ date: -1 })
       .lean();
+    const impactCompanies = await getCompaniesByIds([caller.companyId, ...allEvents.map((e) => e.companyId)]);
 
     // Get this member's attendance records
     const myRecords = await Attendance.find({ userId: caller._id }).lean();
@@ -2334,7 +2331,7 @@ export async function getMyImpact() {
         myHours: rec?.hoursContributed || 0,
         myFeedback: rec?.feedbackScore || null,
         attended: rec?.attended || false,
-        organizationName: ev.organizationName || null,
+        companyName: impactCompanies.get(String(ev.companyId))?.name || null,
       };
     });
 
@@ -2345,14 +2342,6 @@ export async function getMyImpact() {
       ? Math.round((feedbacks.reduce((s, r) => s + r.feedbackScore, 0) / feedbacks.length) * 10) / 10
       : null;
 
-    let organizationLogo = null;
-    if (caller.organizationName) {
-      const spoc = await User.findOne({ role: 'org_spoc', organizationName: caller.organizationName }).select('organizationLogo').lean();
-      if (spoc) {
-        organizationLogo = spoc.organizationLogo;
-      }
-    }
-
     return {
       success: true,
       events,
@@ -2361,8 +2350,8 @@ export async function getMyImpact() {
         eventsAttended,
         avgFeedback,
         name: caller.name,
-        organizationName: caller.organizationName,
-        organizationLogo,
+        companyName: impactCompanies.get(String(caller.companyId))?.name || null,
+        companyLogo: impactCompanies.get(String(caller.companyId))?.logoUrl || null,
       }
     };
   } catch (error) {
@@ -2839,7 +2828,7 @@ export async function getImpactStats() {
       User.aggregate([{ $group: { _id: null, total: { $sum: '$totalVolunteerHours' } } }]),
       Event.countDocuments({ status: 'completed' }),
       NGOPartner.countDocuments(),
-      User.distinct('organizationName', { organizationName: { $ne: null } }),
+      Company.countDocuments({ status: 'active' }),
     ]);
     const totalHours = totalHoursResult[0]?.total || 0;
     return {
@@ -2848,7 +2837,7 @@ export async function getImpactStats() {
         volunteerHours: totalHours,
         eventsCompleted: completedEvents,
         ngoPartners: ngoCount,
-        organisations: orgUsers.length,
+        organisations: orgUsers,
       }
     };
   } catch (error) {
@@ -2889,7 +2878,7 @@ export async function getAdminImpactStats(targetYear) {
     const session = await getSession();
     if (!session) return { success: false, message: 'Not authenticated' };
     const user = await getCurrentUser();
-    if (user.role !== 'admin') return { success: false, message: 'Admin access required' };
+    if (user?.role !== 'admin') return { success: false, message: 'Admin access required' };
 
     await connectDB();
 
@@ -2900,7 +2889,7 @@ export async function getAdminImpactStats(targetYear) {
       Attendance.aggregate([{ $match: { attended: true } }, { $group: { _id: null, total: { $sum: '$hoursContributed' } } }]),
       Event.countDocuments({ status: 'completed' }),
       NGOPartner.countDocuments(),
-      User.distinct('organizationName', { organizationName: { $ne: null } }),
+      Company.countDocuments({ status: 'active' }),
     ]);
 
     const totalHours = totalHoursResult[0]?.total || 0;
@@ -2946,7 +2935,7 @@ export async function getAdminImpactStats(targetYear) {
     const orgStats = await Attendance.aggregate([
       { $match: { attended: true, markedAt: { $gte: startOfYear, $lte: endOfYear } } },
       { $group: {
-        _id: '$organizationName',
+        _id: '$companyId',
         hours: { $sum: '$hoursContributed' },
         volunteers: { $sum: 1 }
       }},
@@ -2954,8 +2943,9 @@ export async function getAdminImpactStats(targetYear) {
       { $limit: 6 }
     ]);
 
-    const topOrgs = orgStats.map(o => ({
-      name: o._id || 'Individual',
+    const topCompanies = await getCompaniesByIds(orgStats.map((o) => o._id));
+    const topOrgs = orgStats.map((o) => ({
+      name: topCompanies.get(String(o._id))?.name || 'Individual',
       hours: o.hours,
       volunteers: o.volunteers
     }));
@@ -2966,7 +2956,7 @@ export async function getAdminImpactStats(targetYear) {
         totalHours,
         totalEvents,
         totalNGOs,
-        totalOrgs: totalOrgs.length,
+        totalOrgs,
         monthlyEvents,
         quarterlyEvents,
         topOrgs
@@ -2987,7 +2977,7 @@ export async function getAllEventsHistory() {
     if (!session) return { success: false, message: 'Not authenticated' };
 
     const caller = await getCurrentUser();
-    if (caller.role !== 'admin' && caller.role !== 'employee') {
+    if (caller?.role !== 'admin' && caller?.role !== 'employee') {
       return { success: false, message: 'Unauthorized' };
     }
 
@@ -2995,7 +2985,7 @@ export async function getAllEventsHistory() {
 
     // Get all events
     const events = await Event.find()
-      .populate('createdBy', 'name role organizationName')
+      .populate('createdBy', 'name role companyId')
       .sort({ date: -1 })
       .lean();
 
@@ -3035,7 +3025,7 @@ export async function getAllEventsHistory() {
         $group: {
           _id: {
             eventId: '$eventRegistrations.eventId',
-            orgName: '$organizationName'
+            companyId: '$companyId'
           },
           expected: {
             $sum: { $cond: [{ $eq: ['$role', 'org_spoc'] }, '$eventRegistrations.volunteersCount', 0] }
@@ -3047,9 +3037,15 @@ export async function getAllEventsHistory() {
       }
     ]);
 
+    const historyCompanies = await getCompaniesByIds([
+      ...events.flatMap((e) => [e.companyId, e.createdBy?.companyId]),
+      ...corpDetailsAgg.map((c) => c._id.companyId),
+    ]);
+    const nameOf = (id) => (id ? historyCompanies.get(String(id))?.name ?? null : null);
+
     const corpDetailsMap = corpDetailsAgg.reduce((acc, curr) => {
       const eventId = curr._id.eventId.toString();
-      const orgName = curr._id.orgName || 'Unknown Corporation';
+      const orgName = nameOf(curr._id.companyId) || 'Unknown company';
       if (!acc[eventId]) acc[eventId] = [];
       acc[eventId].push({
         orgName,
@@ -3090,12 +3086,13 @@ export async function getAllEventsHistory() {
         location: event.location,
         capacity: event.capacity,
         status: event.status,
-        organizationName: event.organizationName || null,
+        companyId: event.companyId ? String(event.companyId) : null,
+        companyName: nameOf(event.companyId),
         createdBy: event.createdBy ? {
           _id: event.createdBy._id.toString(),
           name: event.createdBy.name,
           role: event.createdBy.role,
-          organizationName: event.createdBy.organizationName || null,
+          companyName: nameOf(event.createdBy.companyId),
         } : null,
         joinedCount: regData.joinedCount,
         spocCount: regData.spocCount,
@@ -3118,17 +3115,21 @@ export async function getAdminEventDetails(eventId) {
     if (!session) return { success: false, message: 'Not authenticated' };
 
     const caller = await getCurrentUser();
-    if (caller.role !== 'admin' && caller.role !== 'employee' && caller.role !== 'org_spoc') {
+    if (caller?.role !== 'admin' && caller?.role !== 'employee' && caller?.role !== 'org_spoc') {
       return { success: false, message: 'Unauthorized' };
     }
+    // A SPOC is scoped to a company. Without one there is nothing to scope to, so fail closed.
+    if (caller.role === 'org_spoc' && !caller.companyId) return { success: false, message: 'Unauthorized' };
+    if (!isValidObjectId(String(eventId))) return { success: false, message: 'Event not found' };
 
     await connectDB();
 
     const event = await Event.findById(eventId)
-      .populate('createdBy', 'name role organizationName email')
+      .populate('createdBy', 'name role companyId email')
       .lean();
 
     if (!event) return { success: false, message: 'Event not found' };
+    if (!canSeeEvent(caller, event)) return { success: false, message: 'Unauthorized' };
 
     const registeredQuery = {
       'eventRegistrations': {
@@ -3137,11 +3138,12 @@ export async function getAdminEventDetails(eventId) {
     };
 
     if (caller.role === 'org_spoc') {
-      registeredQuery.organizationName = caller.organizationName;
+      registeredQuery.companyId = caller.companyId;
     }
 
     // Find users who are approved for this event
-    const registeredUsers = await User.find(registeredQuery).select('name role organizationName email').lean();
+    const registeredUsers = await User.find(registeredQuery).select('name role companyId email').lean();
+    const detailCompanies = await getCompaniesByIds([event.companyId, event.createdBy?.companyId, ...registeredUsers.map((u) => u.companyId)]);
 
     // Get attendance records
     const attendanceRecords = await Attendance.find({ eventId }).lean();
@@ -3157,7 +3159,7 @@ export async function getAdminEventDetails(eventId) {
         _id: u._id.toString(),
         name: u.name,
         role: u.role,
-        organizationName: u.organizationName,
+        companyName: detailCompanies.get(String(u.companyId))?.name || null,
         email: u.email,
         attended: att ? att.attended : false,
         hoursContributed: att ? att.hoursContributed : 0,
@@ -3176,11 +3178,11 @@ export async function getAdminEventDetails(eventId) {
         durationHours: event.durationHours || 0,
         capacity: event.capacity,
         status: event.status,
-        organizationName: event.organizationName,
+        companyName: detailCompanies.get(String(event.companyId))?.name || null,
         createdBy: event.createdBy ? {
           name: event.createdBy.name,
           role: event.createdBy.role,
-          organizationName: event.createdBy.organizationName,
+          companyName: detailCompanies.get(String(event.createdBy.companyId))?.name || null,
           email: event.createdBy.email
         } : null,
       },
@@ -3192,17 +3194,18 @@ export async function getAdminEventDetails(eventId) {
   }
 }
 
-export async function getOrgEventsHistory(requestedOrg) {
+export async function getOrgEventsHistory(companyId) {
   try {
     await connectDB();
-    const access = await resolveOrgAccess(requestedOrg);
+    const access = resolveCompanyAccess(await getCurrentUser(), companyId);
     if (access.error) return { success: false, message: access.error };
-    const orgName = access.orgName;
-    if (!orgName) return { success: false, message: 'Organisation is required' };
+    if (!access.companyId) return { success: false, message: 'Company is required' };
+    if (!isValidObjectId(access.companyId)) return { success: false, message: 'Company not found' };
+    const ownCompany = access.companyId;
 
     // 1. Get all users from this org that have approved event registrations
     const orgUsers = await User.find({
-      organizationName: orgName,
+      companyId: ownCompany,
       'eventRegistrations.status': 'approved',
       role: { $in: ['org_spoc', 'org_member'] }
     }).lean();
@@ -3234,7 +3237,7 @@ export async function getOrgEventsHistory(requestedOrg) {
     // 3. Fetch attendance for this org for these events
     const attendanceRecords = await Attendance.find({
       eventId: { $in: eventIds },
-      organizationName: orgName,
+      companyId: ownCompany,
       attended: true
     }).lean();
 
@@ -3282,7 +3285,7 @@ export async function getOrgEventsHistory(requestedOrg) {
         title: event.title,
         date: event.date.toISOString(),
         location: event.location,
-        type: event.organizationName === orgName ? 'internal' : 'global',
+        type: event.companyId && String(event.companyId) === ownCompany ? 'internal' : 'global',
         status: lifecycle,
         expected,
         joined,

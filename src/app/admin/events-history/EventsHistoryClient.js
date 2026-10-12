@@ -64,9 +64,9 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
     const matchesSearch = 
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
       (item.createdBy?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.organizationName || '').toLowerCase().includes(searchTerm.toLowerCase());
+      (item.companyName || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-    const isInternal = !!item.organizationName;
+    const isInternal = !!item.companyId;
     const matchesType = 
       typeFilter === 'all' || 
       (typeFilter === 'global' && !isInternal) ||
@@ -237,7 +237,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                           <span className="font-medium text-gray-800 block">{item.createdBy.name}</span>
                           <span className="text-xs text-gray-500 capitalize block leading-none mt-0.5">
                             {item.createdBy.role === 'org_spoc' ? 'SPOC' : item.createdBy.role} 
-                            {item.createdBy.organizationName ? ` (${item.createdBy.organizationName})` : ''}
+                            {item.createdBy.companyName ? ` (${item.createdBy.companyName})` : ''}
                           </span>
                         </div>
                       ) : (
@@ -246,10 +246,10 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
                     </td>
 
                     <td className="px-6 py-4">
-                      {item.organizationName ? (
+                      {item.companyName ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
                           <Building2 className="w-3 h-3" />
-                          {item.organizationName}
+                          {item.companyName}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">

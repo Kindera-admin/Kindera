@@ -6,6 +6,7 @@ import { Building2, Users, Clock, CalendarDays, ArrowRight, Plus, Loader2, X, St
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getOrgStats } from '@/app/actions';
+import { toast } from 'sonner';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
 
 const STAT_ICONS = {
@@ -28,23 +29,23 @@ export default function CorporateOverviewClient({ orgs }) {
     setExpandedEvents(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const filteredOrgs = orgs.filter(o => o.organizationName.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredOrgs = orgs.filter(o => o.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const totalOrgs    = orgs.length;
   const totalMembers = orgs.reduce((s, o) => s + o.memberCount, 0);
   const totalHours   = orgs.reduce((s, o) => s + o.volunteerHours, 0);
   const totalEvents  = orgs.reduce((s, o) => s + o.eventsAttended, 0);
 
-  const handleGenerate = (orgName) => {
-    router.push(`/dashboard/team/generate?org=${encodeURIComponent(orgName)}`);
+  const handleGenerate = (companyId) => {
+    router.push(`/dashboard/team/generate?company=${companyId}`);
   };
 
-  const handleViewStats = async (orgName) => {
-    setLoadingStatsOrg(orgName);
+  const handleViewStats = async (companyId, name) => {
+    setLoadingStatsOrg(companyId);
     try {
-      const res = await getOrgStats(orgName);
+      const res = await getOrgStats(companyId);
       if (res.success) {
-        setSelectedOrgStats({ orgName, stats: res.stats, monthly: res.monthly, eventsList: res.eventsList });
+        setSelectedOrgStats({ orgName: name, stats: res.stats, monthly: res.monthly, eventsList: res.eventsList });
       } else {
         toast.error(res.message || 'Failed to fetch organisation stats');
       }
@@ -123,33 +124,33 @@ export default function CorporateOverviewClient({ orgs }) {
             </thead>
             <tbody>
               {filteredOrgs.map(org => (
-                <tr key={org.spocId} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                <tr key={org.companyId} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-white text-xs font-bold">
-                        {org.organizationName.charAt(0).toUpperCase()}
+                        {org.name.charAt(0).toUpperCase()}
                       </div>
-                      <span className="font-medium text-gray-900 text-sm">{org.organizationName}</span>
+                      <span className="font-medium text-gray-900 text-sm">{org.name}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{org.spocName}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{org.spocNames.join(', ') || '—'}</td>
                   <td className="px-6 py-4 text-sm text-right font-semibold text-gray-800">{org.memberCount}</td>
                   <td className="px-6 py-4 text-sm text-right font-semibold text-brand">{org.volunteerHours.toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm text-right text-gray-600">{org.eventsAttended}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3.5">
                       <button
-                        onClick={() => handleViewStats(org.organizationName)}
+                        onClick={() => handleViewStats(org.companyId, org.name)}
                         disabled={loadingStatsOrg !== null}
                         className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-1"
                       >
-                        {loadingStatsOrg === org.organizationName ? (
+                        {loadingStatsOrg === org.companyId ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
                         ) : null}
                         View Stats
                       </button>
                       <button
-                        onClick={() => handleGenerate(org.organizationName)}
+                        onClick={() => handleGenerate(org.companyId)}
                         className="text-xs font-semibold text-brand hover:text-brand-accent transition-colors"
                       >
                         + Logins

@@ -10,7 +10,7 @@ export default async function CorporateEventsHistoryPage() {
   if (user.role !== 'org_spoc' && user.role !== 'org_member') {
     redirect('/dashboard');
   }
-  const { history = [] } = await getOrgEventsHistory(user.organizationName);
+  const { history = [] } = await getOrgEventsHistory(user.companyId ? String(user.companyId) : null);
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-8">

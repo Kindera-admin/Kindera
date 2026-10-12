@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { getOrgMembers, getOrgStats } from '@/app/actions';
+import { getCompanyName } from '@/lib/company';
 import TeamClient from './TeamClient';
 
 export default async function TeamPage() {
@@ -8,18 +9,18 @@ export default async function TeamPage() {
   if (!user) redirect('/login');
   if (user.role !== 'org_spoc' && user.role !== 'admin') redirect('/dashboard');
 
-  const orgName = user.organizationName;
   const [membersResult, statsResult] = await Promise.all([
     getOrgMembers(user.companyId ? String(user.companyId) : null),
-    getOrgStats(orgName),
+    getOrgStats(user.companyId ? String(user.companyId) : null),
   ]);
+  const companyName = user.companyId ? await getCompanyName(user.companyId) : null;
 
   return (
     <div className="w-full max-w-5xl mx-auto">
       <TeamClient
         members={membersResult.members || []}
         stats={statsResult.stats || {}}
-        orgName={orgName}
+        orgName={companyName || 'Company'}
       />
     </div>
   );
