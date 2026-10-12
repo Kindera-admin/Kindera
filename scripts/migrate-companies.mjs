@@ -23,6 +23,13 @@ const hasText = (v) => typeof v === 'string' && v.trim() !== '';
 // Query forms of hasText, so the queries and the in-memory grouping agree on "blank".
 const TEXT = { $regex: /\S/ };
 const BLANK = { $not: /\S/ }; // missing, null, '' or whitespace only
+const BLANK_STRING = { $type: 'string', $not: /\S/ }; // '' or whitespace only
+const SPOC_STATUSES = ['approved', 'pending', 'rejected'];
+
+// Records apply can never link: corporate accounts with no usable name, and
+// events whose name is blank but not null (the old code did not treat those as public).
+const UNLINKABLE_USERS = { role: { $in: CORPORATE }, companyId: null, organizationName: BLANK };
+const UNLINKABLE_EVENTS = { companyId: null, organizationName: BLANK_STRING };
 
 export function parseArgs(argv) {
   const args = { env: '.env.local', mode: 'plan', yes: false, rollbackFile: null };
@@ -43,7 +50,7 @@ export function parseArgs(argv) {
 // whose SPOC was deleted stays private). Attendance only joins existing groups.
 export async function planMigration(db) {
   const users = await db.collection('users').find({ organizationName: { $exists: true } })
-    .project({ role: 1, organizationName: 1 }).toArray();
+    .project({ role: 1, organizationName: 1, status: 1 }).toArray();
   const events = await db.collection('events').find({ organizationName: { $exists: true } })
     .project({ organizationName: 1 }).toArray();
   const attendances = await db.collection('attendances').find({ organizationName: { $exists: true } })
@@ -52,17 +59,27 @@ export async function planMigration(db) {
   const groups = new Map();
   const add = (name, field) => {
     const key = toNameKey(name);
-    if (!groups.has(key)) groups.set(key, { key, variants: new Map(), users: 0, events: 0, attendance: 0 });
+    if (!groups.has(key)) {
+      const spocStatus = Object.fromEntries(SPOC_STATUSES.map((st) => [st, 0]));
+      groups.set(key, { key, variants: new Map(), users: 0, events: 0, attendance: 0, spocStatus });
+    }
     const g = groups.get(key);
     g[field] += 1;
     g.variants.set(name, (g.variants.get(name) || 0) + 1);
+    return g;
   };
 
   let ngoUsers = 0;
   let volunteerUsers = 0;
   for (const u of users) {
     if (!hasText(u.organizationName)) continue;
-    if (CORPORATE.includes(u.role)) add(u.organizationName, 'users');
+    if (CORPORATE.includes(u.role)) {
+      const g = add(u.organizationName, 'users');
+      if (u.role === 'org_spoc') {
+        const st = u.status || 'unknown';
+        g.spocStatus[st] = (g.spocStatus[st] || 0) + 1;
+      }
+    }
     else if (u.role === 'ngo') ngoUsers += 1;
     else if (u.role === 'volunteer') volunteerUsers += 1;
   }
@@ -81,13 +98,51 @@ export async function planMigration(db) {
       const variants = [...g.variants.entries()]
         .map(([name, count]) => ({ name, count }))
         .sort((x, y) => y.count - x.count || x.name.localeCompare(y.name));
-      return { key: g.key, name: variants[0].name.trim(), variants, users: g.users, events: g.events, attendance: g.attendance };
+      return { key: g.key, name: variants[0].name.trim(), variants, users: g.users, events: g.events, attendance: g.attendance, spocStatus: g.spocStatus };
     }).sort((x, y) => x.name.localeCompare(y.name)),
     unmatched: [...unmatched.entries()].map(([name, count]) => ({ name, count })),
     ngoUsers,
     volunteerUsers,
+    unlinkable: {
+      users: await db.collection('users').find(UNLINKABLE_USERS).project({ username: 1 }).toArray(),
+      events: await db.collection('events').find(UNLINKABLE_EVENTS).project({ title: 1 }).toArray(),
+    },
   };
 }
+
+// Dry-run report, one line per array entry.
+export function formatPlan(plan) {
+  const out = [`Proposed companies (${plan.groups.length}):`];
+  for (const g of plan.groups) {
+    out.push(`  ${g.name}  [users ${g.users}, events ${g.events}, attendance ${g.attendance}]`);
+    const st = g.spocStatus || {};
+    const extra = Object.keys(st).filter((k) => !SPOC_STATUSES.includes(k)).map((k) => `, ${st[k]} ${k}`).join('');
+    out.push(`    SPOCs: ${st.approved || 0} approved, ${st.pending || 0} pending, ${st.rejected || 0} rejected${extra}`);
+    if (g.variants.length > 1) out.push(`    merges: ${g.variants.map((v) => `"${v.name}" ×${v.count}`).join(', ')}`);
+  }
+  if (plan.unmatched.length) {
+    out.push('', 'Attendance names with no company (left unassigned unless the attendee is linked):');
+    for (const u of plan.unmatched) out.push(`  "${u.name}" ×${u.count}`);
+  }
+  const { users = [], events = [] } = plan.unlinkable || {};
+  if (users.length) {
+    out.push('', `SPOC/employee accounts with no company name (cannot be linked; assign a company or change the role) (${users.length}):`);
+    for (const u of users) out.push(`  ${u._id} ${u.username}`);
+  }
+  if (events.length) {
+    out.push('', `Events with a blank organizationName (cannot be linked; assign a company or set it to null to make them public) (${events.length}):`);
+    for (const e of events) out.push(`  ${e._id} "${e.title}"`);
+  }
+  out.push('', `NGO users moving to ngoName: ${plan.ngoUsers}`);
+  out.push(`Volunteers moving to employerName: ${plan.volunteerUsers}`);
+  return out;
+}
+
+const MAX_LISTED = 20;
+const listIds = (docs, label) => {
+  const shown = docs.slice(0, MAX_LISTED).map((d) => `${d._id} (${d[label]})`).join(', ');
+  return docs.length > MAX_LISTED ? `${shown}, and ${docs.length - MAX_LISTED} more` : shown;
+};
 
 // Distinct organizationName values in `col` that belong to a planned company.
 async function matchedNames(col, keys, extraFilter = {}) {
@@ -144,8 +199,8 @@ export async function applyMigration(db, { backupFile = null, now = new Date() }
   const userNames = await matchedNames(users, keys, { role: { $in: CORPORATE } });
   const eventNames = await matchedNames(events, keys);
   const attendanceNames = await matchedNames(attendances, keys);
-  const ngoFilter = { role: 'ngo', organizationName: { $exists: true, $nin: [null, ''] }, ngoName: { $in: [null, ''] } };
-  const volunteerFilter = { role: 'volunteer', organizationName: { $exists: true, $nin: [null, ''] }, employerName: { $in: [null, ''] } };
+  const ngoFilter = { role: 'ngo', organizationName: TEXT, ngoName: BLANK };
+  const volunteerFilter = { role: 'volunteer', organizationName: TEXT, employerName: BLANK };
 
   // Unlinked attendance of corporate users who are linked, or will be by this run
   // (e.g. rows an admin marked as "All Organizations"), takes the attendee's company.
@@ -255,17 +310,31 @@ export async function cleanupMigration(db, { backupFile = null, now = new Date()
   const events = db.collection('events');
   const attendances = db.collection('attendances');
 
-  const unlinked = await users.countDocuments({ role: { $in: CORPORATE }, companyId: null });
-  if (unlinked > 0) throw new Error(`Refusing cleanup: ${unlinked} SPOC/employee accounts have no companyId. Run --apply first.`);
-  const leaking = await events.countDocuments({ organizationName: { $exists: true, $nin: [null, ''] }, companyId: null });
-  if (leaking > 0) throw new Error(`Refusing cleanup: ${leaking} private events have no companyId and would become public. Run --apply first.`);
+  const nameless = await users.find(UNLINKABLE_USERS).project({ username: 1 }).toArray();
+  if (nameless.length) {
+    throw new Error(`Refusing cleanup: ${nameless.length} SPOC/employee accounts have no company name and no companyId, so --apply cannot link them. `
+      + `For each, assign a company or change the role: ${listIds(nameless, 'username')}`);
+  }
+  const unlinked = await users.find({ role: { $in: CORPORATE }, companyId: null }).project({ username: 1 }).toArray();
+  if (unlinked.length) {
+    throw new Error(`Refusing cleanup: ${unlinked.length} SPOC/employee accounts have no companyId. Run --apply again; `
+      + `if they stay unlinked, assign a company or change the role: ${listIds(unlinked, 'username')}`);
+  }
+  const blankEvents = await events.find(UNLINKABLE_EVENTS).project({ title: 1 }).toArray();
+  if (blankEvents.length) {
+    throw new Error(`Refusing cleanup: ${blankEvents.length} events have a blank organizationName and no companyId, so they would become public. `
+      + `For each, assign a company or set organizationName to null to make it public: ${listIds(blankEvents, 'title')}`);
+  }
+  const leaking = await events.find({ organizationName: TEXT, companyId: null }).project({ title: 1 }).toArray();
+  if (leaking.length) {
+    throw new Error(`Refusing cleanup: ${leaking.length} private events have no companyId and would become public. Run --apply again first: ${listIds(leaking, 'title')}`);
+  }
 
   // The old deployment keeps writing organizationName during the expand window, so
   // records created after --apply can still depend on the old fields.
-  const nonEmpty = { $exists: true, $nin: [null, ''] };
-  const ngoMissing = await users.countDocuments({ role: 'ngo', organizationName: nonEmpty, ngoName: { $in: [null, ''] } });
+  const ngoMissing = await users.countDocuments({ role: 'ngo', organizationName: TEXT, ngoName: BLANK });
   if (ngoMissing > 0) throw new Error(`Refusing cleanup: ${ngoMissing} NGO accounts have an organizationName but no ngoName. Run --apply again first.`);
-  const volunteerMissing = await users.countDocuments({ role: 'volunteer', organizationName: nonEmpty, employerName: { $in: [null, ''] } });
+  const volunteerMissing = await users.countDocuments({ role: 'volunteer', organizationName: TEXT, employerName: BLANK });
   if (volunteerMissing > 0) throw new Error(`Refusing cleanup: ${volunteerMissing} volunteer accounts have an organizationName but no employerName. Run --apply again first.`);
   // Only names apply can actually link (planned groups) count; an unrelated company
   // created later in the UI must not block cleanup forever.
@@ -396,7 +465,7 @@ export async function main(argv) {
   if (!uri) throw new Error(`MONGODB_URI is not set in ${args.env}`);
   console.log(`Target database: ${targetOf(uri)} (from ${args.env})`);
   if (args.mode !== 'plan' && !args.yes) {
-    throw new Error(`--${args.mode} writes to ${targetOf(uri)}. Re-run with --yes to confirm.`);
+    throw new Error(`--${args.mode === 'backfill' ? 'backfill-legacy' : args.mode} writes to ${targetOf(uri)}. Re-run with --yes to confirm.`);
   }
 
   await mongoose.connect(uri);
@@ -405,22 +474,15 @@ export async function main(argv) {
   const backupDir = path.resolve('backups');
 
   if (args.mode === 'plan') {
-    const plan = await planMigration(db);
-    console.log(`\nProposed companies (${plan.groups.length}):`);
-    for (const g of plan.groups) {
-      console.log(`  ${g.name}  [users ${g.users}, events ${g.events}, attendance ${g.attendance}]`);
-      if (g.variants.length > 1) console.log(`    merges: ${g.variants.map((v) => `"${v.name}" ×${v.count}`).join(', ')}`);
-    }
-    if (plan.unmatched.length) {
-      console.log('\nAttendance names with no company (left unassigned):');
-      for (const u of plan.unmatched) console.log(`  "${u.name}" ×${u.count}`);
-    }
-    console.log(`\nNGO users moving to ngoName: ${plan.ngoUsers}`);
-    console.log(`Volunteers moving to employerName: ${plan.volunteerUsers}`);
+    console.log(`\n${formatPlan(await planMigration(db)).join('\n')}`);
     console.log('\nNothing was written. Re-run with --apply --yes to apply.');
   } else if (args.mode === 'apply') {
     const backupFile = path.join(backupDir, `migrate-companies-apply-${stamp}.json`);
-    console.log(await applyMigration(db, { backupFile }));
+    const res = await applyMigration(db, { backupFile });
+    console.log(res);
+    for (const a of res.ambiguous) {
+      console.log(`NOT LINKED: "${a.name}" is already linked to more than one company (${a.companyIds.join(', ')}). Link these records by hand.`);
+    }
     console.log(`Backup: ${backupFile}`);
   } else if (args.mode === 'cleanup') {
     const backupFile = path.join(backupDir, `migrate-companies-cleanup-${stamp}.json`);

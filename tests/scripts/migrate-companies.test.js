@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import {
   parseArgs, planMigration, applyMigration, cleanupMigration, rollbackMigration, readBackup, main,
-  backfillLegacy,
+  backfillLegacy, formatPlan,
 } from '../../scripts/migrate-companies.mjs';
 
 let db;
@@ -631,6 +631,77 @@ describe('attendance linked through the attendee', () => {
     await expect(cleanupMigration(db, { now })).rejects.toThrow(/Refusing cleanup: 1 attendance records belong to a linked SPOC\/employee/);
     expect(await countOld()).toEqual(before);
     await applyMigration(db, { now });
+    await expect(cleanupMigration(db, { now })).resolves.toBeDefined();
+  });
+});
+
+// ---- Final review A5: unlinkable data is reported, not silently skipped ----
+
+async function seedUnlinkable() {
+  const ids = await seedLegacy();
+  const { insertedIds } = await db.collection('users').insertMany([
+    { username: 'noname', role: 'org_member', name: 'NN' },
+    { username: 'blankname', role: 'org_spoc', name: 'BN', organizationName: '   ', status: 'pending' },
+  ]);
+  const { insertedId: blankEvent } = await db.collection('events').insertOne({ title: 'Blank org event', organizationName: '  ', createdByRole: 'org_spoc' });
+  return { ...ids, noname: insertedIds[0], blankname: insertedIds[1], blankEvent };
+}
+
+describe('unlinkable data', () => {
+  it('the dry run lists corporate users with no usable name and events with a blank name', async () => {
+    const { noname, blankname, blankEvent } = await seedUnlinkable();
+    const plan = await planMigration(db);
+    expect(plan.unlinkable.users.map((u) => [String(u._id), u.username]).sort()).toEqual(
+      [[String(noname), 'noname'], [String(blankname), 'blankname']].sort(),
+    );
+    expect(plan.unlinkable.events.map((e) => [String(e._id), e.title])).toEqual([[String(blankEvent), 'Blank org event']]);
+    const out = formatPlan(plan).join('\n');
+    expect(out).toContain(`${noname} noname`);
+    expect(out).toContain(`${blankEvent} "Blank org event"`);
+  });
+  it("the dry run shows the status of each proposed company's SPOCs", async () => {
+    await seedLegacy();
+    await db.collection('users').updateOne({ username: 'spoc' }, { $set: { status: 'approved' } });
+    await db.collection('users').insertMany([
+      { username: 'spoc2', role: 'org_spoc', name: 'S2', organizationName: 'ACME Corp', status: 'pending' },
+      { username: 'spoc3', role: 'org_spoc', name: 'S3', organizationName: 'acme corp', status: 'rejected' },
+      { username: 'spoc4', role: 'org_spoc', name: 'S4', organizationName: 'Acme Corp', status: 'pending' },
+    ]);
+    const plan = await planMigration(db);
+    const acme = plan.groups.find((g) => g.key === 'acme corp');
+    expect(acme.spocStatus).toEqual({ approved: 1, pending: 2, rejected: 1 });
+    expect(plan.groups.find((g) => g.key === 'ghost ltd').spocStatus).toEqual({ approved: 0, pending: 0, rejected: 0 });
+    expect(formatPlan(plan).join('\n')).toContain('SPOCs: 1 approved, 2 pending, 1 rejected');
+  });
+  it('cleanup refuses with the ids of corporate users it cannot link and says how to fix them', async () => {
+    const { noname } = await seedUnlinkable();
+    await db.collection('events').deleteMany({ title: 'Blank org event' });
+    await applyMigration(db, { now });
+    const before = await countOld();
+    const err = await cleanupMigration(db, { now }).catch((e) => e);
+    expect(err.message).toMatch(/Refusing cleanup: 2 SPOC\/employee accounts have no company name and no companyId/);
+    expect(err.message).toContain(`${noname} (noname)`);
+    expect(err.message).toMatch(/assign a company or change the role/);
+    expect(await countOld()).toEqual(before);
+  });
+  it('cleanup refuses while an event has a blank organizationName, listing it, and unsets nothing', async () => {
+    const { blankEvent } = await seedUnlinkable();
+    await db.collection('users').deleteMany({ username: { $in: ['noname', 'blankname'] } });
+    await applyMigration(db, { now });
+    const before = await countOld();
+    const err = await cleanupMigration(db, { now }).catch((e) => e);
+    expect(err.message).toMatch(/Refusing cleanup: 1 events have a blank organizationName/);
+    expect(err.message).toContain(`${blankEvent} (Blank org event)`);
+    expect(await countOld()).toEqual(before);
+  });
+  it('apply does not copy a whitespace-only NGO or volunteer name', async () => {
+    await db.collection('users').insertMany([
+      { username: 'ngo-ws', role: 'ngo', name: 'N', organizationName: '   ' },
+      { username: 'vol-ws', role: 'volunteer', name: 'V', organizationName: '  ' },
+    ]);
+    await applyMigration(db, { now });
+    expect(await db.collection('users').findOne({ username: 'ngo-ws' })).not.toHaveProperty('ngoName');
+    expect(await db.collection('users').findOne({ username: 'vol-ws' })).not.toHaveProperty('employerName');
     await expect(cleanupMigration(db, { now })).resolves.toBeDefined();
   });
 });
