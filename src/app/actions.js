@@ -2672,52 +2672,40 @@ export async function deleteImpactPhoto(id) {
 
 // ── CHAT / MESSAGING ──────────────────────────────────────────────────────────
 
+const NOBODY = { _id: { $in: [] } };
+
+// Who `user` may message, as a User filter; null when chat is not available for
+// the role. getChatContacts lists these people and sendMessage only delivers to them.
+function chatContactFilter(user) {
+  if (!user) return null;
+  switch (user.role) {
+    case 'admin':
+      return { role: { $in: ['ngo', 'org_spoc', 'employee'] } };
+    case 'ngo':
+    case 'employee':
+      return { role: 'admin' };
+    case 'org_spoc':
+      // Fail closed: a SPOC without a company reaches admins only.
+      return isCorporate(user)
+        ? { $or: [{ role: 'admin' }, { role: 'org_member', companyId: user.companyId }] }
+        : { role: 'admin' };
+    case 'org_member':
+      // Fail closed: an employee without a company reaches no one.
+      return isCorporate(user) ? { role: 'org_spoc', companyId: user.companyId } : NOBODY;
+    default:
+      return null;
+  }
+}
+
 export async function getChatContacts() {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) return { success: false, message: 'Not authenticated' };
     await connectDB();
 
-    let contacts = [];
-
-    if (currentUser.role === 'admin') {
-      // Admin can chat: NGOs, SPOCs, and Employees
-      contacts = await User.find({ role: { $in: ['ngo', 'org_spoc', 'employee'] } })
-        .select('name role companyId ngoId ngoName')
-        .lean();
-    } else if (currentUser.role === 'ngo') {
-      // NGO can chat: Admins only
-      contacts = await User.find({ role: 'admin' })
-        .select('name role companyId ngoId ngoName')
-        .lean();
-    } else if (currentUser.role === 'org_spoc') {
-      // SPOC can chat: Admins and their own org members only
-      const [admins, members] = await Promise.all([
-        User.find({ role: 'admin' })
-          .select('name role companyId ngoId ngoName').lean(),
-        // Fail closed: a SPOC without a company sees no members.
-        currentUser.companyId
-          ? User.find({ role: 'org_member', companyId: currentUser.companyId })
-            .select('name role companyId ngoId ngoName').lean()
-          : [],
-      ]);
-      contacts = [...admins, ...members];
-    } else if (currentUser.role === 'employee') {
-      // Employee can only chat with Admin
-      contacts = await User.find({ role: 'admin' })
-        .select('name role companyId ngoId ngoName')
-        .lean();
-    } else if (currentUser.role === 'org_member') {
-      // Org member can only chat with their SPOC
-      // Fail closed: a member without a company sees no one.
-      contacts = currentUser.companyId
-        ? await User.find({ role: 'org_spoc', companyId: currentUser.companyId })
-          .select('name role companyId ngoId ngoName')
-          .lean()
-        : [];
-    } else {
-      return { success: false, message: 'Chat not available for your role' };
-    }
+    const filter = chatContactFilter(currentUser);
+    if (!filter) return { success: false, message: 'Chat not available for your role' };
+    const contacts = await User.find(filter).select('name role companyId ngoId ngoName').lean();
 
     const unreadCounts = await Message.aggregate([
       { $match: { receiver: currentUser._id, read: false } },
@@ -2796,9 +2784,8 @@ export async function sendMessage(formData) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) return { success: false, message: 'Not authenticated' };
-    if (!['admin', 'ngo', 'org_spoc', 'employee', 'org_member'].includes(currentUser.role)) {
-      return { success: false, message: 'Chat not available for your role' };
-    }
+    const contactFilter = chatContactFilter(currentUser);
+    if (!contactFilter) return { success: false, message: 'Chat not available for your role' };
     await connectDB();
 
     const receiverId = formData.get('receiverId');
@@ -2810,7 +2797,11 @@ export async function sendMessage(formData) {
     if (!receiverId) return { success: false, message: 'Receiver is required' };
     if (!content && !fileUrl) return { success: false, message: 'Message or file is required' };
 
-    const mongoose = (await import('mongoose')).default;
+    // Only someone in the sender's contact list; unknown and malformed ids answer the same.
+    const refused = { success: false, message: 'You cannot message this person' };
+    if (typeof receiverId !== 'string' || !isValidObjectId(receiverId)) return refused;
+    if (!(await User.exists({ $and: [{ _id: receiverId }, contactFilter] }))) return refused;
+
     const message = await Message.create({
       sender: currentUser._id,
       receiver: new mongoose.Types.ObjectId(receiverId),
@@ -2836,7 +2827,7 @@ export async function sendMessage(formData) {
     };
   } catch (error) {
     console.error('Error sending message:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not send your message. Please try again.' };
   }
 }
 
