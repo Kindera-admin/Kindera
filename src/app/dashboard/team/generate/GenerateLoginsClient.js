@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Download, Users, FileSpreadsheet, Loader2, UploadCloud, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { Download, FileDown, Users, FileSpreadsheet, Loader2, UploadCloud, ChevronLeft, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { generateTeamLogins, bulkCreateFromExcel } from '@/app/actions';
@@ -193,6 +193,14 @@ export default function GenerateLoginsClient({ role, companyId, companyName }) {
                       )}
                     </label>
                   </div>
+                  <a
+                    href="/templates/kindera-team-logins-example.xlsx"
+                    download
+                    className="mt-2 inline-flex items-center gap-1.5 min-h-11 text-sm font-medium text-brand-accent hover:underline"
+                  >
+                    <FileDown className="w-4 h-4" aria-hidden="true" />
+                    Download example sheet
+                  </a>
                 </div>
                 <Button
                   type="submit"

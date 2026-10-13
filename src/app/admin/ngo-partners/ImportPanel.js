@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { FileSpreadsheet, Loader2 } from 'lucide-react';
+import { FileDown, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -119,6 +119,14 @@ export default function ImportPanel({ companyOptions, onImported, onClose }) {
         <p className="text-xs text-gray-500">
           First row = headers: {COLUMNS.join(', ')}. <span className="font-medium">name</span> and <span className="font-medium">description</span> are required. Separate several programs with semicolons. Up to {MAX_ROWS} rows.
         </p>
+        <a
+          href="/templates/kindera-ngo-import-example.xlsx"
+          download
+          className="inline-flex items-center gap-1.5 min-h-11 text-sm font-medium text-emerald-700 hover:underline"
+        >
+          <FileDown className="w-4 h-4" aria-hidden="true" />
+          Download example sheet
+        </a>
       </div>
 
       <div className="flex justify-end">
