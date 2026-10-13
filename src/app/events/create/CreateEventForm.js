@@ -11,7 +11,9 @@ import { toast } from 'sonner';
 import { createEvent } from '@/app/actions';
 import { ImageIcon, Upload, X } from 'lucide-react';
 
-export default function CreateEventForm() {
+// companyChoices: companies an NGO linked to a company card may create events for.
+// Empty for everyone else, and the form is unchanged for them.
+export default function CreateEventForm({ companyChoices = [] }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
@@ -29,6 +31,7 @@ export default function CreateEventForm() {
       date: '',
       location: '',
       capacity: '',
+      companyId: '',
     },
   });
 
@@ -71,6 +74,7 @@ export default function CreateEventForm() {
       formData.append('location', data.location);
       if (data.capacity) formData.append('capacity', data.capacity);
       if (imageUrl) formData.append('imageUrl', imageUrl);
+      if (companyChoices.length > 0) formData.append('companyId', data.companyId);
 
       // Calculate total duration in decimal hours
       const hrs = parseFloat(data.durationHours || 0);
@@ -126,6 +130,27 @@ export default function CreateEventForm() {
               )}
             </div>
             
+            {companyChoices.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="companyId">Company *</Label>
+                <select
+                  id="companyId"
+                  className="w-full h-11 px-3 border rounded-md bg-white"
+                  aria-describedby="companyId-help"
+                  {...register('companyId', { required: 'Choose which company this event is for' })}
+                >
+                  <option value="">Choose a company</option>
+                  {companyChoices.map((c) => (
+                    <option key={c._id} value={c._id}>{c.name}</option>
+                  ))}
+                </select>
+                <p id="companyId-help" className="text-sm text-gray-500">Only this company&apos;s team will see the event.</p>
+                {errors.companyId && (
+                  <p className="text-sm text-red-500">{errors.companyId.message}</p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="description">Description *</Label>
               <textarea

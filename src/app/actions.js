@@ -14,7 +14,7 @@ import {
   resolveCompanyAccess, eventVisibilityFilter, canSeeEvent, canManageEvent,
   getCompanyName, getCompaniesByIds, asObjectId, isStaff, isCorporate, sameCompany,
 } from '@/lib/company';
-import { partnerVisibilityFilter, myNgosFilter } from '@/lib/ngo';
+import { partnerVisibilityFilter, myNgosFilter, ngoEventCompanies } from '@/lib/ngo';
 import { slugify, loginSlug, employeeLogin } from '@/lib/loginName';
 import { normalizeEmail, isValidEmail, EMAIL_COLLATION } from '@/lib/email';
 import bcrypt from 'bcryptjs';
@@ -671,12 +671,17 @@ export async function createEvent(formData) {
     await connectDB();
     
     const user = await getCurrentUser();
-    
+
     // Only admin, NGO, and org_spoc can create events
-    if (!['admin', 'ngo', 'org_spoc'].includes(user.role)) {
+    if (!user || !['admin', 'ngo', 'org_spoc'].includes(user.role)) {
       return { success: false, message: 'You do not have permission to create events' };
     }
-    
+
+    // Same rule as login: only approved accounts act (a rejected login's cookie may still be live).
+    if (user.role !== 'admin' && (user.status ?? 'pending') !== 'approved') {
+      return { success: false, message: 'Your account is not active' };
+    }
+
     const title = formData.get('title');
     const description = formData.get('description');
     const date = formData.get('date');
@@ -693,7 +698,27 @@ export async function createEvent(formData) {
     if (user.role === 'org_spoc' && !user.companyId) {
       return { success: false, message: 'Your account is not linked to a company' };
     }
-    
+
+    // SPOC events belong to their company. An NGO linked to a company card must
+    // pick one of the card's companies; other NGOs and admins create public events.
+    let companyId = user.role === 'org_spoc' ? user.companyId : null;
+    if (user.role === 'ngo') {
+      const partner = user.ngoPartnerId
+        ? await NGOPartner.findById(user.ngoPartnerId).select('companyIds').lean()
+        : null;
+      const allowed = ngoEventCompanies(user, partner);
+      if (allowed.length === 0) {
+        return { success: false, message: 'Your NGO account is no longer active' };
+      }
+      if (allowed[0] !== null) {
+        const chosen = formData.get('companyId');
+        if (typeof chosen !== 'string' || !isValidObjectId(chosen) || !allowed.includes(chosen)) {
+          return { success: false, message: 'Choose which company this event is for' };
+        }
+        companyId = chosen;
+      }
+    }
+
     const event = await Event.create({
       title,
       description,
@@ -705,7 +730,7 @@ export async function createEvent(formData) {
       imageUrl: imageUrl || '',
       createdBy: user._id,
       createdByRole: user.role,
-      companyId: user.role === 'org_spoc' ? user.companyId : null,
+      companyId,
       status: 'upcoming'
     });
     
