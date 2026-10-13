@@ -2970,9 +2970,15 @@ export async function getMessages(contactId) {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) return { success: false, message: 'Not authenticated' };
+    const contactFilter = chatContactFilter(currentUser);
+    if (!contactFilter) return { success: false, message: 'Chat not available for your role' };
     await connectDB();
 
-    const mongoose = (await import('mongoose')).default;
+    // Same contact set as sendMessage; unknown and malformed ids answer the same.
+    const refused = { success: false, message: 'You cannot view this conversation' };
+    if (typeof contactId !== 'string' || !isValidObjectId(contactId)) return refused;
+    if (!(await User.exists({ $and: [{ _id: contactId }, contactFilter] }))) return refused;
+
     const cId = new mongoose.Types.ObjectId(contactId);
     const meId = currentUser._id;
 
@@ -3010,7 +3016,7 @@ export async function getMessages(contactId) {
     return { success: true, messages: serialized };
   } catch (error) {
     console.error('Error getting messages:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not load messages. Please try again.' };
   }
 }
 
