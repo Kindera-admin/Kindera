@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { normalizeEmail, EMAIL_RE, EMAIL_MAX } from '../lib/email.js';
+import { normalizeEmail, isValidEmail } from '../lib/email.js';
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -61,8 +61,16 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     set: normalizeEmail,
-    match: [EMAIL_RE, 'Invalid email address'],
-    maxlength: [EMAIL_MAX, 'Invalid email address'],
+    // Checked only when the email itself is set or changed: legacy values stored
+    // before this rule (e.g. 'a@b') must not make unrelated saves fail.
+    validate: {
+      validator(value) {
+        const doc = typeof this?.isModified === 'function' ? this : null;
+        if (doc && !doc.isNew && !doc.isModified('email')) return true;
+        return value == null || isValidEmail(value);
+      },
+      message: 'Invalid email address',
+    },
   },
   age: { type: Number, default: null },
   photoUrl: { type: String, default: '' },

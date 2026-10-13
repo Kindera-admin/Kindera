@@ -2462,7 +2462,8 @@ export async function updatePassword(currentPassword, newPassword) {
 
     return { success: true };
   } catch (error) {
-    return { success: false, message: error.message };
+    console.error('Error updating password:', error);
+    return { success: false, message: 'Could not update your password. Please try again.' };
   }
 }
 
@@ -2856,7 +2857,7 @@ export async function registerForEventLoggedIn(eventId, comment, volunteersCount
     return { success: true, status };
   } catch (error) {
     console.error('Logged in registration error:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not register you for this event. Please try again.' };
   }
 }
 
@@ -2900,7 +2901,7 @@ export async function updateEventRegistrationStatus(formData) {
     return { success: true };
   } catch (error) {
     console.error('Error updating event registration status:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not update the registration. Please try again.' };
   }
 }
 

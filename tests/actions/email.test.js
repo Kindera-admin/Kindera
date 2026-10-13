@@ -5,7 +5,10 @@ import Attendance from '@/models/Attendance';
 import { getCurrentUser } from '@/lib/auth';
 import { actAs } from '../helpers/auth.js';
 import { makeWorld, makeUser, makeEvent, makeCompany } from '../helpers/factories.js';
-import { updateEmail, bulkCreateFromExcel, exportDetailedAttendanceData, registerForEvent } from '@/app/actions';
+import {
+  updateEmail, bulkCreateFromExcel, exportDetailedAttendanceData, registerForEvent,
+  updatePassword, registerForEventLoggedIn, updateEventRegistrationStatus,
+} from '@/app/actions';
 
 const raw = (id) => User.collection.findOne({ _id: id });
 const INVALID = { success: false, message: 'Enter a valid email address' };
@@ -278,5 +281,65 @@ describe('guest registration and the new email field (R8)', () => {
     const res = await registerForEvent(fd, String(ev._id));
     expect(res).toEqual({ success: true, pending: true });
     expect(await User.collection.findOne({ username: fd.get('username') })).not.toHaveProperty('email');
+  });
+});
+
+describe('legacy stored emails never break unrelated saves (N1)', () => {
+  // Written before the validators existed: too short and padded/mixed case.
+  async function legacyUser(email) {
+    const u = await makeUser('volunteer');
+    await User.collection.updateOne({ _id: u._id }, { $set: { email } });
+    return u;
+  }
+  const regForm = (userId, eventId) => {
+    const fd = new FormData();
+    fd.append('userId', String(userId));
+    fd.append('eventId', String(eventId));
+    fd.append('status', 'approved');
+    return fd;
+  };
+  it('lets a user with a legacy invalid email change their password, register, and be approved', async () => {
+    for (const email of ['a@b', ' Padded@Example.com ']) {
+      const u = await legacyUser(email);
+      const admin = await makeUser('admin');
+      const ev = await makeEvent(admin);
+      await actAs(u);
+      expect(await updatePassword('password123', 'newpass456')).toEqual({ success: true });
+      expect((await registerForEventLoggedIn(String(ev._id), '')).success).toBe(true);
+      await actAs(admin);
+      expect(await updateEventRegistrationStatus(regForm(u._id, ev._id))).toEqual({ success: true });
+      expect((await raw(u._id)).email).toBe(email);
+    }
+  });
+  it('still refuses setting an invalid new email, through the model and through updateEmail', async () => {
+    const u = await legacyUser('a@b');
+    const doc = await User.findById(u._id);
+    doc.email = 'c@d';
+    await expect(doc.save()).rejects.toThrow(/email/i);
+    await expect(makeUser('volunteer', { email: 'x@y' })).rejects.toThrow(/email/i);
+    await actAs(u);
+    expect(await updateEmail('c@d')).toEqual(INVALID);
+    expect((await raw(u._id)).email).toBe('a@b');
+  });
+  it('answers failures in those actions with safe messages', async () => {
+    const u = await makeUser('volunteer');
+    const admin = await makeUser('admin');
+    const ev = await makeEvent(admin);
+    const spy = vi.spyOn(User.prototype, 'save').mockRejectedValue(new Error('Validation failed: internal detail'));
+    try {
+      await actAs(u);
+      const pw = await updatePassword('password123', 'newpass456');
+      const reg = await registerForEventLoggedIn(String(ev._id), '');
+      expect(pw).toEqual({ success: false, message: 'Could not update your password. Please try again.' });
+      expect(reg).toEqual({ success: false, message: 'Could not register you for this event. Please try again.' });
+      spy.mockRestore();
+      expect((await registerForEventLoggedIn(String(ev._id), '')).success).toBe(true);
+      vi.spyOn(User.prototype, 'save').mockRejectedValue(new Error('Validation failed: internal detail'));
+      await actAs(admin);
+      expect(await updateEventRegistrationStatus(regForm(u._id, ev._id)))
+        .toEqual({ success: false, message: 'Could not update the registration. Please try again.' });
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });
