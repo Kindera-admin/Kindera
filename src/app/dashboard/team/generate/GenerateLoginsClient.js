@@ -6,6 +6,7 @@ import { Download, Users, FileSpreadsheet, Loader2, UploadCloud, ChevronLeft, Ch
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { generateTeamLogins, bulkCreateFromExcel } from '@/app/actions';
+import { accountRowsFromSheet, loginSlug } from '@/lib/loginName';
 import Link from 'next/link';
 
 export default function GenerateLoginsClient({ role, companyId, companyName }) {
@@ -58,12 +59,8 @@ export default function GenerateLoginsClient({ role, companyId, companyName }) {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { raw: false });
 
-        // Map column names flexibly
-        const rows = data.map(row => {
-          const name = row['Name'] || row['Employee Name'] || row['Full Name'];
-          const username = row['Email'] || row['Username'] || row['Employee ID'];
-          return { name, username };
-        }).filter(r => r.name); // only keep rows that have a name
+        // Name / ID / Email columns; rows without a name are skipped.
+        const rows = accountRowsFromSheet(data);
 
         if (rows.length === 0) {
           toast.error('Could not find a "Name" column in the Excel file');
@@ -185,7 +182,9 @@ export default function GenerateLoginsClient({ role, companyId, companyName }) {
                     <label htmlFor="excel-upload" className="cursor-pointer flex flex-col items-center">
                       <UploadCloud className="w-10 h-10 text-brand-accent mb-3" />
                       <span className="text-sm font-medium text-gray-900 mb-1">Click to browse or drag file</span>
-                      <span className="text-xs text-gray-500">Must contain a &quot;Name&quot; column</span>
+                      <span className="text-xs text-gray-500">
+                        Columns: Name (required), ID (optional — becomes the login, e.g. {loginSlug(companyName)}-1001), Email (optional)
+                      </span>
                       {excelFile && (
                         <span className="mt-4 px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
                           Selected: {excelFile.name}

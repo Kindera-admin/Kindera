@@ -157,6 +157,7 @@ We have implemented and successfully deployed 4 significant features to make Kin
 * **Shared company dashboard**: All SPOCs of a company see one shared dashboard. Any of them can manage the company's events, registrations and attendance, and delete the company's internal events from the events history page (public events cannot be deleted there).
 * **Internal events**: Internal events are visible only to the company that created them. Public events stay visible to everyone.
 * **Corporate overview**: The admin corporate overview shows one row per company and lists every SPOC, including pending ones. Archived companies drop out of the overview.
+* **Employee IDs in the Excel upload**: On Generate Logins → Excel Upload, an `ID`, `Employee ID` or `Emp ID` column becomes the login as `<company>-<ID>` (for Microsoft and ID 1001, `microsoft-1001`). The ID is lowercased, and characters other than letters, digits, `.`, `_` and `-` become `-`. Without an ID the login comes from the `Email`/`Username` column, otherwise it is generated. An ID that repeats in the sheet, or whose login already exists, fails that row only and is reported.
 
 ---
 

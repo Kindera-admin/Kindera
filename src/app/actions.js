@@ -15,6 +15,7 @@ import {
   getCompanyName, getCompaniesByIds, asObjectId, isStaff, isCorporate, sameCompany,
 } from '@/lib/company';
 import { partnerVisibilityFilter, myNgosFilter } from '@/lib/ngo';
+import { slugify, loginSlug, employeeLogin } from '@/lib/loginName';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { cookies } from 'next/headers';
@@ -1524,9 +1525,6 @@ async function teamCompanyFor(caller, requestedCompanyId) {
   return Company.findOne({ _id: id, status: 'active' }).select('name').lean();
 }
 
-const slugify = (name) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-// Username prefix for generated logins; a name with no ASCII letters falls back to "team".
-const loginSlug = (name) => slugify(name).replace(/^-+|-+$/g, '') || 'team';
 
 // Next free <slug>-<n> index across every user, not only this company's:
 // two companies can share a slug ("Acme" and "ACME!").
@@ -1627,9 +1625,13 @@ export async function generateTeamLogins(formData) {
   }
 }
 
+const cellText = (v) => (typeof v === 'string' || typeof v === 'number' ? String(v).trim() : '');
+
 /**
  * Bulk create org_member accounts from parsed Excel rows.
- * Each row: { name, username (optional), email (optional) }
+ * Each row: { name, employeeId (optional), username (optional), email (optional) }
+ * Username: <companySlug>-<employeeId>, else the Email/Username cell, else generated.
+ * A username that is taken (by another account or an earlier row) fails that row only.
  */
 export async function bulkCreateFromExcel(rows, companyId = null) {
   try {
@@ -1654,9 +1656,11 @@ export async function bulkCreateFromExcel(rows, companyId = null) {
     const usersToCreate    = [];
 
     for (let i = 0; i < rows.length; i++) {
-      const row      = rows[i];
-      const username = row.username?.trim() || `${orgSlug}-emp-${Date.now()}-${i}`;
-      const name     = row.name?.trim() || `${orgName} Volunteer ${i + 1}`;
+      const row      = rows[i] || {};
+      const username = employeeLogin(orgSlug, row.employeeId)
+        || cellText(row.username)
+        || `${orgSlug}-emp-${Date.now()}-${i}`;
+      const name     = cellText(row.name) || `${orgName} Volunteer ${i + 1}`;
       const password = Math.random().toString(36).slice(2, 10);
       const hashed   = await bcrypt.hash(password, salt);
 

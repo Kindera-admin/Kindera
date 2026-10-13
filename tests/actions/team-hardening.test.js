@@ -110,6 +110,65 @@ describe('markAttendance payload validation (B4)', () => {
   });
 });
 
+describe('Employee ID column in the bulk upload (R7)', () => {
+  async function microsoftSpoc() {
+    const company = await makeCompany('Microsoft');
+    const spoc = await makeUser('org_spoc', { companyId: company._id });
+    await actAs(spoc);
+    return { company, spoc };
+  }
+  const TAKEN = 'The others were not created because their usernames are already taken.';
+
+  it('turns an ID into <companySlug>-<ID>', async () => {
+    const { company } = await microsoftSpoc();
+    const res = await bulkCreateFromExcel([{ name: 'Ravi', employeeId: '1001' }]);
+    expect(res).toMatchObject({ success: true, created: 1, failed: 0 });
+    expect(res.credentials[0]).toMatchObject({ name: 'Ravi', username: 'microsoft-1001' });
+    expect(String((await User.findOne({ username: 'microsoft-1001' })).companyId)).toBe(String(company._id));
+  });
+  it('uses the same prefix as generated logins', async () => {
+    const company = await makeCompany('Tata Consultancy Services!');
+    await actAs(await makeUser('org_spoc', { companyId: company._id }));
+    const generated = await generateTeamLogins(form({ count: '1' }));
+    const bulk = await bulkCreateFromExcel([{ name: 'Ravi', employeeId: '1001' }]);
+    expect(generated.credentials[0].username).toBe('tata-consultancy-services-001');
+    expect(bulk.credentials[0].username).toBe('tata-consultancy-services-1001');
+  });
+  it('lets the ID win over Email, and falls back to Email, then a generated name', async () => {
+    await microsoftSpoc();
+    const res = await bulkCreateFromExcel([
+      { name: 'Ravi', employeeId: '1002', username: 'ravi@example.com' },
+      { name: 'Meena', username: 'meena@example.com' },
+      { name: 'Arun', employeeId: '###' },
+    ]);
+    expect(res.credentials.map((c) => c.username).slice(0, 2)).toEqual(['microsoft-1002', 'meena@example.com']);
+    expect(res.credentials[2].username).toMatch(/^microsoft-emp-\d+-2$/);
+  });
+  it('creates one row and reports the other when an ID appears twice in one sheet', async () => {
+    await microsoftSpoc();
+    const res = await bulkCreateFromExcel([{ name: 'First', employeeId: '1003' }, { name: 'Second', employeeId: ' 1003 ' }]);
+    expect(res).toMatchObject({ success: true, created: 1, failed: 1, message: `Created 1 of 2 accounts. ${TAKEN}` });
+    expect(res.credentials.map((c) => c.name)).toEqual(['First']);
+    expect(await User.countDocuments({ username: 'microsoft-1003' })).toBe(1);
+  });
+  it('reports an ID whose login is already taken, creates the rest, and leaks nothing', async () => {
+    const { company } = await microsoftSpoc();
+    const other = await makeCompany('MICROSOFT!');
+    await makeUser('org_member', { username: 'microsoft-1004', companyId: other._id });
+    const res = await bulkCreateFromExcel([{ name: 'Taken', employeeId: '1004' }, { name: 'Free', employeeId: '1005' }]);
+    expect(res).toMatchObject({ success: true, created: 1, failed: 1, message: `Created 1 of 2 accounts. ${TAKEN}` });
+    expect(res.credentials.map((c) => c.username)).toEqual(['microsoft-1005']);
+    expect(JSON.stringify(res)).not.toMatch(/E11000|duplicate key|1004/);
+    expect(String((await User.findOne({ username: 'microsoft-1004' })).companyId)).toBe(String(other._id));
+    expect(String((await User.findOne({ username: 'microsoft-1005' })).companyId)).toBe(String(company._id));
+  });
+  it('sanitises odd characters in the ID', async () => {
+    await microsoftSpoc();
+    const res = await bulkCreateFromExcel([{ name: 'Odd', employeeId: '  EMP/10 05#  ' }, { name: 'Dots', employeeId: 'A_b.C' }]);
+    expect(res.credentials.map((c) => c.username)).toEqual(['microsoft-emp-10-05', 'microsoft-a_b.c']);
+  });
+});
+
 describe('markAttendance takes attended as a real boolean (R5)', () => {
   // memberA attended the event for 3 hours.
   async function attendedFor3h() {
