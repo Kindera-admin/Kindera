@@ -74,8 +74,21 @@ Run on the test database first, then production. Every write needs `--yes`.
 5. Verify.
 6. `--cleanup --yes` after a few days without issues.
 
-Rollback before cleanup: `--backfill-legacy --yes`, then redeploy the previous `main`, then optionally `--rollback <apply backup> --yes`.
-Rollback after cleanup: `--rollback <cleanup backup> --yes`, then `--backfill-legacy --yes`, then redeploy the old code.
+Rollback before cleanup:
+
+1. `--backfill-legacy --yes`.
+2. Redeploy the previous `main`.
+3. `--backfill-legacy --yes` again, right after the old code is live, for records the new code wrote while the redeploy was going out.
+4. Roll back every apply backup, newest first (`--rollback <apply backup> --yes` for each), or skip this step: `companyId` does no harm to the old code. A company that newer records still use is kept and reported.
+
+Rollback after cleanup:
+
+1. `--rollback <cleanup backup> --yes`.
+2. `--backfill-legacy --yes`.
+3. Redeploy the old code.
+4. `--backfill-legacy --yes` again, right after the old code is live.
+
+`--backfill-legacy` exits non-zero when records point at a company that no longer exists. It still writes an `Unknown company (<id>)` placeholder on them so the old code keeps them private. Restore those companies or re-link the records, then run it again. `--cleanup` refuses while any such record exists.
 
 ## Project structure
 

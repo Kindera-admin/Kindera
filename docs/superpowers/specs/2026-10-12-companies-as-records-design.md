@@ -122,7 +122,7 @@ Specific rules:
 
 ## 7. Migration (`scripts/migrate-companies.mjs`)
 
-Usage: `node scripts/migrate-companies.mjs [--env <file>] [--apply | --cleanup | --rollback <backup.json>]`. It reads `MONGODB_URI` from `--env` (default `.env.local`) and prints the target cluster host before doing anything.
+Usage: `node scripts/migrate-companies.mjs [--env <file>] [--apply | --cleanup | --rollback <backup.json> | --backfill-legacy] [--yes]`. Every mode except the dry run writes, and refuses to run without `--yes`. It reads `MONGODB_URI` from `--env` (default `.env.local`) and prints the target cluster host before doing anything.
 
 - **Dry run** (default, writes nothing):
   - Collects every `organizationName` from `org_spoc` / `org_member` users, events and attendance.
@@ -135,14 +135,14 @@ Usage: `node scripts/migrate-companies.mjs [--env <file>] [--apply | --cleanup |
   - Copies NGO `organizationName` to `ngoName`, and volunteer `organizationName` to `employerName`.
   - **Leaves `organizationName` / `organizationLogo` in place**, so the currently deployed code keeps working.
   - Idempotent: re-running skips documents that already have the new fields.
-  - Follows earlier links first: a name already linked to a company (on a user, event or attendance record) keeps pointing at that company even after it is renamed. A name linked to two different companies is not linked at all and is reported.
+  - Follows earlier links first: a name already linked to a company (on a user, event or attendance record) keeps pointing at that company even after it is renamed. A name linked to two different companies is not linked at all and is reported. A link to a company that no longer exists is ignored, so a re-run never links a record to a missing company.
   - Attendance with no `companyId` whose attendee is a linked SPOC/employee (for example rows labelled "All Organizations") takes the attendee's company.
 - **Dry run also lists** corporate users with no usable company name and events whose `organizationName` is blank (by `_id` and username/title), and each proposed company's SPOCs by status (approved/pending/rejected) so typo or squatter companies stand out.
-- **`--cleanup` (contract):** unsets `organizationName` and `organizationLogo` on every collection. It refuses, listing the ids, while any `org_spoc` / `org_member` has no `companyId`, any event has a blank or unlinked `organizationName`, or any attendance it could still link has no `companyId`. Blank means empty after trimming, everywhere.
+- **`--cleanup` (contract):** unsets `organizationName` and `organizationLogo` on every collection. It refuses, listing the ids, while any user, event or attendance `companyId` points at a company that no longer exists (restore the company or re-link the records), any `org_spoc` / `org_member` has no `companyId`, any event has a blank or unlinked `organizationName`, or any attendance it could still link has no `companyId`. Blank means empty after trimming, everywhere.
 - **`--rollback <backup.json>`:** field-scoped, never a whole-document replace, so later changes (hours, registrations, titles) survive.
-  - Apply backup: unsets `companyId` on the backed-up users, events and attendance, restores `ngoName` / `employerName` to their backed-up values (or unsets them), and deletes only the companies that apply inserted.
+  - Apply backup: unsets `companyId` on the backed-up users, events and attendance, restores `ngoName` / `employerName` to their backed-up values (or unsets them), and deletes the companies that apply inserted. A created company that is still referenced by records outside the backup (users, events or attendance written by the new code, or NGO partner cards) is kept and reported as "kept (still referenced by N records)".
   - Cleanup backup: sets `organizationName` / `organizationLogo` back from the backup and leaves every other field alone.
-- **`--backfill-legacy`:** writes `organizationName = Company.name` on SPOCs/employees, events and attendance that have a `companyId` and no non-blank `organizationName`, and `organizationLogo` on SPOCs from `Company.logoUrl` when missing. Writes a backup first and prints counts. Run it before redeploying the old code, so internal events created by the new code do not match the old public filter.
+- **`--backfill-legacy`:** writes `organizationName = Company.name` on SPOCs/employees, events and attendance that have a `companyId` and no non-blank `organizationName`, and `organizationLogo` on SPOCs from `Company.logoUrl` when missing. Writes a backup first and prints counts. Run it before redeploying the old code and again right after the old code is live, so internal events created by the new code do not match the old public filter. Fails closed: a record whose `companyId` has no Company gets the placeholder `Unknown company (<companyId>)` (one name per missing company, so the old code never groups two lost companies together); the run reports them and exits non-zero after writing, on every run until the companies are restored or the records re-linked.
 
 ## 8. Release order
 
@@ -158,12 +158,16 @@ Every write needs `--yes`, and `--env <file>` picks the database. Run the same s
 **Rollback before cleanup:**
 1. `--backfill-legacy --yes`, so records created by the new code carry `organizationName` again.
 2. Redeploy the previous `main`. The old fields still exist, so the old code works.
-3. Optionally `--rollback <apply backup> --yes` to remove `companyId` and the created companies.
+3. **`--backfill-legacy --yes` again, right after the old code is live.** The new code kept writing `companyId`-only records until the redeploy finished; this names the records it wrote in that window (the mirror of forward step 4).
+4. Either roll back **every** apply backup, newest first (`--rollback <apply backup> --yes` for each; forward steps 2 and 4 each wrote one), or skip this step: `companyId` does no harm to the old code. Companies still referenced by newer records are kept and reported.
 
 **Rollback after cleanup:**
 1. `--rollback <cleanup backup> --yes` to put `organizationName` / `organizationLogo` back.
 2. `--backfill-legacy --yes` for records created after cleanup.
 3. Redeploy the old code.
+4. **`--backfill-legacy --yes` again, right after the old code is live**, for records the new code wrote while the redeploy was going out.
+
+If `--backfill-legacy` exits non-zero, some records point at a company that no longer exists. They carry an `Unknown company (<id>)` placeholder, so the old code keeps them private; restore those companies or re-link the records, then run it again.
 
 I cannot connect to the production database. Every production step is run by the user.
 
@@ -177,7 +181,8 @@ No test runner exists today. Add:
   - idempotent re-runs;
   - NGO and volunteer field moves;
   - cleanup refusing to run when it isn't safe;
-  - rollback restoring documents exactly.
+  - rollback restoring only the fields the migration changed (never whole documents), so later changes survive, and keeping any created company that newer records still reference;
+  - `--backfill-legacy` naming records for the old code, failing closed on missing companies.
 - **QA seed** (`scripts/seed-qa.mjs` / `--remove`), for the test database only. The script refuses to run on any other cluster. It creates clearly prefixed `qa-` accounts:
   - an admin;
   - two SPOCs in Company A and one employee in Company A;
