@@ -427,6 +427,7 @@ export default function UsersClient({ initialUsers = [], currentUserId }) {
         title="Delete User"
         message="Are you sure you want to delete this user? All their associated data will be removed. This action cannot be undone."
         confirmText="Delete User"
+        confirmPhrase={users.find((u) => u._id === showConfirmation)?.username || ''}
         isLoading={!!isDeleting}
       />
     </div>

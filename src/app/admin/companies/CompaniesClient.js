@@ -7,6 +7,7 @@ import { Archive, ArchiveRestore, Building2, Check, ImageUp, Loader2, Pencil, Pl
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cldImage } from '@/lib/cloudinary';
+import ConfirmModal from '@/components/ConfirmModal';
 import {
   createCompany, renameCompany, archiveCompany, restoreCompany, updateCompanyLogo,
 } from '@/app/companyActions';
@@ -19,6 +20,7 @@ export default function CompaniesClient({ companies }) {
   const [editName, setEditName] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [uploadingId, setUploadingId] = useState(null);
+  const [confirmArchive, setConfirmArchive] = useState(null);
   const fileRef = useRef(null);
   const logoTarget = useRef(null);
 
@@ -154,7 +156,7 @@ export default function CompaniesClient({ companies }) {
                       {uploadingId === c._id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ImageUp className="h-4 w-4" aria-hidden="true" />}
                     </Button>
                     {c.status === 'active' ? (
-                      <Button variant="outline" size="icon" className="hit-target" aria-label={`Archive ${c.name}`} disabled={isPending} onClick={() => act(() => archiveCompany(c._id), `${c.name} archived`)}>
+                      <Button variant="outline" size="icon" className="hit-target" aria-label={`Archive ${c.name}`} disabled={isPending} onClick={() => setConfirmArchive({ id: c._id, name: c.name })}>
                         <Archive className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     ) : (
@@ -169,6 +171,21 @@ export default function CompaniesClient({ companies }) {
           </tbody>
         </table>
       </div>
+
+      <ConfirmModal
+        isOpen={!!confirmArchive}
+        onClose={() => !isPending && setConfirmArchive(null)}
+        onConfirm={() => act(
+          () => archiveCompany(confirmArchive.id),
+          `${confirmArchive.name} archived`,
+          () => setConfirmArchive(null),
+        )}
+        title="Archive company"
+        message={`Archive "${confirmArchive?.name}"? It will disappear from company pickers, the corporate overview and new logins. Its SPOCs keep their accounts, and you can restore it later.`}
+        confirmText="Archive company"
+        confirmPhrase={confirmArchive?.name || ''}
+        isLoading={isPending}
+      />
     </div>
   );
 }

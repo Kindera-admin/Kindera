@@ -421,8 +421,9 @@ export default function NGOPartnersClient({ initialPartners, companies = [] }) {
         onClose={() => !deletingId && setConfirmDeleteId(null)}
         onConfirm={handleDeleteConfirm}
         title="Delete NGO Partner"
-        message="Are you sure you want to delete this NGO partner? This action cannot be undone."
+        message="Are you sure you want to delete this NGO partner? Its NGO login will stop working. This action cannot be undone."
         confirmText="Delete NGO"
+        confirmPhrase={partners.find((p) => p._id === confirmDeleteId)?.name || ''}
         isLoading={!!deletingId}
       />
 

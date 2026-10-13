@@ -342,6 +342,7 @@ export default function EventsHistoryClient({ history: initialHistory, userRole 
         title="Delete Event"
         message={`Are you sure you want to delete "${confirmDelete?.title}"? This action cannot be undone.`}
         confirmText="Delete Event"
+        confirmPhrase={confirmDelete?.title || ''}
         isLoading={isDeleting}
       />
 
