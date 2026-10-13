@@ -8,7 +8,7 @@ import useAuthStore from '@/store/authStore';
 import { logout, getUnreadCount } from '@/app/actions';
 import { toast } from 'sonner';
 import { useDialogA11y } from '@/hooks/useDialogA11y';
-import { LogOut, Menu, X, LayoutDashboard, CalendarDays, Users, FileText, Building2, MessageSquare, Settings, Briefcase } from 'lucide-react';
+import { LogOut, Menu, X, LayoutDashboard, CalendarDays, Users, FileText, Building2, MessageSquare, Settings, Briefcase, HeartHandshake } from 'lucide-react';
 
 const Navbar = () => {
   const { user, clearAuth, isAuthenticated, isAdmin } = useAuthStore();
@@ -86,12 +86,14 @@ const Navbar = () => {
     navLinks.push({ label: 'My Team', href: '/dashboard/team', icon: Users });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
     navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
+    navLinks.push({ label: 'My NGOs', href: '/dashboard/my-ngos', icon: HeartHandshake });
     navLinks.push({ label: 'Messages', href: '/messages', icon: MessageSquare, badge: true });
   } else if (user?.role === 'org_member' || user?.role === 'volunteer') {
     navLinks.push({ label: 'My Impact', href: '/dashboard/my-impact', icon: LayoutDashboard });
     navLinks.push({ label: 'Events', href: '/events', icon: CalendarDays });
     navLinks.push({ label: 'NGO Partners', href: '/ngo-partners', icon: Building2 });
     if (user?.role === 'org_member') {
+      navLinks.push({ label: 'My NGOs', href: '/dashboard/my-ngos', icon: HeartHandshake });
       navLinks.push({ label: 'Messages', href: '/messages', icon: MessageSquare, badge: true });
     }
   } else if (user?.role === 'ngo') {

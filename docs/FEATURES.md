@@ -162,6 +162,15 @@ We have implemented and successfully deployed 4 significant features to make Kin
 
 ---
 
+## 🤝 16. My NGOs (company-private NGO partners)
+* **Public or company NGOs**: An NGO partner card with no company is a public partner, shown on `/ngo-partners` and `/partners` as before. A card with one or more companies is private to those companies: only that company's SPOCs and employees (and Kindera staff) can see it, and it never appears to anyone else.
+* **Staff manage them** at [/admin/ngo-partners](/admin/ngo-partners). Each card shows its companies as chips, or "Public partner". A filter above the list narrows it to all partners, public partners, or one company. The add/edit form has a **Companies** checklist; leave it empty to keep the partner public. SPOCs cannot add or edit NGOs.
+* **Import from Excel**: Staff tick the companies (none = public partners), choose an `.xlsx` file and import. Columns: `name`, `description`, `focusAreas`, `programs`, `impact`, `registeredOffice`, `location`, `website` (header case does not matter; `name` and `description` are required; separate several programs with semicolons; up to 500 rows). The result reads "Created N, skipped M" and lists each skipped row by its Excel row number with the reason.
+* **Generate login**: Each card has a **Generate login** button. A dialog then shows the username and a random password with copy buttons; the password is shown once. Afterwards the card shows "Login: <username>". An NGO with a login linked to a company card can create events for that card's companies only; the event is visible only to that company.
+* **My NGOs page**: SPOCs and employees (`org_spoc`, `org_member`) get a **My NGOs** link in the navbar, opening [/dashboard/my-ngos](/dashboard/my-ngos): read-only cards for the company's NGOs, each with an "N upcoming events" badge. When the company has none: "Your company has no NGOs yet. Kindera adds them for you — contact your Kindera team."
+
+---
+
 ## 🚀 Verification
 - [x] Ran `npm run build` locally — **successfully compiled** with no errors.
 - [x] Committed changes locally to main branch.

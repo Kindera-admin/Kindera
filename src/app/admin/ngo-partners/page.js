@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { getAllNGOPartners } from '@/app/actions';
+import { listCompanies } from '@/app/companyActions';
 import NGOPartnersClient from './NGOPartnersClient';
 
 export default async function AdminNGOPartnersPage() {
@@ -9,11 +10,11 @@ export default async function AdminNGOPartnersPage() {
   if (!user) redirect('/login');
   if (user.role !== 'admin' && user.role !== 'employee') redirect('/dashboard');
 
-  const { partners = [] } = await getAllNGOPartners();
+  const [{ partners = [] }, { companies = [] }] = await Promise.all([getAllNGOPartners(), listCompanies()]);
 
   return (
     <div className="p-6">
-      <NGOPartnersClient initialPartners={partners} />
+      <NGOPartnersClient initialPartners={partners} companies={companies} />
     </div>
   );
 }
