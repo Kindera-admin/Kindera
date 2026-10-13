@@ -424,8 +424,11 @@ export async function backfillLegacy(db, { backupFile = null, now = new Date() }
   const events = db.collection('events');
   const attendances = db.collection('attendances');
   const linked = { companyId: { $ne: null } };
-  const userFilter = { role: { $in: CORPORATE }, ...linked, organizationName: BLANK };
-  const eventFilter = { ...linked, organizationName: BLANK };
+  // Blank, or a placeholder an earlier run wrote: both get the company's name
+  // once the company exists.
+  const replaceable = { $or: [{ organizationName: BLANK }, { organizationName: PLACEHOLDER_RE }] };
+  const userFilter = { role: { $in: CORPORATE }, ...linked, ...replaceable };
+  const eventFilter = { ...linked, ...replaceable };
   const logoFilter = { role: 'org_spoc', ...linked, organizationLogo: BLANK };
 
   const backup = {
@@ -440,39 +443,74 @@ export async function backfillLegacy(db, { backupFile = null, now = new Date() }
 
   const ids = [...backup.users, ...backup.events, ...backup.attendances].map((d) => d.companyId);
   const companies = await db.collection('companies').find({ _id: { $in: ids } }).toArray();
+  const legacyNames = await legacyNamesByCompany(db, companies.map((c) => c._id));
   const counts = { users: 0, events: 0, attendances: 0, logos: 0, placeholders: 0, missingCompanies: 0 };
+  // The name the old code knows a company by is the one its linked legacy records
+  // already use (most common), not Company.name, which may have been renamed in the
+  // new UI: a renamed name would split the company for the old code, and a
+  // roll-forward after a full rollback would create a second company.
   // Fail closed: a record whose company is gone still gets a name, one per missing
   // company so the old code never groups two lost companies together. Otherwise
   // an internal event would match the old public filter.
   const named = [
-    ...companies.map((c) => ({ companyId: c._id, name: c.name, logoUrl: c.logoUrl })),
+    ...companies.map((c) => ({ companyId: c._id, name: legacyNames.get(String(c._id)) || c.name, logoUrl: c.logoUrl })),
     ...(await danglingCompanyRefs(db)).map((d) => ({ companyId: d.companyId, name: placeholderName(d.companyId), logoUrl: '' })),
   ];
   for (const c of named) {
-    const byCompany = { companyId: c.companyId };
-    counts.users += (await users.updateMany({ ...userFilter, ...byCompany }, { $set: { organizationName: c.name } })).modifiedCount;
-    counts.events += (await events.updateMany({ ...eventFilter, ...byCompany }, { $set: { organizationName: c.name } })).modifiedCount;
-    counts.attendances += (await attendances.updateMany({ ...eventFilter, ...byCompany }, { $set: { organizationName: c.name } })).modifiedCount;
+    const only = (filter) => ({ $and: [filter, { companyId: c.companyId }, { organizationName: { $ne: c.name } }] });
+    const set = { $set: { organizationName: c.name } };
+    counts.users += (await users.updateMany(only(userFilter), set)).modifiedCount;
+    counts.events += (await events.updateMany(only(eventFilter), set)).modifiedCount;
+    counts.attendances += (await attendances.updateMany(only(eventFilter), set)).modifiedCount;
     if (hasText(c.logoUrl)) {
-      counts.logos += (await users.updateMany({ ...logoFilter, ...byCompany }, { $set: { organizationLogo: c.logoUrl } })).modifiedCount;
+      counts.logos += (await users.updateMany({ ...logoFilter, companyId: c.companyId }, { $set: { organizationLogo: c.logoUrl } })).modifiedCount;
     }
   }
-  // Counted from the data, not from this run's writes, so a re-run still reports them.
+  // Counted from the data, not from this run's writes, so a re-run still reports
+  // them, and every placeholder counts until it is gone.
   const dangling = await danglingCompanyRefs(db);
   counts.missingCompanies = dangling.length;
   counts.missingCompanyIds = dangling.map((d) => String(d.companyId));
-  for (const d of dangling) {
-    const filter = { companyId: d.companyId, organizationName: placeholderName(d.companyId) };
-    for (const name of RECORD_COLLECTIONS) counts.placeholders += await db.collection(name).countDocuments(filter);
+  for (const name of RECORD_COLLECTIONS) {
+    counts.placeholders += await db.collection(name).countDocuments({ organizationName: PLACEHOLDER_RE });
   }
   return counts;
 }
 
 const placeholderName = (companyId) => `Unknown company (${companyId})`;
+const PLACEHOLDER_RE = /^Unknown company \([0-9a-f]{24}\)$/;
+
+// companyId string -> the organizationName its linked legacy records use most
+// (ties: alphabetical), ignoring blanks and placeholders.
+async function legacyNamesByCompany(db, companyIds) {
+  const tally = new Map(); // companyId -> Map(name -> count)
+  if (!companyIds.length) return new Map();
+  for (const [name, extra] of [['users', { role: { $in: CORPORATE } }], ['events', {}], ['attendances', {}]]) {
+    const rows = await db.collection(name).aggregate([
+      { $match: { ...extra, companyId: { $in: companyIds }, $and: [{ organizationName: TEXT }, { organizationName: { $not: PLACEHOLDER_RE } }] } },
+      { $group: { _id: { companyId: '$companyId', name: '$organizationName' }, n: { $sum: 1 } } },
+    ]).toArray();
+    for (const { _id, n } of rows) {
+      const id = String(_id.companyId);
+      if (!tally.has(id)) tally.set(id, new Map());
+      tally.get(id).set(_id.name, (tally.get(id).get(_id.name) || 0) + n);
+    }
+  }
+  const best = new Map();
+  for (const [id, names] of tally) {
+    const [top] = [...names.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    best.set(id, top[0]);
+  }
+  return best;
+}
 
 // Why a backfill run must not count as a success, or null.
 export function backfillFailure(res) {
   if (!res.placeholders) return null;
+  if (!res.missingCompanies) {
+    return `${res.placeholders} records still carry an "Unknown company (<id>)" placeholder but point at no missing company. `
+      + 'Give each one a company (or a real organizationName), then run --backfill-legacy --yes again.';
+  }
   return `${res.placeholders} records point at ${res.missingCompanies} missing ${res.missingCompanies === 1 ? 'company' : 'companies'} `
     + `(${res.missingCompanyIds.join(', ')}) and carry the placeholder "Unknown company (<id>)", so the old code keeps them private. `
     + 'Restore those companies or re-link the records, then run --backfill-legacy --yes again.';

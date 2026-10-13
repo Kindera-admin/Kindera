@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import {
   parseArgs, planMigration, applyMigration, cleanupMigration, rollbackMigration, readBackup, main,
-  backfillLegacy, formatPlan,
+  backfillLegacy, formatPlan, backfillFailure,
 } from '../../scripts/migrate-companies.mjs';
 
 let db;
@@ -529,7 +529,8 @@ describe('backfillLegacy (--backfill-legacy)', () => {
     const { eventId } = await seedNewStyle();
     expect(await db.collection('events').countDocuments({ _id: eventId, ...oldPublicFilter })).toBe(1);
     await backfillLegacy(db, { now });
-    expect((await db.collection('events').findOne({ _id: eventId })).organizationName).toBe('Acme Global');
+    // The linked legacy SPOC 'kept' still says 'Legacy Spelling', so that is the name the old code knows (N2).
+    expect((await db.collection('events').findOne({ _id: eventId })).organizationName).toBe('Legacy Spelling');
     expect(await db.collection('events').countDocuments({ _id: eventId, ...oldPublicFilter })).toBe(0);
     // a public event stays public
     expect(await db.collection('events').countDocuments({ title: 'New public', ...oldPublicFilter })).toBe(1);
@@ -537,11 +538,12 @@ describe('backfillLegacy (--backfill-legacy)', () => {
   it('fills organizationName on corporate users and attendance, keeping non-blank names', async () => {
     const { spocId } = await seedNewStyle();
     const res = await backfillLegacy(db, { now });
-    expect((await db.collection('users').findOne({ _id: spocId })).organizationName).toBe('Acme Global');
-    expect((await db.collection('users').findOne({ username: 'nmem' })).organizationName).toBe('Acme Global');
+    // Named after the linked legacy record ('kept'), not the possibly renamed Company.name (N2).
+    expect((await db.collection('users').findOne({ _id: spocId })).organizationName).toBe('Legacy Spelling');
+    expect((await db.collection('users').findOne({ username: 'nmem' })).organizationName).toBe('Legacy Spelling');
     expect((await db.collection('users').findOne({ username: 'kept' })).organizationName).toBe('Legacy Spelling');
     expect(await db.collection('users').findOne({ username: 'nvol' })).not.toHaveProperty('organizationName');
-    expect((await db.collection('attendances').findOne({ userId: spocId })).organizationName).toBe('Acme Global');
+    expect((await db.collection('attendances').findOne({ userId: spocId })).organizationName).toBe('Legacy Spelling');
     expect(res).toMatchObject({ users: 2, events: 1, attendances: 1, logos: 1 });
   });
   it("gives SPOCs without a logo the company's logo, and leaves employees and existing logos alone", async () => {
@@ -896,5 +898,75 @@ describe('backfillLegacy fails closed on a missing company (R3)', () => {
     await seedNewStyle();
     const { error } = await runMain(['--backfill-legacy', '--yes']);
     expect(error).toBeNull();
+  });
+});
+
+// ---- Re-review N2/N3: backfill names that survive a rename, and placeholders are temporary ----
+
+describe('backfill after a rename keeps re-apply on one company (N2)', () => {
+  it('rename, new-code records, backfill, roll back every apply backup, re-apply: one company, nothing split', async () => {
+    const { spocId } = await seedLegacy();
+    const first = tmp();
+    await applyMigration(db, { now, backupFile: first });
+    const second = tmp();
+    await applyMigration(db, { now, backupFile: second }); // forward step 4
+    const acme = await db.collection('companies').findOne({ nameKey: 'acme corp' });
+    await db.collection('companies').updateOne({ _id: acme._id }, { $set: { name: 'Acme Global', nameKey: 'acme global' } });
+    const { userId, eventId } = await addNewCodeRecords(acme._id);
+    await backfillLegacy(db, { now });
+    // The old code compares organizationName: the new records use the name the legacy records use.
+    const spoc = await db.collection('users').findOne({ _id: spocId });
+    expect((await db.collection('events').findOne({ _id: eventId })).organizationName).toBe(spoc.organizationName);
+    expect((await db.collection('users').findOne({ _id: userId })).organizationName).toBe('Acme Corp');
+    await rollbackMigration(db, readBackup(second));
+    await rollbackMigration(db, readBackup(first));
+    const res = await applyMigration(db, { now });
+    expect(res.ambiguous).toEqual([]);
+    const acmeLike = await db.collection('companies').find({ nameKey: { $in: ['acme corp', 'acme global'] } }).toArray();
+    expect(acmeLike.map((c) => String(c._id))).toEqual([String(acme._id)]);
+    for (const name of ['users', 'events', 'attendances']) {
+      const docs = await db.collection(name).find({ organizationName: { $regex: /acme/i } }).toArray();
+      expect(docs.length).toBeGreaterThan(0);
+      for (const d of docs) expect(String(d.companyId)).toBe(String(acme._id));
+    }
+  });
+  it('falls back to Company.name when no linked record has a usable name', async () => {
+    const { companyId, eventId } = await seedNewStyle();
+    await db.collection('users').updateOne({ username: 'kept' }, { $unset: { organizationName: '' } });
+    await backfillLegacy(db, { now });
+    expect((await db.collection('events').findOne({ _id: eventId })).organizationName).toBe('Acme Global');
+    expect(companyId).toBeTruthy();
+  });
+});
+
+describe('placeholders are replaced once the company exists (N3)', () => {
+  async function seedPlaceholder() {
+    const missingId = new mongoose.Types.ObjectId();
+    const { insertedId: eventId } = await db.collection('events').insertOne({ title: 'Lost', companyId: missingId, createdByRole: 'org_spoc' });
+    await backfillLegacy(db, { now });
+    expect((await db.collection('events').findOne({ _id: eventId })).organizationName).toBe(`Unknown company (${missingId})`);
+    return { missingId, eventId };
+  }
+  it('replaces the placeholder with the restored company name and stops failing', async () => {
+    const { missingId, eventId } = await seedPlaceholder();
+    await db.collection('companies').insertOne({ _id: missingId, name: 'Back Again', nameKey: 'back again', logoUrl: '', status: 'active', createdAt: now, updatedAt: now });
+    const res = await backfillLegacy(db, { now });
+    expect((await db.collection('events').findOne({ _id: eventId })).organizationName).toBe('Back Again');
+    expect(backfillFailure(res)).toBeNull();
+  });
+  it('replaces it when the record is re-linked to another company', async () => {
+    const { eventId } = await seedPlaceholder();
+    const { insertedId: otherId } = await db.collection('companies').insertOne({ name: 'Other Co', nameKey: 'other co', logoUrl: '', status: 'active', createdAt: now, updatedAt: now });
+    await db.collection('events').updateOne({ _id: eventId }, { $set: { companyId: otherId } });
+    const res = await backfillLegacy(db, { now });
+    expect((await db.collection('events').findOne({ _id: eventId })).organizationName).toBe('Other Co');
+    expect(backfillFailure(res)).toBeNull();
+  });
+  it('keeps failing while any placeholder remains, even on a record with no company', async () => {
+    const { eventId } = await seedPlaceholder();
+    await db.collection('events').updateOne({ _id: eventId }, { $unset: { companyId: '' } });
+    const res = await backfillLegacy(db, { now });
+    expect(res.placeholders).toBe(1);
+    expect(backfillFailure(res)).toMatch(/1 records still carry an "Unknown company \(<id>\)" placeholder/);
   });
 });

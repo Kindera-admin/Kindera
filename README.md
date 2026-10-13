@@ -88,7 +88,7 @@ Rollback after cleanup:
 3. Redeploy the old code.
 4. `--backfill-legacy --yes` again, right after the old code is live.
 
-`--backfill-legacy` exits non-zero when records point at a company that no longer exists. It still writes an `Unknown company (<id>)` placeholder on them so the old code keeps them private. Restore those companies or re-link the records, then run it again. `--cleanup` refuses while any such record exists.
+`--backfill-legacy` exits non-zero when records point at a company that no longer exists. It still writes an `Unknown company (<id>)` placeholder on them so the old code keeps them private. Restore those companies or re-link the records, then run it again: it replaces the placeholders and exits cleanly once none remain. `--cleanup` refuses while any such record exists.
 
 ## Project structure
 
