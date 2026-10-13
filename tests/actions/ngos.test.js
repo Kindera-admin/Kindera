@@ -11,7 +11,7 @@ import { actAs } from '../helpers/auth.js';
 import { makeWorld, makePartner, makeUser, makeEvent, makeCompany } from '../helpers/factories.js';
 import {
   login, registerUser, getAllNGOPartners, getMyNGOs, createNGOPartner, updateNGOPartner,
-  deleteNGOPartner, importNGOPartners, generateNGOLogin, deleteUser,
+  deleteNGOPartner, importNGOPartners, generateNGOLogin, deleteUser, getImpactStats, getAdminImpactStats,
 } from '@/app/actions';
 
 const STAFF_ONLY = { success: false, message: 'Only admins and employees can manage NGO partners' };
@@ -220,6 +220,9 @@ describe('getMyNGOs', () => {
     await makeEvent(user, { companyId: w.companyA._id, date: new Date(Date.now() - DAY) }); // already past
     await makeEvent(user, { companyId: w.companyB._id });
     await makeEvent(user, { companyId: null }); // public events are not company events
+    await makeEvent(user, { companyId: w.companyA._id, status: 'cancelled' });
+    await makeEvent(user, { companyId: w.companyA._id, status: 'completed' });
+    await makeEvent(user, { companyId: w.companyB._id, status: 'cancelled' });
     await makeEvent(otherNgo, { companyId: w.companyA._id }); // another login
     await makeEvent(w.spocA, { companyId: w.companyA._id }); // not the card's login
     const countFor = async (who, name) => {
@@ -231,6 +234,41 @@ describe('getMyNGOs', () => {
     expect(await countFor(w.memberA, 'Shared')).toBe(2);
     expect(await countFor(w.spocB, 'Shared')).toBe(1);
     expect(await countFor(w.spocA, 'NoLogin')).toBe(0);
+  });
+});
+
+describe('card order', () => {
+  it('lists newest first and breaks ties by id, the same for every caller', async () => {
+    const w = await makeWorld();
+    const same = new Date('2026-01-01T00:00:00Z');
+    const rows = [['Oldest', new Date('2025-01-01T00:00:00Z')], ['Tie 1', same], ['Tie 2', same], ['Tie 3', same]];
+    for (const [name, createdAt] of rows) await makePartner({ name, companyIds: [w.companyA._id], createdAt });
+    expect((await NGOPartner.find({ name: /^Tie/ }).lean()).map((p) => String(p.createdAt))).toEqual([String(same), String(same), String(same)]);
+    const expected = ['Tie 3', 'Tie 2', 'Tie 1', 'Oldest'];
+    for (const who of [w.spocA, w.spocA2, w.memberA]) {
+      await actAs(who);
+      expect((await getMyNGOs()).partners.map((p) => p.name)).toEqual(expected);
+      expect((await getAllNGOPartners()).partners.map((p) => p.name)).toEqual(expected);
+    }
+    await actAs(w.admin);
+    expect((await getAllNGOPartners()).partners.map((p) => p.name)).toEqual(expected);
+  });
+});
+
+describe('homepage and admin NGO counts', () => {
+  it('counts only public partners for the public homepage stats, and every partner for the admin', async () => {
+    const w = await makeWorld();
+    await makePartner({ name: 'Public' });
+    await NGOPartner.collection.insertOne({ name: 'Legacy', description: 'no companyIds field' });
+    await makePartner({ name: 'OnlyA', companyIds: [w.companyA._id] });
+    await makePartner({ name: 'AandB', companyIds: [w.companyA._id, w.companyB._id] });
+    expect(await NGOPartner.countDocuments()).toBe(4);
+    for (const who of [null, w.volunteer, w.spocA, w.admin]) {
+      await actAs(who);
+      expect((await getImpactStats()).stats.ngoPartners).toBe(2);
+    }
+    await actAs(w.admin);
+    expect((await getAdminImpactStats()).stats.totalNGOs).toBe(4);
   });
 });
 
@@ -345,6 +383,23 @@ describe('updateNGOPartner', () => {
     expect(stored.companyIds.map(String)).toEqual([String(w.companyA._id)]);
     expect((await updateNGOPartner(String(publicCard._id), partnerForm({ name: 'Still public' }))).success).toBe(true);
     expect((await NGOPartner.findById(publicCard._id).lean()).companyIds).toEqual([]);
+  });
+  it('does not make a card public when companyIds is sent empty or blank', async () => {
+    const w = await makeWorld();
+    const card = await makePartner({ companyIds: [w.companyA._id] });
+    await actAs(w.admin);
+    for (const blank of ['', ' ', '   ', '\n\t ']) {
+      const res = await updateNGOPartner(String(card._id), partnerForm({ name: `Blank ${JSON.stringify(blank)}`, companyIds: blank }));
+      expect(res).toMatchObject({ success: true, partner: { companyIds: [String(w.companyA._id)] } });
+      const stored = await NGOPartner.findById(card._id).lean();
+      expect(stored.name).toBe(`Blank ${JSON.stringify(blank)}`);
+      expect(stored.companyIds.map(String)).toEqual([String(w.companyA._id)]);
+    }
+    // Only a real list changes the companies; "[]" is a real list, and malformed text is refused.
+    expect(await updateNGOPartner(String(card._id), partnerForm({ companyIds: '[ ]' }))).toMatchObject({ success: true, partner: { companyIds: [] } });
+    await NGOPartner.updateOne({ _id: card._id }, { companyIds: [w.companyA._id] });
+    expect(await updateNGOPartner(String(card._id), partnerForm({ companyIds: '[' }))).toEqual(ACTIVE_ONLY);
+    expect((await NGOPartner.findById(card._id).lean()).companyIds.map(String)).toEqual([String(w.companyA._id)]);
   });
   it('lets an archived company stay on a card but never be added to one', async () => {
     const w = await makeWorld();
@@ -688,6 +743,27 @@ describe('generateNGOLogin', () => {
     expect(res).toMatchObject({ success: true, username: 'green-earth-5678' });
     expect(queue).toEqual([]);
     expect(await User.countDocuments({ ngoPartnerId: card._id })).toBe(1);
+  });
+  it('removes the login it created when linking the card fails', async () => {
+    const w = await makeWorld();
+    const card = await makePartner({ name: 'Green Earth' });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    let loginsWhenLinkFailed = null;
+    const link = vi.spyOn(NGOPartner, 'updateOne').mockImplementationOnce(async () => {
+      loginsWhenLinkFailed = await User.countDocuments({ ngoPartnerId: card._id });
+      throw new Error('connection to 10.0.0.5:27017 lost');
+    });
+    await actAs(w.admin);
+    const usersBefore = await User.countDocuments();
+    const res = await generateNGOLogin(String(card._id));
+    expect(res).toEqual({ success: false, message: 'Could not generate a login. Please try again.' });
+    expect(link).toHaveBeenCalledTimes(1);
+    expect(loginsWhenLinkFailed).toBe(1); // the login existed when linking failed, so it was removed afterwards
+    expect(await User.countDocuments()).toBe(usersBefore);
+    expect(await User.countDocuments({ ngoPartnerId: card._id })).toBe(0);
+    expect((await NGOPartner.findById(card._id).lean()).loginUserId).toBeNull();
+    // The card can still get a login.
+    expect((await generateNGOLogin(String(card._id))).success).toBe(true);
   });
   it('gives up after 5 taken usernames without creating anything', async () => {
     const w = await makeWorld();

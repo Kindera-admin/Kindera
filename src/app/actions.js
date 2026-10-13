@@ -1197,7 +1197,7 @@ export async function getAllNGOPartners() {
   try {
     await connectDB();
     const caller = await getCurrentUser();
-    const partners = await NGOPartner.find(partnerVisibilityFilter(caller)).sort({ createdAt: -1 }).lean();
+    const partners = await NGOPartner.find(partnerVisibilityFilter(caller)).sort({ createdAt: -1, _id: -1 }).lean();
     return { success: true, partners: await presentPartners(partners, caller) };
   } catch (error) {
     console.error('Error fetching NGO partners:', error);
@@ -1206,7 +1206,7 @@ export async function getAllNGOPartners() {
 }
 
 // A company's own NGOs, for its SPOCs and employees, with how many upcoming
-// events each NGO's login has created for that company.
+// upcoming events (not cancelled or completed) each NGO's login has created for that company.
 export async function getMyNGOs() {
   try {
     await connectDB();
@@ -1214,14 +1214,14 @@ export async function getMyNGOs() {
     if (!caller) return { success: false, message: 'Not authenticated' };
     if (!isCorporate(caller)) return { success: false, message: 'Not authorized' };
 
-    const partners = await NGOPartner.find(myNgosFilter(caller)).sort({ createdAt: -1 }).lean();
+    const partners = await NGOPartner.find(myNgosFilter(caller)).sort({ createdAt: -1, _id: -1 }).lean();
     const items = await presentPartners(partners, caller);
 
     const upcoming = new Map();
     const loginIds = partners.map((p) => p.loginUserId).filter(Boolean);
     if (loginIds.length > 0) {
       const counts = await Event.aggregate([
-        { $match: { createdBy: { $in: loginIds }, companyId: asObjectId(caller.companyId), date: { $gte: new Date() } } },
+        { $match: { createdBy: { $in: loginIds }, companyId: asObjectId(caller.companyId), date: { $gte: new Date() }, status: { $nin: ['cancelled', 'completed'] } } },
         { $group: { _id: '$createdBy', count: { $sum: 1 } } },
       ]);
       for (const c of counts) upcoming.set(String(c._id), c.count);
@@ -1304,9 +1304,10 @@ export async function updateNGOPartner(id, formData) {
     if (logoUrl) {
       updateData.logoUrl = logoUrl;
     }
-    // Only a companyIds field that was sent (even "[]") changes the companies; an absent one leaves them as they are.
+    // Only a real list changes the companies ("[]" included). An absent, empty or blank field leaves them as they are.
     const rawCompanyIds = formData.get('companyIds');
-    if (rawCompanyIds !== null) {
+    const sent = rawCompanyIds !== null && !(typeof rawCompanyIds === 'string' && rawCompanyIds.trim() === '');
+    if (sent) {
       const companies = await readActiveCompanyIds(rawCompanyIds, existing.companyIds || []);
       if (companies.error) return companies.error;
       updateData.companyIds = companies.ids;
@@ -1442,7 +1443,13 @@ export async function generateNGOLogin(partnerId) {
 
     // Link only if the card still has no login, so two simultaneous requests
     // cannot both succeed. The loser removes the login it just created.
-    const linked = await NGOPartner.updateOne({ _id: partner._id, loginUserId: null }, { $set: { loginUserId: user._id } });
+    let linked;
+    try {
+      linked = await NGOPartner.updateOne({ _id: partner._id, loginUserId: null }, { $set: { loginUserId: user._id } });
+    } catch (linkError) {
+      await User.deleteOne({ _id: user._id }).catch((cleanupError) => console.error('Could not remove an unlinked NGO login:', cleanupError));
+      throw linkError;
+    }
     if (linked.modifiedCount !== 1) {
       await User.deleteOne({ _id: user._id });
       return { success: false, message: 'Could not generate a login. Please try again.' };
@@ -3130,7 +3137,8 @@ export async function getImpactStats() {
     const [totalHoursResult, completedEvents, ngoCount, orgUsers] = await Promise.all([
       User.aggregate([{ $group: { _id: null, total: { $sum: '$totalVolunteerHours' } } }]),
       Event.countDocuments({ status: 'completed' }),
-      NGOPartner.countDocuments(),
+      // Public homepage: company-private partners are not counted.
+      NGOPartner.countDocuments(partnerVisibilityFilter(null)),
       Company.countDocuments({ status: 'active' }),
     ]);
     const totalHours = totalHoursResult[0]?.total || 0;

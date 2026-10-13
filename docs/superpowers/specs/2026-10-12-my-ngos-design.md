@@ -45,10 +45,11 @@ All rules live in a new `src/lib/ngo.js`, next to `src/lib/company.js`, and use 
 - **`getAllNGOPartners()`**
   - Today anyone can call it, logged out included, and it returns every partner.
   - It becomes caller-scoped via `partnerVisibilityFilter`.
-  - Items gain `companyIds` (strings) and `companyNames`, plus `hasLogin` for staff only.
+  - Items gain `companyIds` (strings) and `companyNames`, plus `loginUsername` for staff only (the username of the card's login, or `null` when it has none).
+  - Staff see every company on a card. A SPOC or employee sees only their own company in `companyIds` / `companyNames`, so one company cannot learn which others share an NGO.
 - **`getMyNGOs()`** (new)
   - For `org_spoc` / `org_member` only; others are refused.
-  - Returns the cards from `myNgosFilter`, plus for each card a count of upcoming events this NGO's login created for the caller's company.
+  - Returns the cards from `myNgosFilter`, plus for each card a count of upcoming events (not cancelled or completed) this NGO's login created for the caller's company. Cards are sorted newest first, with the id breaking ties.
 - **`createNGOPartner` / `updateNGOPartner`**
   - Accept `companyIds`, a JSON array of ids in the form field `companyIds`.
   - Each id must be valid and point to an active company, otherwise the action is refused. On update, an id already on that card is also accepted when its company is archived (archived companies stay on existing cards, never added to others).
