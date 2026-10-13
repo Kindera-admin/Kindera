@@ -36,8 +36,7 @@ Each variable is described in [`.env.example`](.env.example). All env files exce
 
 | File | Used for | Database |
 |------|----------|----------|
-| `.env.local` | `npm run dev` / `npm run start` on your machine | Test cluster |
-| `.env.staging` | Staging (`test` branch). Import it in Vercel: `kindera-ngo` → Settings → Environment Variables → **Import .env**, environment **Preview**, branch **test** | Test cluster |
+| `.env.local` | `npm run dev` / `npm run start` on your machine, and staging (`test` branch): import it in Vercel via `kindera-ngo` → Settings → Environment Variables → **Import .env**, environment **Preview**, branch **test** | Test cluster |
 | *(Vercel only)* | kindera.co (`main`). Set under the **Production** environment in Vercel; there is no local copy | Production cluster |
 
 | Variable | Used by |
