@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import User from '@/models/User';
+import Event from '@/models/Event';
 import Attendance from '@/models/Attendance';
 import { actAs } from '../helpers/auth.js';
 import { makeWorld, makeEvent, makeUser, makeCompany } from '../helpers/factories.js';
@@ -106,5 +107,66 @@ describe('markAttendance payload validation (B4)', () => {
       expect(res).toEqual({ success: false, message: 'Invalid attendance data' });
     }
     await unchanged(w);
+  });
+});
+
+describe('markAttendance takes attended as a real boolean (R5)', () => {
+  // memberA attended the event for 3 hours.
+  async function attendedFor3h() {
+    const w = await makeWorld();
+    const ev = await makeEvent(w.spocA, { companyId: w.companyA._id });
+    await actAs(w.spocA);
+    const res = await markAttendance(String(ev._id), [{ userId: String(w.memberA._id), attended: true, hoursContributed: 3 }]);
+    expect(res.success).toBe(true);
+    return { w, ev };
+  }
+  const hoursOf = async (user) => (await User.findById(user._id)).totalVolunteerHours;
+
+  it('"false" posted twice takes the 3 hours off once and never adds them back', async () => {
+    const { w, ev } = await attendedFor3h();
+    expect(await hoursOf(w.memberA)).toBe(3);
+    const entry = [{ userId: String(w.memberA._id), attended: 'false', hoursContributed: 3 }];
+    expect(await markAttendance(String(ev._id), entry)).toEqual({ success: true });
+    expect(await hoursOf(w.memberA)).toBe(0);
+    expect(await markAttendance(String(ev._id), entry)).toEqual({ success: true });
+    expect(await hoursOf(w.memberA)).toBe(0);
+    expect((await Attendance.findOne({ eventId: ev._id, userId: w.memberA._id })).attended).toBe(false);
+  });
+  it('"true" counts as attended', async () => {
+    const { w, ev } = await attendedFor3h();
+    const other = await makeUser('org_member', { companyId: w.companyA._id });
+    expect(await markAttendance(String(ev._id), [{ userId: String(other._id), attended: 'true', hoursContributed: 2 }])).toEqual({ success: true });
+    expect(await hoursOf(other)).toBe(2);
+    expect((await Attendance.findOne({ eventId: ev._id, userId: other._id })).attended).toBe(true);
+  });
+  it('refuses the whole batch for any other attended value, before any database call', async () => {
+    const { w, ev } = await attendedFor3h();
+    const other = await makeUser('org_member', { companyId: w.companyA._id });
+    const eventLookup = vi.spyOn(Event, 'findById');
+    try {
+      for (const attended of [undefined, null, 'yes', 'TRUE', ' false', '', 1, 0, {}, ['true']]) {
+        const res = await markAttendance(String(ev._id), [
+          { userId: String(w.memberA._id), attended: false, hoursContributed: 0 },
+          { userId: String(other._id), attended, hoursContributed: 2 },
+        ]);
+        expect(res).toEqual({ success: false, message: 'Attended must be true or false' });
+      }
+      expect(eventLookup).not.toHaveBeenCalled();
+    } finally {
+      eventLookup.mockRestore();
+    }
+    expect(await hoursOf(w.memberA)).toBe(3);
+    expect(await hoursOf(other)).toBe(0);
+    expect(await Attendance.countDocuments()).toBe(1);
+  });
+  it('answers a database failure with a safe message', async () => {
+    const { w, ev } = await attendedFor3h();
+    const spy = vi.spyOn(Attendance, 'bulkWrite').mockRejectedValue(new Error('E11000 internal detail'));
+    try {
+      const res = await markAttendance(String(ev._id), [{ userId: String(w.memberA._id), attended: false, hoursContributed: 0 }]);
+      expect(res).toEqual({ success: false, message: 'Could not save attendance. Please try again.' });
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

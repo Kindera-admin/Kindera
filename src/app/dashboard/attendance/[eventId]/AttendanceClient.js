@@ -58,7 +58,8 @@ export default function AttendanceClient({ event, initialRecords, companyId, com
     startTransition(async () => {
       const payload = records.map(r => ({
         userId: r.userId,
-        attended: r.attended,
+        // The server takes only true/false; an old record with no value counts as not attended.
+        attended: r.attended === true,
         hoursContributed: r.hoursContributed,
         feedbackScore: r.feedbackScore,
       }));

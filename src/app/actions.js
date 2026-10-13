@@ -1750,6 +1750,13 @@ export async function markAttendance(eventId, attendanceList) {
     if (attendanceList.some((a) => !validHours(a.hoursContributed ?? 0))) {
       return { success: false, message: 'Hours must be a number from 0 to 24' };
     }
+    // `attended` drives the hours arithmetic, so it must be a real boolean: the
+    // string "false" is truthy and would credit hours the record says were not earned.
+    const ATTENDED = new Map([[true, true], [false, false], ['true', true], ['false', false]]);
+    if (attendanceList.some((a) => !ATTENDED.has(a.attended))) {
+      return { success: false, message: 'Attended must be true or false' };
+    }
+    const entries = attendanceList.map((a) => ({ ...a, attended: ATTENDED.get(a.attended) }));
 
     await connectDB();
 
@@ -1783,7 +1790,7 @@ export async function markAttendance(eventId, attendanceList) {
     const ops = [];
     const userIncOps = [];
 
-    for (const entry of attendanceList) {
+    for (const entry of entries) {
       const existing = existingMap[String(entry.userId)];
       
       // Calculate diff in hours to credit/deduct
@@ -1801,7 +1808,7 @@ export async function markAttendance(eventId, attendanceList) {
           update: {
             $set: {
               companyId: companyOf.get(String(entry.userId)) ?? null,
-              attended: entry.attended ?? false,
+              attended: entry.attended,
               hoursContributed: entry.hoursContributed ?? 0,
               feedbackScore: entry.feedbackScore || null,
               markedAt: now,
@@ -1829,7 +1836,7 @@ export async function markAttendance(eventId, attendanceList) {
     return { success: true };
   } catch (error) {
     console.error('Error marking attendance:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: 'Could not save attendance. Please try again.' };
   }
 }
 
