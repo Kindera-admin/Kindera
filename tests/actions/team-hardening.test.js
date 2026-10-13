@@ -25,6 +25,17 @@ describe('team login usernames (B3)', () => {
     expect(res.credentials.map((c) => c.username)).toEqual(['acme-008', 'acme-009']);
     expect(await User.countDocuments({ companyId: w.companyA._id, username: { $in: ['acme-008', 'acme-009'] } })).toBe(2);
   });
+  it('ignore employee-ID logins with very long numeric suffixes (N4)', async () => {
+    const w = await makeWorld(); // companyA is "Acme"
+    await actAs(w.spocA);
+    // Employee-ID uploads: a long number and a padded one.
+    const up = await bulkCreateFromExcel([{ name: 'Long', employeeId: '12345678901234567' }, { name: 'Padded', employeeId: '001' }]);
+    expect(up.credentials.map((c) => c.username)).toEqual(['acme-12345678901234567', 'acme-001']);
+    await makeUser('org_member', { username: `acme-${'9'.repeat(25)}`, companyId: w.companyA._id });
+    const res = await generateTeamLogins(form({ count: '2' }));
+    expect(res.success).toBe(true);
+    expect(res.credentials.map((c) => c.username)).toEqual(['acme-002', 'acme-003']);
+  });
   it("fall back to 'team' when the company name has no ASCII letters", async () => {
     const company = await makeCompany('日本企業');
     const spoc = await makeUser('org_spoc', { companyId: company._id });

@@ -1507,7 +1507,9 @@ async function teamCompanyFor(caller, requestedCompanyId) {
 // two companies can share a slug ("Acme" and "ACME!").
 async function nextLoginIndex(slug) {
   // loginSlug only yields [a-z0-9-], so the slug needs no regex escaping.
-  const pattern = new RegExp(`^${slug}-(\\d+)$`);
+  // At most 9 digits, so the index stays a safe integer: employee-ID logins
+  // (`<slug>-12345678901234567`) must not push generated ones into exponent form.
+  const pattern = new RegExp(`^${slug}-(\\d{1,9})$`);
   const users = await User.find({ username: pattern }).select('username').lean();
   return users.reduce((max, u) => Math.max(max, Number(pattern.exec(u.username)?.[1]) || 0), 0) + 1;
 }
