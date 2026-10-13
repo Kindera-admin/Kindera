@@ -70,7 +70,8 @@ export default function GenerateLoginsClient({ role, companyId, companyName }) {
         startTransition(async () => {
           const res = await bulkCreateFromExcel(rows, companyId);
           if (res.success) {
-            if (res.failed) toast.warning(res.message);
+            // A message on success means some rows failed or some emails were not saved.
+            if (res.failed || res.message) toast.warning(res.message);
             else toast.success(`Created ${res.credentials.length} accounts from Excel!`);
             setResults(res.credentials);
           } else {

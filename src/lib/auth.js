@@ -64,6 +64,8 @@ export async function getCurrentUser() {
       return null;
     }
     
+    // Every field but the password, so `email` (and any new field) is included.
+    // An inclusion list here cannot be combined with this exclusion.
     const user = await User.findById(userId).select('-password');
     return user;
   } catch (error) {

@@ -97,9 +97,9 @@ export default function DirectoryClient({ spocs, ngos }) {
       }
       
       const csv = csvDocument(
-        ['Organization', 'Volunteer Name', 'Volunteer Username', 'Event Title', 'Event Date', 'Event Location', 'Hours Contributed', 'Feedback Score', 'Feedback Text', 'Marked At'],
+        ['Organization', 'Volunteer Name', 'Volunteer Username', 'Volunteer Email', 'Event Title', 'Event Date', 'Event Location', 'Hours Contributed', 'Feedback Score', 'Feedback Text', 'Marked At'],
         res.data.map(r => [
-          r.companyName, r.volunteerName, r.volunteerEmail, r.eventTitle, formatDateStr(r.eventDate),
+          r.companyName, r.volunteerName, r.volunteerUsername, r.volunteerEmail, r.eventTitle, formatDateStr(r.eventDate),
           r.eventLocation, r.hoursContributed, r.feedbackScore, r.feedbackText, formatDateStr(r.markedAt),
         ]),
       );

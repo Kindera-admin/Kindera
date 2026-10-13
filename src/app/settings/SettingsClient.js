@@ -4,12 +4,12 @@ import { cldImage } from '@/lib/cloudinary';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { User, Loader2, Building2, ImagePlus, X, Lock } from 'lucide-react';
+import { User, Loader2, Building2, ImagePlus, X, Lock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { updateProfileName, updatePassword } from '@/app/actions';
+import { updateProfileName, updatePassword, updateEmail } from '@/app/actions';
 import { updateCompanyLogo } from '@/app/companyActions';
 
 export default function SettingsClient({ user, companyLogo = '' }) {
@@ -32,6 +32,26 @@ export default function SettingsClient({ user, companyLogo = '' }) {
       router.refresh();
     } else {
       toast.error(res.message || 'Failed to update nickname');
+    }
+  };
+
+  // Email State
+  const [email, setEmail] = useState(user.email || '');
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+
+  const handleUpdateEmail = async (e) => {
+    e.preventDefault();
+
+    setIsUpdatingEmail(true);
+    const res = await updateEmail(email);
+    setIsUpdatingEmail(false);
+
+    if (res.success) {
+      setEmail(res.email);
+      toast.success(res.email ? 'Email updated successfully!' : 'Email removed');
+      router.refresh();
+    } else {
+      toast.error(res.message || 'Failed to update email');
     }
   };
 
@@ -150,6 +170,36 @@ export default function SettingsClient({ user, companyLogo = '' }) {
               <Button type="submit" disabled={isUpdatingName} className="w-full bg-brand hover:bg-brand-strong">
                 {isUpdatingName && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Update Name
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Email Settings */}
+        <Card className="shadow-sm mt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Mail className="w-5 h-5 text-brand-accent" /> Email
+            </CardTitle>
+            <CardDescription>Used for event updates and notifications.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpdateEmail} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Add your email"
+                  maxLength={254}
+                />
+              </div>
+              <Button type="submit" disabled={isUpdatingEmail} className="w-full h-11 bg-brand hover:bg-brand-strong">
+                {isUpdatingEmail && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Email
               </Button>
             </form>
           </CardContent>

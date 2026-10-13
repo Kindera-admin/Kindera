@@ -9,5 +9,7 @@ export default async function SettingsPage() {
 
   const company = user.companyId ? (await getCompaniesByIds([user.companyId])).get(String(user.companyId)) : null;
 
-  return <SettingsClient user={user} companyLogo={company?.logoUrl || ''} />;
+  // Plain strings only: a client component must not receive a Mongoose document.
+  const profile = { name: user.name || '', role: user.role, email: user.email || '' };
+  return <SettingsClient user={profile} companyLogo={company?.logoUrl || ''} />;
 }

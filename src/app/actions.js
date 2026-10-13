@@ -16,6 +16,7 @@ import {
 } from '@/lib/company';
 import { partnerVisibilityFilter, myNgosFilter } from '@/lib/ngo';
 import { slugify, loginSlug, employeeLogin } from '@/lib/loginName';
+import { normalizeEmail, isValidEmail, EMAIL_COLLATION } from '@/lib/email';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { cookies } from 'next/headers';
@@ -109,37 +110,6 @@ export async function login(formData) {
       message: 'Server error', 
       error: error.message 
     };
-  }
-}
-
-// Add/Update User Email (For Dashboard Prompt)
-export async function updateUserEmail(email) {
-  try {
-    const session = await getCurrentUser();
-    if (!session) return { success: false, message: 'Unauthorized' };
-
-    if (!email || !email.includes('@')) {
-      return { success: false, message: 'Invalid email address' };
-    }
-
-    await connectDB();
-    
-    // Check if email is already taken by another user
-    const existing = await User.findOne({ email, _id: { $ne: session._id } });
-    if (existing) {
-      return { success: false, message: 'Email is already in use by another account' };
-    }
-
-    const user = await User.findById(session._id);
-    if (!user) return { success: false, message: 'User not found' };
-
-    user.email = email;
-    await user.save();
-
-    return { success: true, message: 'Email updated successfully' };
-  } catch (error) {
-    console.error('Update email error:', error);
-    return { success: false, message: 'Server error' };
   }
 }
 
@@ -1535,24 +1505,44 @@ async function nextLoginIndex(slug) {
   return users.reduce((max, u) => Math.max(max, Number(pattern.exec(u.username)?.[1]) || 0), 0) + 1;
 }
 
-// Inserts every account it can. Returns the credentials of the rows actually
-// created plus a generic message; never the driver's error text or other
-// companies' usernames.
-async function insertAccounts(docs, credentials) {
-  for (const d of docs) d._id = new mongoose.Types.ObjectId();
-  let duplicate = false;
+// insertMany with ordered:false; returns whether every error was a duplicate key.
+async function insertEach(docs) {
   try {
     await User.insertMany(docs, { ordered: false });
+    return true;
   } catch (error) {
     console.error('Some accounts were not created:', error);
     const errs = error?.writeErrors || [];
-    duplicate = error?.code === 11000 || (errs.length > 0 && errs.every((e) => (e.code ?? e.err?.code) === 11000));
+    return error?.code === 11000 || (errs.length > 0 && errs.every((e) => (e.code ?? e.err?.code) === 11000));
   }
-  const saved = await User.find({ _id: { $in: docs.map((d) => d._id) } }).select('_id').lean();
-  const savedIds = new Set(saved.map((u) => String(u._id)));
-  const created = credentials.filter((_, i) => savedIds.has(String(docs[i]._id)));
+}
+
+const savedIdsOf = async (docs) =>
+  new Set((await User.find({ _id: { $in: docs.map((d) => d._id) } }).select('_id').lean()).map((u) => String(u._id)));
+
+// Inserts every account it can. Returns the credentials of the rows actually
+// created plus a generic message; never the driver's error text or other
+// companies' usernames. A doc whose email is taken between the caller's check and
+// the insert is saved again without it; `onEmailDropped(i)` hears about each one.
+// `note` is appended to the message (and sets one when nothing failed).
+async function insertAccounts(docs, credentials, { note = () => '', onEmailDropped = () => {} } = {}) {
+  for (const d of docs) d._id = new mongoose.Types.ObjectId();
+  let duplicate = await insertEach(docs);
+  let savedIds = await savedIdsOf(docs);
+  const retry = docs.filter((d) => !savedIds.has(String(d._id)) && d.email);
+  if (retry.length) {
+    const withoutEmail = retry.map((d) => { const copy = { ...d }; delete copy.email; return copy; });
+    duplicate = (await insertEach(withoutEmail)) && duplicate;
+    savedIds = await savedIdsOf(docs);
+    docs.forEach((d, i) => { if (retry.includes(d) && savedIds.has(String(d._id))) onEmailDropped(i); });
+  }
+  const savedAt = docs.map((d) => savedIds.has(String(d._id)));
+  const created = credentials.filter((_, i) => savedAt[i]);
   const failed = docs.length - created.length;
-  if (failed === 0) return { success: true, created: created.length, failed: 0, credentials: created };
+  const extra = note(savedAt);
+  if (failed === 0) {
+    return { success: true, created: created.length, failed: 0, credentials: created, ...(extra ? { message: extra } : {}) };
+  }
   const why = duplicate
     ? 'The others were not created because their usernames are already taken.'
     : 'The others could not be created. Please try again.';
@@ -1561,7 +1551,7 @@ async function insertAccounts(docs, credentials) {
     created: created.length,
     failed,
     credentials: created,
-    message: `Created ${created.length} of ${docs.length} accounts. ${why}`,
+    message: [`Created ${created.length} of ${docs.length} accounts. ${why}`, extra].filter(Boolean).join(' '),
   };
 }
 
@@ -1655,6 +1645,26 @@ export async function bulkCreateFromExcel(rows, companyId = null) {
     const plainCredentials = [];
     const usersToCreate    = [];
 
+    // Emails never block an account: an invalid one is ignored, and one already
+    // used (by another account, in any case, or by an earlier row) is dropped.
+    const emails = [];
+    const emailIssue = []; // per row: 'invalid' | 'taken'
+    const seen = new Set();
+    for (let i = 0; i < rows.length; i++) {
+      const email = normalizeEmail(cellText(rows[i]?.email));
+      if (!email) continue;
+      if (!isValidEmail(email)) emailIssue[i] = 'invalid';
+      else if (seen.has(email)) emailIssue[i] = 'taken';
+      else { seen.add(email); emails[i] = email; }
+    }
+    if (seen.size) {
+      const used = await User.distinct('email', { email: { $in: [...seen] } }).collation(EMAIL_COLLATION);
+      const usedSet = new Set(used.map((e) => String(e).toLowerCase()));
+      emails.forEach((email, i) => {
+        if (usedSet.has(email)) { emails[i] = undefined; emailIssue[i] = 'taken'; }
+      });
+    }
+
     for (let i = 0; i < rows.length; i++) {
       const row      = rows[i] || {};
       const username = employeeLogin(orgSlug, row.employeeId)
@@ -1672,11 +1682,25 @@ export async function bulkCreateFromExcel(rows, companyId = null) {
         companyId: company._id,
         status: 'approved',
         spocId: caller.role === 'org_spoc' ? caller._id : null,
+        ...(emails[i] ? { email: emails[i] } : {}),
       });
       plainCredentials.push({ username, password, name });
     }
 
-    const result = await insertAccounts(usersToCreate, plainCredentials);
+    // Reported only for rows that were created; counts, never the addresses.
+    const emailNote = (savedAt) => {
+      const count = (kind) => emailIssue.filter((k, i) => k === kind && savedAt[i]).length;
+      const taken = count('taken');
+      const invalid = count('invalid');
+      return [
+        taken && `${taken} ${taken === 1 ? 'email was' : 'emails were'} not saved because another account or an earlier row already uses ${taken === 1 ? 'it' : 'them'}.`,
+        invalid && `${invalid} ${invalid === 1 ? 'email was ignored because it is not a valid address' : 'emails were ignored because they are not valid addresses'}.`,
+      ].filter(Boolean).join(' ');
+    };
+    const result = await insertAccounts(usersToCreate, plainCredentials, {
+      note: emailNote,
+      onEmailDropped: (i) => { emailIssue[i] = 'taken'; },
+    });
     revalidatePath('/admin/corporate');
     revalidatePath('/dashboard/team');
     return result;
@@ -2213,7 +2237,7 @@ export async function exportDetailedAttendanceData(companyId = null, year = null
 
     let attendanceRecords = await Attendance.find(query)
       .populate('eventId', 'title date location')
-      .populate('userId', 'name username')
+      .populate('userId', 'name username email')
       .populate('companyId', 'name')
       .lean();
 
@@ -2238,7 +2262,8 @@ export async function exportDetailedAttendanceData(companyId = null, year = null
     const detailedData = attendanceRecords.map(record => ({
       companyName: record.companyId?.name || 'Individual',
       volunteerName: record.userId?.name || 'Unknown',
-      volunteerEmail: record.userId?.username || 'Unknown',
+      volunteerUsername: record.userId?.username || 'Unknown',
+      volunteerEmail: record.userId?.email || '',
       eventTitle: record.eventId?.title || 'Unknown Event',
       eventDate: record.eventId?.date ? new Date(record.eventId.date).toISOString() : '',
       eventLocation: record.eventId?.location || '',
@@ -2673,18 +2698,22 @@ export async function registerForEvent(formData, eventId) {
     const name = formData.get('name');
     const age = formData.get('age');
     const mobile = formData.get('mobile');
-    const email = formData.get('email');
+    let email = normalizeEmail(formData.get('email'));
     const photoUrl = formData.get('photoUrl');
-    
+
     if (!username || !password || !name) {
       return { success: false, message: 'Username, password and name are required' };
     }
-    
+    if (email && !isValidEmail(email)) return EMAIL_INVALID;
+
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return { success: false, message: 'Username already exists' };
     }
-    
+    // A public form must not reveal which emails have accounts: an email that is
+    // already used is left off, and the guest can add one later in Settings.
+    if (email && (await emailTakenByOther(email, null))) email = undefined;
+
     const userData = {
       username,
       password,
@@ -2693,7 +2722,7 @@ export async function registerForEvent(formData, eventId) {
       status: 'pending',
       age: age ? parseInt(age, 10) : null,
       mobile: mobile || '',
-      email: email || '',
+      ...(email ? { email } : {}),
       photoUrl: photoUrl || '',
       eventRegistrations: [{
         eventId,
@@ -2702,8 +2731,15 @@ export async function registerForEvent(formData, eventId) {
         appliedAt: new Date()
       }]
     };
-    
-    await User.create(userData);
+
+    try {
+      await User.create(userData);
+    } catch (error) {
+      // Lost a race for the email: register without it rather than leak or fail.
+      if (error?.code !== 11000 || !error.keyPattern?.email) throw error;
+      delete userData.email;
+      await User.create(userData);
+    }
     
     revalidatePath('/admin/users');
     revalidatePath('/dashboard/registrations');
@@ -3644,5 +3680,38 @@ export async function updateProfileName(newName) {
   } catch (error) {
     console.error('Error updating profile name:', error);
     return { success: false, message: error.message };
+  }
+}
+
+const EMAIL_INVALID = { success: false, message: 'Enter a valid email address' };
+const EMAIL_TAKEN = { success: false, message: 'That email is already used by another account' };
+
+// Another account already has this (normalised) email, in any letter case.
+const emailTakenByOther = (email, userId) =>
+  User.exists({ email, _id: { $ne: userId } }).collation(EMAIL_COLLATION);
+
+// The caller's own email. Empty removes it. Never says which account has a taken email.
+export async function updateEmail(newEmail) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, message: 'Not authenticated' };
+    if (typeof newEmail !== 'string') return EMAIL_INVALID;
+
+    const email = normalizeEmail(newEmail);
+    await connectDB();
+    if (!email) {
+      await User.updateOne({ _id: user._id }, { $unset: { email: 1 } });
+      return { success: true, email: '' };
+    }
+    if (!isValidEmail(email)) return EMAIL_INVALID;
+    if (await emailTakenByOther(email, user._id)) return EMAIL_TAKEN;
+
+    await User.updateOne({ _id: user._id }, { $set: { email } }, { runValidators: true });
+    return { success: true, email };
+  } catch (error) {
+    // The unique index catches what the check above missed in a race.
+    if (error?.code === 11000) return EMAIL_TAKEN;
+    console.error('Error updating email:', error);
+    return { success: false, message: 'Could not update your email. Please try again.' };
   }
 }

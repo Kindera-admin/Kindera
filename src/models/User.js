@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { normalizeEmail, EMAIL_RE, EMAIL_MAX } from '../lib/email.js';
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -55,6 +56,16 @@ const userSchema = new mongoose.Schema({
     default: 'pending'
   },
   mobile: { type: String, default: '' },
+  // Optional; for event updates and notifications. Never stored as '' (the
+  // setter turns blank into undefined) so the sparse unique index ignores it.
+  email: {
+    type: String,
+    set: normalizeEmail,
+    match: [EMAIL_RE, 'Invalid email address'],
+    maxlength: [EMAIL_MAX, 'Invalid email address'],
+    unique: true,
+    sparse: true,
+  },
   age: { type: Number, default: null },
   photoUrl: { type: String, default: '' },
   eventRegistrations: [{
