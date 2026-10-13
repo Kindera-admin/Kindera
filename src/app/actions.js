@@ -715,6 +715,10 @@ export async function createEvent(formData) {
         if (typeof chosen !== 'string' || !isValidObjectId(chosen) || !allowed.includes(chosen)) {
           return { success: false, message: 'Choose which company this event is for' };
         }
+        const chosenCompany = (await getCompaniesByIds([chosen])).get(chosen);
+        if (chosenCompany?.status !== 'active') {
+          return { success: false, message: 'Choose which company this event is for' };
+        }
         companyId = chosen;
       }
     }
@@ -1340,6 +1344,10 @@ export async function updateNGOPartner(id, formData) {
 
     const partner = await NGOPartner.findByIdAndUpdate(id, updateData, { new: true });
     if (!partner) return NGO_NOT_FOUND;
+    // The card's login shows the card's name.
+    if (partner.loginUserId) {
+      await User.updateOne({ _id: partner.loginUserId, role: 'ngo' }, { name, ngoName: name });
+    }
 
     revalidatePath('/ngo-partners');
     revalidatePath('/admin/ngo-partners');

@@ -26,13 +26,16 @@ async function seedEvents(w) {
 }
 
 describe('event lists', () => {
-  it('show logged-out visitors, volunteers and NGOs only public events', async () => {
+  it('show logged-out visitors and volunteers only public events, and an NGO its own company event too', async () => {
     const w = await makeWorld();
     await seedEvents(w);
-    for (const who of [null, w.volunteer, w.ngo]) {
+    for (const who of [null, w.volunteer]) {
       await actAs(who);
       expect(titles(await getEvents())).toEqual(['Admin public', 'NGO public']);
     }
+    // The creator sees "NGO for A"; no other outsider does (above).
+    await actAs(w.ngo);
+    expect(titles(await getEvents())).toEqual(['Admin public', 'NGO for A', 'NGO public']);
   });
   it("show every SPOC and employee of a company that company's events", async () => {
     const w = await makeWorld();

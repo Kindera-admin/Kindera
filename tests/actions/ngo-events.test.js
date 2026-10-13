@@ -4,7 +4,8 @@ import User from '@/models/User';
 import Event from '@/models/Event';
 import { actAs } from '../helpers/auth.js';
 import { makeWorld, makePartner, makeUser } from '../helpers/factories.js';
-import { createEvent, getEvents, deleteNGOPartner } from '@/app/actions';
+import Company from '@/models/Company';
+import { createEvent, getEvents, getEventById, deleteNGOPartner, updateNGOPartner } from '@/app/actions';
 
 const CHOOSE = { success: false, message: 'Choose which company this event is for' };
 const INACTIVE = { success: false, message: 'Your NGO account is no longer active' };
@@ -50,6 +51,42 @@ describe('NGO events for a company', () => {
     expect(await titlesFor(w.memberB)).not.toContain('Beach clean-up');
     expect(await titlesFor(w.volunteer)).not.toContain('Beach clean-up');
     expect(await titlesFor(null)).not.toContain('Beach clean-up');
+  });
+
+  it('lets the NGO see and open its own company event, but not another NGO', async () => {
+    const w = await makeWorld();
+    const { user } = await linkedNgo([w.companyA._id]);
+    await actAs(user);
+    await createEvent(eventForm({ companyId: String(w.companyA._id) }));
+    const ev = await Event.findOne({ title: 'Beach clean-up' }).lean();
+    expect(await titlesFor(user)).toContain('Beach clean-up');
+    await actAs(user);
+    expect((await getEventById(String(ev._id))).success).toBe(true);
+
+    expect(await titlesFor(w.ngo)).not.toContain('Beach clean-up');
+    await actAs(w.ngo);
+    expect((await getEventById(String(ev._id))).success).toBe(false);
+  });
+
+  it('refuses an archived company even if it is still on the card', async () => {
+    const w = await makeWorld();
+    const { user } = await linkedNgo([w.companyA._id]);
+    await Company.updateOne({ _id: w.companyA._id }, { status: 'archived' });
+    await actAs(user);
+    expect(await createEvent(eventForm({ companyId: String(w.companyA._id) }))).toEqual(CHOOSE);
+    expect(await Event.countDocuments()).toBe(0);
+  });
+
+  it('renaming a card renames its login', async () => {
+    const w = await makeWorld();
+    const { card, user } = await linkedNgo([w.companyA._id]);
+    await actAs(w.admin);
+    const fd = new FormData();
+    fd.append('name', 'Blue Ocean');
+    fd.append('description', 'Cleans beaches');
+    expect((await updateNGOPartner(String(card._id), fd)).success).toBe(true);
+    const login = await User.findById(user._id).lean();
+    expect(login).toMatchObject({ name: 'Blue Ocean', ngoName: 'Blue Ocean' });
   });
 
   it('refuses a missing, foreign or malformed company and creates nothing', async () => {

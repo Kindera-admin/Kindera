@@ -69,13 +69,16 @@ describe('eventVisibilityFilter', () => {
     expect(eventVisibilityFilter(admin)).toEqual({});
     expect(eventVisibilityFilter(employee)).toEqual({});
   });
-  it('shows corporate users public events plus their company', () => {
-    expect(eventVisibilityFilter(memberA)).toEqual({ $or: [{ companyId: null }, { companyId: A }] });
+  it('shows corporate users public events, their company and their own', () => {
+    expect(eventVisibilityFilter(memberA)).toEqual({
+      $or: [{ companyId: null }, { companyId: A }, { createdBy: 'memberA' }],
+    });
   });
-  it('shows everyone else public events only', () => {
-    for (const who of [volunteer, ngo, null, spocWithoutCompany]) {
-      expect(eventVisibilityFilter(who)).toEqual({ companyId: null });
+  it('shows everyone else public events plus their own', () => {
+    for (const who of [volunteer, ngo, spocWithoutCompany]) {
+      expect(eventVisibilityFilter(who)).toEqual({ $or: [{ companyId: null }, { createdBy: who._id }] });
     }
+    expect(eventVisibilityFilter(null)).toEqual({ $or: [{ companyId: null }] });
   });
 });
 

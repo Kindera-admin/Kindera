@@ -44,16 +44,20 @@ export function resolveCompanyAccess(caller, companyId = null) {
 }
 
 // Mongo filter for event lists. Public means companyId null (or missing).
+// A creator always sees their own events (e.g. an NGO's event for a company).
 export function eventVisibilityFilter(caller) {
   if (isStaff(caller)) return {};
-  if (isCorporate(caller)) return { $or: [{ companyId: null }, { companyId: caller.companyId }] };
-  return { companyId: null };
+  const or = [{ companyId: null }];
+  if (isCorporate(caller)) or.push({ companyId: caller.companyId });
+  if (caller?._id) or.push({ createdBy: caller._id });
+  return { $or: or };
 }
 
 export function canSeeEvent(caller, event) {
   if (!event) return false;
   if (!event.companyId) return true;
   if (isStaff(caller)) return true;
+  if (caller?._id && sameCompany(event.createdBy, caller._id)) return true;
   return isCorporate(caller) && sameCompany(event.companyId, caller.companyId);
 }
 
