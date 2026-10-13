@@ -7,7 +7,8 @@
 //   node scripts/migrate-companies.mjs [--env <file>] --rollback <backup.json> --yes
 //   node scripts/migrate-companies.mjs [--env <file>] --backfill-legacy --yes
 //       rollback helper: writes organizationName / organizationLogo back from the
-//       Company records; run it before redeploying the previous code
+//       Company records; run it before redeploying the previous code and again
+//       right after it is live. Exits non-zero if a record's company is missing.
 //
 // Works on raw collections so it never depends on the app's current schemas.
 import fs from 'node:fs';
@@ -168,8 +169,36 @@ async function corporateAttendees(db, userFilter) {
 
 const asId = (id) => new mongoose.Types.ObjectId(String(id));
 
+// String ids from `ids` that have a Company document.
+async function existingCompanyIds(db, ids) {
+  if (!ids.length) return new Set();
+  const found = await db.collection('companies').find({ _id: { $in: ids.map(asId) } }).project({ _id: 1 }).toArray();
+  return new Set(found.map((c) => String(c._id)));
+}
+
+const RECORD_COLLECTIONS = ['users', 'events', 'attendances'];
+
+// Every companyId on users, events and attendance that has no Company document,
+// with how many records point at each: [{ companyId, records }].
+async function danglingCompanyRefs(db) {
+  const counts = new Map();
+  for (const name of RECORD_COLLECTIONS) {
+    const rows = await db.collection(name).aggregate([
+      { $match: { companyId: { $ne: null } } },
+      { $group: { _id: '$companyId', n: { $sum: 1 } } },
+    ]).toArray();
+    for (const { _id, n } of rows) counts.set(String(_id), (counts.get(String(_id)) || 0) + n);
+  }
+  const known = await existingCompanyIds(db, [...counts.keys()]);
+  return [...counts.entries()]
+    .filter(([id]) => !known.has(id))
+    .map(([id, records]) => ({ companyId: asId(id), records }));
+}
+
 // nameKey of organizationName -> Set of companyId strings, from records that
 // carry both (linked by an earlier run, or written back by --backfill-legacy).
+// Ids with no Company document (e.g. deleted by a rollback) are dropped, so a
+// re-run never links a record to a company that does not exist.
 async function linkedCompanyIdsByKey(db) {
   const map = new Map();
   const filter = { companyId: { $ne: null }, organizationName: TEXT };
@@ -183,6 +212,11 @@ async function linkedCompanyIdsByKey(db) {
       if (!map.has(key)) map.set(key, new Set());
       map.get(key).add(String(_id.companyId));
     }
+  }
+  const known = await existingCompanyIds(db, [...new Set([...map.values()].flatMap((s) => [...s]))]);
+  for (const [key, ids] of map) {
+    for (const id of ids) if (!known.has(id)) ids.delete(id);
+    if (!ids.size) map.delete(key);
   }
   return map;
 }
@@ -310,6 +344,17 @@ export async function cleanupMigration(db, { backupFile = null, now = new Date()
   const events = db.collection('events');
   const attendances = db.collection('attendances');
 
+  // A companyId with no Company is as good as none: once the old fields are gone
+  // nothing says which company the record belonged to.
+  const dangling = await danglingCompanyRefs(db);
+  if (dangling.length) {
+    const total = dangling.reduce((sum, d) => sum + d.records, 0);
+    const shown = dangling.slice(0, MAX_LISTED).map((d) => `${d.companyId} (${d.records} records)`).join(', ');
+    const more = dangling.length > MAX_LISTED ? `, and ${dangling.length - MAX_LISTED} more` : '';
+    throw new Error(`Refusing cleanup: ${total} records point at companies that no longer exist: ${shown}${more}. `
+      + 'Before cleanup, restore those companies or re-link the records to an existing company.');
+  }
+
   const nameless = await users.find(UNLINKABLE_USERS).project({ username: 1 }).toArray();
   if (nameless.length) {
     throw new Error(`Refusing cleanup: ${nameless.length} SPOC/employee accounts have no company name and no companyId, so --apply cannot link them. `
@@ -395,11 +440,16 @@ export async function backfillLegacy(db, { backupFile = null, now = new Date() }
 
   const ids = [...backup.users, ...backup.events, ...backup.attendances].map((d) => d.companyId);
   const companies = await db.collection('companies').find({ _id: { $in: ids } }).toArray();
-  const counts = { users: 0, events: 0, attendances: 0, logos: 0, missingCompanies: 0 };
-  const known = new Set(companies.map((c) => String(c._id)));
-  counts.missingCompanies = new Set(ids.map(String).filter((id) => !known.has(id))).size;
-  for (const c of companies) {
-    const byCompany = { companyId: c._id };
+  const counts = { users: 0, events: 0, attendances: 0, logos: 0, placeholders: 0, missingCompanies: 0 };
+  // Fail closed: a record whose company is gone still gets a name, one per missing
+  // company so the old code never groups two lost companies together. Otherwise
+  // an internal event would match the old public filter.
+  const named = [
+    ...companies.map((c) => ({ companyId: c._id, name: c.name, logoUrl: c.logoUrl })),
+    ...(await danglingCompanyRefs(db)).map((d) => ({ companyId: d.companyId, name: placeholderName(d.companyId), logoUrl: '' })),
+  ];
+  for (const c of named) {
+    const byCompany = { companyId: c.companyId };
     counts.users += (await users.updateMany({ ...userFilter, ...byCompany }, { $set: { organizationName: c.name } })).modifiedCount;
     counts.events += (await events.updateMany({ ...eventFilter, ...byCompany }, { $set: { organizationName: c.name } })).modifiedCount;
     counts.attendances += (await attendances.updateMany({ ...eventFilter, ...byCompany }, { $set: { organizationName: c.name } })).modifiedCount;
@@ -407,7 +457,31 @@ export async function backfillLegacy(db, { backupFile = null, now = new Date() }
       counts.logos += (await users.updateMany({ ...logoFilter, ...byCompany }, { $set: { organizationLogo: c.logoUrl } })).modifiedCount;
     }
   }
+  // Counted from the data, not from this run's writes, so a re-run still reports them.
+  const dangling = await danglingCompanyRefs(db);
+  counts.missingCompanies = dangling.length;
+  counts.missingCompanyIds = dangling.map((d) => String(d.companyId));
+  for (const d of dangling) {
+    const filter = { companyId: d.companyId, organizationName: placeholderName(d.companyId) };
+    for (const name of RECORD_COLLECTIONS) counts.placeholders += await db.collection(name).countDocuments(filter);
+  }
   return counts;
+}
+
+const placeholderName = (companyId) => `Unknown company (${companyId})`;
+
+// Why a backfill run must not count as a success, or null.
+export function backfillFailure(res) {
+  if (!res.placeholders) return null;
+  return `${res.placeholders} records point at ${res.missingCompanies} missing ${res.missingCompanies === 1 ? 'company' : 'companies'} `
+    + `(${res.missingCompanyIds.join(', ')}) and carry the placeholder "Unknown company (<id>)", so the old code keeps them private. `
+    + 'Restore those companies or re-link the records, then run --backfill-legacy --yes again.';
+}
+
+export function formatRollback(res) {
+  const out = res.kept.map((c) => `Company "${c.name}" (${c._id}) kept (still referenced by ${c.references} records)`);
+  out.push(`Deleted ${res.deleted} created companies.`);
+  return out;
 }
 
 // Which fields each backup kind may put back. Rollback never replaces whole
@@ -448,9 +522,36 @@ export async function rollbackMigration(db, backup) {
       if (Object.keys(update).length) await col.updateOne({ _id: doc._id }, update);
     }
   }
+  const result = { deleted: 0, kept: [] };
   if (backup.kind === 'apply' && backup.createdCompanyIds?.length) {
-    await db.collection('companies').deleteMany({ _id: { $in: backup.createdCompanyIds } });
+    // Never delete a company that something outside this backup still points at
+    // (records the new code wrote after the deploy, NGO partner cards): those
+    // records would be left with a companyId that resolves to nothing.
+    const created = backup.createdCompanyIds.map(asId);
+    const references = new Map();
+    const count = (id, n) => references.set(String(id), (references.get(String(id)) || 0) + n);
+    for (const [name, docs] of [['users', backup.users], ['events', backup.events], ['attendances', backup.attendances]]) {
+      const rows = await db.collection(name).aggregate([
+        { $match: { companyId: { $in: created }, _id: { $nin: (docs || []).map((d) => d._id) } } },
+        { $group: { _id: '$companyId', n: { $sum: 1 } } },
+      ]).toArray();
+      for (const { _id, n } of rows) count(_id, n);
+    }
+    const cards = await db.collection('ngopartners').aggregate([
+      { $match: { companyIds: { $in: created } } },
+      { $unwind: '$companyIds' },
+      { $match: { companyIds: { $in: created } } },
+      { $group: { _id: '$companyIds', n: { $sum: 1 } } },
+    ]).toArray();
+    for (const { _id, n } of cards) count(_id, n);
+
+    const keep = created.filter((id) => references.has(String(id)));
+    const companies = await db.collection('companies').find({ _id: { $in: keep } }).project({ name: 1 }).toArray();
+    result.kept = companies.map((c) => ({ _id: c._id, name: c.name, references: references.get(String(c._id)) }));
+    const remove = created.filter((id) => !references.has(String(id)));
+    if (remove.length) result.deleted = (await db.collection('companies').deleteMany({ _id: { $in: remove } })).deletedCount;
   }
+  return result;
 }
 
 // host/dbname, so the operator sees which database a run will touch.
@@ -474,6 +575,7 @@ export async function main(argv) {
   const db = mongoose.connection.db;
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const backupDir = path.resolve('backups');
+  let failure = null;
 
   if (args.mode === 'plan') {
     console.log(`\n${formatPlan(await planMigration(db)).join('\n')}`);
@@ -494,13 +596,16 @@ export async function main(argv) {
     const backupFile = path.join(backupDir, `migrate-companies-backfill-${stamp}.json`);
     const res = await backfillLegacy(db, { backupFile });
     console.log(`Backfilled organizationName on ${res.users} users, ${res.events} events and ${res.attendances} attendance records; organizationLogo on ${res.logos} SPOCs.`);
-    if (res.missingCompanies) console.log(`Skipped records pointing at ${res.missingCompanies} missing companies.`);
     console.log(`Backup: ${backupFile}`);
+    failure = backfillFailure(res);
   } else if (args.mode === 'rollback') {
-    await rollbackMigration(db, readBackup(args.rollbackFile));
+    const res = await rollbackMigration(db, readBackup(args.rollbackFile));
+    for (const line of formatRollback(res)) console.log(line);
     console.log(`Restored from ${args.rollbackFile}`);
   }
   await mongoose.disconnect();
+  // Thrown after the writes, so the run exits non-zero but its work (and backup) stays.
+  if (failure) throw new Error(failure);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

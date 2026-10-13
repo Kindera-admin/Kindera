@@ -719,3 +719,182 @@ describe('unlinkable data', () => {
     await expect(cleanupMigration(db, { now })).resolves.toBeDefined();
   });
 });
+
+// ---- Residual round R1-R3: dangling company references ----
+
+// Runs the CLI against the test database: connect/disconnect are stubbed so the
+// shared connection survives, and backups land in a temporary working directory.
+async function runMain(args) {
+  const envFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'mig-env-')), '.env.test');
+  fs.writeFileSync(envFile, `MONGODB_URI=${process.env.MONGODB_URI}\n`);
+  const savedUri = process.env.MONGODB_URI;
+  const cwd = process.cwd();
+  process.chdir(fs.mkdtempSync(path.join(os.tmpdir(), 'mig-cwd-')));
+  const logs = [];
+  const log = vi.spyOn(console, 'log').mockImplementation((...a) => { logs.push(a.map(String).join(' ')); });
+  const connect = vi.spyOn(mongoose, 'connect').mockResolvedValue(mongoose);
+  const disconnect = vi.spyOn(mongoose, 'disconnect').mockResolvedValue();
+  try {
+    const error = await main(['--env', envFile, ...args]).then(() => null, (e) => e);
+    return { logs, error };
+  } finally {
+    log.mockRestore();
+    connect.mockRestore();
+    disconnect.mockRestore();
+    process.chdir(cwd);
+    process.env.MONGODB_URI = savedUri;
+  }
+}
+
+// Records the new code writes after deploy: companyId only, no organizationName.
+async function addNewCodeRecords(companyId) {
+  const { insertedId: userId } = await db.collection('users').insertOne({ username: 'new-emp', role: 'org_member', name: 'NE', companyId });
+  const { insertedId: eventId } = await db.collection('events').insertOne({ title: 'New-code internal', companyId, createdByRole: 'org_spoc' });
+  return { userId, eventId };
+}
+
+describe('apply rollback keeps companies that are still referenced (R1)', () => {
+  it('keeps a created company that records outside the backup still use, and deletes the rest', async () => {
+    await seedLegacy();
+    const file = tmp();
+    await applyMigration(db, { now, backupFile: file });
+    const acme = await db.collection('companies').findOne({ nameKey: 'acme corp' });
+    const ghost = await db.collection('companies').findOne({ nameKey: 'ghost ltd' });
+    const { userId, eventId } = await addNewCodeRecords(acme._id);
+    await backfillLegacy(db, { now });
+    const res = await rollbackMigration(db, readBackup(file));
+    expect(await db.collection('companies').countDocuments({ _id: acme._id })).toBe(1);
+    expect(await db.collection('companies').countDocuments({ _id: ghost._id })).toBe(0);
+    for (const [name, id] of [['users', userId], ['events', eventId]]) {
+      const doc = await db.collection(name).findOne({ _id: id });
+      expect(String(doc.companyId)).toBe(String(acme._id));
+      expect(await db.collection('companies').countDocuments({ _id: doc.companyId })).toBe(1);
+    }
+    expect(res.deleted).toBe(1);
+    expect(res.kept).toEqual([{ _id: acme._id, name: 'Acme Corp', references: 2 }]);
+  });
+  it('counts an NGO partner card that lists the company as a reference', async () => {
+    await seedLegacy();
+    const file = tmp();
+    await applyMigration(db, { now, backupFile: file });
+    const ghost = await db.collection('companies').findOne({ nameKey: 'ghost ltd' });
+    await db.collection('ngopartners').insertOne({ name: 'Card', description: 'd', companyIds: [ghost._id] });
+    try {
+      const res = await rollbackMigration(db, readBackup(file));
+      expect(res.kept).toEqual([{ _id: ghost._id, name: 'Ghost Ltd', references: 1 }]);
+      expect(await db.collection('companies').countDocuments({ _id: ghost._id })).toBe(1);
+    } finally {
+      await db.collection('ngopartners').deleteMany({});
+    }
+  });
+  it('the CLI reports each kept company with its reference count', async () => {
+    await seedLegacy();
+    const file = tmp();
+    await applyMigration(db, { now, backupFile: file });
+    const acme = await db.collection('companies').findOne({ nameKey: 'acme corp' });
+    await addNewCodeRecords(acme._id);
+    const { logs, error } = await runMain(['--rollback', file, '--yes']);
+    expect(error).toBeNull();
+    expect(logs).toContain(`Company "Acme Corp" (${acme._id}) kept (still referenced by 2 records)`);
+    expect(logs).toContain('Deleted 1 created companies.');
+  });
+});
+
+describe('re-apply and cleanup never trust a dangling companyId (R2)', () => {
+  it('ignores a linked key whose company no longer exists, and links to a real company', async () => {
+    await seedLegacy();
+    await applyMigration(db, { now });
+    const acme = await db.collection('companies').findOne({ nameKey: 'acme corp' });
+    await db.collection('companies').deleteOne({ _id: acme._id });
+    const { insertedId } = await db.collection('users').insertOne({ username: 'late', role: 'org_member', name: 'L', organizationName: 'Acme Corp' });
+    const res = await applyMigration(db, { now });
+    const late = await db.collection('users').findOne({ _id: insertedId });
+    expect(late.companyId).toBeTruthy();
+    expect(String(late.companyId)).not.toBe(String(acme._id));
+    expect(await db.collection('companies').countDocuments({ _id: late.companyId })).toBe(1);
+    expect(res.companiesCreated).toBe(1);
+    expect(res.ambiguous).toEqual([]);
+  });
+  it('a key linked to one dangling and one real company links to the real one', async () => {
+    await seedLegacy();
+    await applyMigration(db, { now });
+    const acme = await db.collection('companies').findOne({ nameKey: 'acme corp' });
+    await db.collection('companies').updateOne({ _id: acme._id }, { $set: { name: 'Acme Global', nameKey: 'acme global' } });
+    const { insertedId: otherId } = await db.collection('companies').insertOne({ name: 'Acme Two', nameKey: 'acme two', logoUrl: '', status: 'active', createdAt: now, updatedAt: now });
+    await db.collection('users').insertOne({ username: 'other-spoc', role: 'org_spoc', name: 'O', companyId: otherId, organizationName: 'Acme Corp' });
+    await db.collection('companies').deleteOne({ _id: acme._id });
+    const { insertedId } = await db.collection('users').insertOne({ username: 'late', role: 'org_member', name: 'L', organizationName: 'acme corp' });
+    const res = await applyMigration(db, { now });
+    expect(res.ambiguous).toEqual([]);
+    expect(String((await db.collection('users').findOne({ _id: insertedId })).companyId)).toBe(String(otherId));
+  });
+  it('cleanup refuses while a record points at a missing company, lists it, and unsets nothing', async () => {
+    await seedLegacy();
+    await applyMigration(db, { now });
+    const ghost = await db.collection('companies').findOne({ nameKey: 'ghost ltd' });
+    await db.collection('companies').deleteOne({ _id: ghost._id });
+    const before = await countOld();
+    const err = await cleanupMigration(db, { now }).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toMatch(/^Refusing cleanup: 1 records point at companies that no longer exist/);
+    expect(err.message).toContain(`${ghost._id} (1 records)`);
+    expect(err.message).toMatch(/restore those companies or re-link the records/);
+    expect(await countOld()).toEqual(before);
+    // The dangling reference was the only blocker: re-linking it lets cleanup run.
+    const acme = await db.collection('companies').findOne({ nameKey: 'acme corp' });
+    await db.collection('events').updateMany({ companyId: ghost._id }, { $set: { companyId: acme._id } });
+    await expect(cleanupMigration(db, { now })).resolves.toBeDefined();
+  });
+});
+
+describe('backfillLegacy fails closed on a missing company (R3)', () => {
+  async function seedDangling() {
+    const ids = await seedNewStyle();
+    const missingId = new mongoose.Types.ObjectId();
+    const { insertedId: danglingEvent } = await db.collection('events').insertOne({ title: 'Dangling internal', companyId: missingId, createdByRole: 'org_spoc' });
+    const { insertedId: danglingUser } = await db.collection('users').insertOne({ username: 'dang', role: 'org_member', name: 'D', companyId: missingId });
+    await db.collection('attendances').insertOne({ eventId: danglingEvent, userId: danglingUser, companyId: missingId, attended: true });
+    return { ...ids, missingId, danglingEvent, danglingUser };
+  }
+  it('gives an internal event with a dangling companyId a placeholder name so the old code keeps it private', async () => {
+    const { missingId, danglingEvent } = await seedDangling();
+    expect(await db.collection('events').countDocuments({ _id: danglingEvent, ...oldPublicFilter })).toBe(1);
+    const res = await backfillLegacy(db, { now });
+    expect((await db.collection('events').findOne({ _id: danglingEvent })).organizationName).toBe(`Unknown company (${missingId})`);
+    expect(await db.collection('events').countDocuments({ _id: danglingEvent, ...oldPublicFilter })).toBe(0);
+    // Totals include the placeholder writes (one each on top of seedNewStyle's).
+    expect(res).toMatchObject({ users: 3, events: 2, attendances: 2, placeholders: 3, missingCompanies: 1 });
+  });
+  it('gives the user and attendance a placeholder too, one per missing company', async () => {
+    const { missingId, danglingUser } = await seedDangling();
+    const otherMissing = new mongoose.Types.ObjectId();
+    await db.collection('events').insertOne({ title: 'Other dangling', companyId: otherMissing, createdByRole: 'org_spoc' });
+    await backfillLegacy(db, { now });
+    expect((await db.collection('users').findOne({ _id: danglingUser })).organizationName).toBe(`Unknown company (${missingId})`);
+    expect((await db.collection('attendances').findOne({ userId: danglingUser })).organizationName).toBe(`Unknown company (${missingId})`);
+    expect((await db.collection('events').findOne({ title: 'Other dangling' })).organizationName).toBe(`Unknown company (${otherMissing})`);
+  });
+  it('rolls the placeholders back with the backfill backup', async () => {
+    const { danglingEvent } = await seedDangling();
+    const file = tmp();
+    await backfillLegacy(db, { now, backupFile: file });
+    await rollbackMigration(db, readBackup(file));
+    expect(await db.collection('events').findOne({ _id: danglingEvent })).not.toHaveProperty('organizationName');
+  });
+  it('the CLI writes the placeholders, reports them and exits non-zero, also on a re-run', async () => {
+    const { missingId, danglingEvent } = await seedDangling();
+    const first = await runMain(['--backfill-legacy', '--yes']);
+    expect((await db.collection('events').findOne({ _id: danglingEvent })).organizationName).toBe(`Unknown company (${missingId})`);
+    expect(first.error).toBeInstanceOf(Error);
+    expect(first.error.message).toMatch(/3 records point at 1 missing company/);
+    expect(first.error.message).toContain(String(missingId));
+    expect(first.logs.some((l) => l.startsWith('Backup: '))).toBe(true);
+    const second = await runMain(['--backfill-legacy', '--yes']);
+    expect(second.error?.message).toMatch(/3 records point at 1 missing company/);
+  });
+  it('the CLI exits cleanly when every company exists', async () => {
+    await seedNewStyle();
+    const { error } = await runMain(['--backfill-legacy', '--yes']);
+    expect(error).toBeNull();
+  });
+});
