@@ -57,14 +57,12 @@ const userSchema = new mongoose.Schema({
   },
   mobile: { type: String, default: '' },
   // Optional; for event updates and notifications. Never stored as '' (the
-  // setter turns blank into undefined) so the sparse unique index ignores it.
+  // setter turns blank into undefined). Uniqueness is the partial index below.
   email: {
     type: String,
     set: normalizeEmail,
     match: [EMAIL_RE, 'Invalid email address'],
     maxlength: [EMAIL_MAX, 'Invalid email address'],
-    unique: true,
-    sparse: true,
   },
   age: { type: Number, default: null },
   photoUrl: { type: String, default: '' },
@@ -118,6 +116,9 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.index({ companyId: 1 });
+// Unique over real emails only. A partial index (not sparse) also ignores legacy
+// accounts whose email is '' or missing, so they can never block the index build.
+userSchema.index({ email: 1 }, { unique: true, partialFilterExpression: { email: { $type: 'string', $gt: '' } } });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {

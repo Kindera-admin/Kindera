@@ -20,9 +20,28 @@ beforeEach(async () => {
 });
 
 describe('User.email (R8)', () => {
-  it('has a unique sparse index', async () => {
+  it('has a unique index over non-blank strings only (partial, not sparse)', async () => {
     const index = (await User.collection.indexes()).find((i) => i.key?.email === 1);
-    expect(index).toMatchObject({ unique: true, sparse: true });
+    expect(index).toMatchObject({ unique: true, partialFilterExpression: { email: { $type: 'string', $gt: '' } } });
+    expect(index.sparse).toBeUndefined();
+  });
+  it('still builds when legacy accounts have a blank email, and still blocks a real duplicate', async () => {
+    const emailIndex = (await User.collection.indexes()).find((i) => i.key?.email === 1);
+    await User.collection.dropIndex(emailIndex.name); // a database whose index never got built
+    try {
+      const legacy = (n, extra) => ({ username: `legacy-${n}`, password: 'x', name: `Legacy ${n}`, role: 'volunteer', status: 'approved', ...extra });
+      await User.collection.insertOne(legacy(1, { email: '' }));
+      await User.collection.insertOne(legacy(2, { email: '' }));
+      await User.collection.insertOne(legacy(3, {}));
+      await User.collection.insertOne(legacy(4, {}));
+      await expect(User.syncIndexes()).resolves.toBeDefined();
+      expect((await User.collection.indexes()).find((i) => i.key?.email === 1)).toBeDefined();
+      await makeUser('volunteer', { email: 'real@example.com' });
+      await expect(makeUser('volunteer', { email: 'REAL@example.com' })).rejects.toThrow(/E11000/);
+    } finally {
+      await User.deleteMany({});
+      await User.syncIndexes(); // leave every index in place for the tests that follow
+    }
   });
   it('is stored trimmed and lowercased', async () => {
     const u = await makeUser('volunteer', { email: '  Ann@Example.COM ' });

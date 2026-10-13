@@ -4,7 +4,7 @@ export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const EMAIL_MAX = 254;
 
 // Trimmed and lowercased; undefined for anything blank or not a string, so a
-// blank value is never stored ('' would collide in the sparse unique index).
+// blank value is never stored (the unique index ignores '', but there is no reason to keep one).
 export function normalizeEmail(value) {
   if (typeof value !== 'string') return undefined;
   const email = value.trim().toLowerCase();
