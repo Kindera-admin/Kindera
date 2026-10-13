@@ -7,7 +7,7 @@ import { actAs } from '../helpers/auth.js';
 import { makeWorld, makeUser, makeEvent, makeCompany } from '../helpers/factories.js';
 import {
   updateEmail, bulkCreateFromExcel, exportDetailedAttendanceData, registerForEvent,
-  updatePassword, registerForEventLoggedIn, updateEventRegistrationStatus,
+  updatePassword, registerForEventLoggedIn, updateEventRegistrationStatus, getDetailedDirectoryStats,
 } from '@/app/actions';
 
 const raw = (id) => User.collection.findOne({ _id: id });
@@ -341,5 +341,21 @@ describe('legacy stored emails never break unrelated saves (N1)', () => {
     } finally {
       vi.restoreAllMocks();
     }
+  });
+});
+
+describe('admin directory shows usernames as usernames, plus the real email (re-review)', () => {
+  it('returns username and email separately for SPOCs and NGOs', async () => {
+    const w = await makeWorld();
+    await User.updateOne({ _id: w.spocA._id }, { $set: { email: 'spoc.a@example.com' } });
+    await User.updateOne({ _id: w.ngo._id }, { $set: { email: 'ngo@example.com' } });
+    await actAs(w.admin);
+    const { spocs, ngos } = await getDetailedDirectoryStats();
+    const spocA = spocs.find((s) => s._id === String(w.spocA._id));
+    const spocB = spocs.find((s) => s._id === String(w.spocB._id));
+    const ngo = ngos.find((n) => n._id === String(w.ngo._id));
+    expect(spocA).toMatchObject({ username: w.spocA.username, email: 'spoc.a@example.com' });
+    expect(spocB).toMatchObject({ username: w.spocB.username, email: '' });
+    expect(ngo).toMatchObject({ username: w.ngo.username, email: 'ngo@example.com' });
   });
 });

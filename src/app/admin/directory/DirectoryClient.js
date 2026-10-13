@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition, Fragment } from 'react';
-import { Download, Search, Building2, User, Mail, Phone, CalendarDays, Clock, FileText, Loader2, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Download, Search, Building2, User, Mail, AtSign, Phone, CalendarDays, Clock, FileText, Loader2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { exportDetailedAttendanceData } from '@/app/actions';
@@ -48,11 +48,13 @@ export default function DirectoryClient({ spocs, ngos }) {
   const filteredSpocs = spocs.filter(s => 
     (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (s.companyName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (s.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredNgos = ngos.filter(n => 
     (n.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (n.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (n.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (n.ngoId || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -70,15 +72,15 @@ export default function DirectoryClient({ spocs, ngos }) {
     const joined = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }) : '');
     const csv = activeTab === 'spocs'
       ? csvDocument(
-        ['Name', 'Username', 'Mobile', 'Organization', 'Status', 'Total Members', 'Total Hours', 'Events Attended', 'Joined At'],
+        ['Name', 'Username', 'Email', 'Mobile', 'Organization', 'Status', 'Total Members', 'Total Hours', 'Events Attended', 'Joined At'],
         filteredSpocs.map(s => [
-          s.name, s.email, s.mobile, s.companyName, s.status,
+          s.name, s.username, s.email, s.mobile, s.companyName, s.status,
           s.memberCount || 0, s.volunteerHours || 0, s.eventsAttended || 0, joined(s.joinedAt),
         ]),
       )
       : csvDocument(
-        ['NGO Name', 'Username', 'Mobile', 'NGO ID', 'Status', 'Events Created', 'Joined At'],
-        filteredNgos.map(n => [n.name, n.email, n.mobile, n.ngoId, n.status, n.eventsCreated || 0, joined(n.joinedAt)]),
+        ['NGO Name', 'Username', 'Email', 'Mobile', 'NGO ID', 'Status', 'Events Created', 'Joined At'],
+        filteredNgos.map(n => [n.name, n.username, n.email, n.mobile, n.ngoId, n.status, n.eventsCreated || 0, joined(n.joinedAt)]),
       );
     downloadCsv(csv, `${activeTab}_directory_${new Date().toISOString().split('T')[0]}.csv`);
   };
@@ -222,7 +224,10 @@ export default function DirectoryClient({ spocs, ngos }) {
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-medium text-gray-900 flex items-center gap-1"><User className="w-3 h-3 text-gray-500"/> {spoc.name}</p>
-                      <p className="text-gray-500 text-xs flex items-center gap-1 mt-1"><Mail className="w-3 h-3"/> {spoc.email}</p>
+                      <p className="text-gray-500 text-xs flex items-center gap-1 mt-1"><AtSign className="w-3 h-3"/> {spoc.username}</p>
+                      {spoc.email && (
+                        <p className="text-gray-500 text-xs flex items-center gap-1 mt-1"><Mail className="w-3 h-3"/> {spoc.email}</p>
+                      )}
                       {spoc.mobile && spoc.mobile !== '-' && (
                         <p className="text-gray-500 text-xs flex items-center gap-1 mt-1"><Phone className="w-3 h-3"/> {spoc.mobile}</p>
                       )}
@@ -322,7 +327,10 @@ export default function DirectoryClient({ spocs, ngos }) {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-gray-900 text-sm flex items-center gap-1 mb-1"><Mail className="w-3 h-3 text-gray-500"/> {ngo.email}</p>
+                      <p className="text-gray-900 text-sm flex items-center gap-1 mb-1"><AtSign className="w-3 h-3 text-gray-500"/> {ngo.username}</p>
+                      {ngo.email && (
+                        <p className="text-gray-500 text-xs flex items-center gap-1 mb-1"><Mail className="w-3 h-3 text-gray-500"/> {ngo.email}</p>
+                      )}
                       {ngo.mobile && ngo.mobile !== '-' && (
                         <p className="text-gray-500 text-xs flex items-center gap-1"><Phone className="w-3 h-3 text-gray-500"/> {ngo.mobile}</p>
                       )}

@@ -2141,7 +2141,7 @@ export async function getDetailedDirectoryStats() {
 
     // 1. Get all SPOCs and calculate their stats
     const spocs = await User.find({ role: 'org_spoc' })
-      .select('name username companyId status createdAt mobile').lean();
+      .select('name username email companyId status createdAt mobile').lean();
     const companies = await getCompaniesByIds(spocs.map((s) => s.companyId));
 
     const spocsWithStats = await Promise.all(spocs.map(async spoc => {
@@ -2179,7 +2179,8 @@ export async function getDetailedDirectoryStats() {
       return {
         _id:             spoc._id.toString(),
         name:            spoc.name,
-        email:           spoc.username,
+        username:        spoc.username,
+        email:           spoc.email || '',
         mobile:          spoc.mobile || '-',
         companyId:       spoc.companyId ? String(spoc.companyId) : null,
         companyName:     companies.get(String(spoc.companyId))?.name || '',
@@ -2195,7 +2196,7 @@ export async function getDetailedDirectoryStats() {
 
     // 2. Get all NGOs and calculate their stats
     const ngos = await User.find({ role: 'ngo' })
-      .select('name username ngoId status createdAt mobile').lean();
+      .select('name username email ngoId status createdAt mobile').lean();
 
     const ngosWithStats = await Promise.all(ngos.map(async ngo => {
       const events = await Event.find({ createdBy: ngo._id }).select('title').lean();
@@ -2203,7 +2204,8 @@ export async function getDetailedDirectoryStats() {
       return {
         _id:          ngo._id.toString(),
         name:         ngo.name,
-        email:        ngo.username,
+        username:     ngo.username,
+        email:        ngo.email || '',
         mobile:       ngo.mobile || '-',
         ngoId:        ngo.ngoId || '-',
         status:       ngo.status,
